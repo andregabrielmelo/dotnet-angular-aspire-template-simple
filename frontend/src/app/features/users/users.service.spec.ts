@@ -20,7 +20,7 @@ describe('UsersService', () => {
     let received: UserPage | undefined;
 
     service.list(2, 25).subscribe((page) => (received = page));
-    const request = httpMock.expectOne('api/v1/users?page=2&per_page=25');
+    const request = httpMock.expectOne('api/users?page=2&per_page=25');
     request.flush({ items: [], page: 2, perPage: 25, totalCount: 0, totalPages: 0 });
 
     expect(request.request.method).toBe('GET');
@@ -32,7 +32,7 @@ describe('UsersService', () => {
     const { service, httpMock } = setup();
 
     service.delete(7).subscribe();
-    const request = httpMock.expectOne('api/v1/users/7');
+    const request = httpMock.expectOne('api/users/7');
     request.flush(null, { status: 204, statusText: 'No Content' });
 
     expect(request.request.method).toBe('DELETE');
@@ -43,7 +43,7 @@ describe('UsersService', () => {
     const { service, httpMock } = setup();
 
     service.update(7, { name: 'Grace Hopper' }).subscribe();
-    const request = httpMock.expectOne('api/v1/users/7');
+    const request = httpMock.expectOne('api/users/7');
     request.flush({ user: { id: 7, name: 'Grace Hopper' } });
 
     expect(request.request.method).toBe('PUT');

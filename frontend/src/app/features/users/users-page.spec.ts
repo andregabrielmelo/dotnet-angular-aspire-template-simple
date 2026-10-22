@@ -23,7 +23,7 @@ describe('UsersPage', () => {
     const fixture = TestBed.createComponent(UsersPage);
     const httpMock = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
-    httpMock.expectOne('api/v1/users?page=1&per_page=50').flush({
+    httpMock.expectOne('api/users?page=1&per_page=50').flush({
       items: [{ id: 7, name: 'Ada Lovelace', phoneNumber: null }],
       page: 1,
       perPage: 50,
@@ -45,7 +45,7 @@ describe('UsersPage', () => {
     const { fixture, httpMock, element } = setup([Permission.UsersRead, Permission.UsersDelete]);
 
     element.querySelector('button')!.click();
-    httpMock.expectOne('api/v1/users/7').flush(null, { status: 204, statusText: 'No Content' });
+    httpMock.expectOne('api/users/7').flush(null, { status: 204, statusText: 'No Content' });
     fixture.detectChanges();
 
     expect(element.textContent).not.toContain('Ada Lovelace');
@@ -55,7 +55,7 @@ describe('UsersPage', () => {
     const { fixture, httpMock, element } = setup([Permission.UsersRead, Permission.UsersDelete]);
 
     element.querySelector('button')!.click();
-    httpMock.expectOne('api/v1/users/7').flush(null, { status: 403, statusText: 'Forbidden' });
+    httpMock.expectOne('api/users/7').flush(null, { status: 403, statusText: 'Forbidden' });
     fixture.detectChanges();
 
     expect(element.textContent).toContain("You don't have permission to delete users.");

@@ -79,27 +79,4 @@ public class UserTests
 
         Assert.Equal(phoneNumber, user.PhoneNumber);
     }
-
-    [Fact]
-    public void MarkWelcomeEmailSent_KeepsTheFirstTimestampInUtc()
-    {
-        var user = CreateUser();
-        var first = new DateTimeOffset(2026, 9, 24, 14, 0, 0, TimeSpan.FromHours(2));
-
-        user.MarkWelcomeEmailSent(first);
-        user.MarkWelcomeEmailSent(first.AddDays(1));
-
-        Assert.Equal(first, user.WelcomeEmailSentAtUtc);
-        Assert.Equal(TimeSpan.Zero, user.WelcomeEmailSentAtUtc!.Value.Offset);
-    }
-
-    [Fact]
-    public void UpdateEmail_ChangesEmail()
-    {
-        var user = CreateUser();
-
-        user.UpdateEmail(new EmailAddress("ada.lovelace@example.com"));
-
-        Assert.Equal("ada.lovelace@example.com", user.Email.Value);
-    }
 }

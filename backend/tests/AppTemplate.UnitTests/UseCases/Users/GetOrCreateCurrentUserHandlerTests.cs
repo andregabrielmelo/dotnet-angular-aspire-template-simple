@@ -1,7 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.SharedKernel;
-using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Users.GetOrCreateCurrent;
 using Ardalis.Result;
 using NSubstitute;
@@ -11,8 +10,6 @@ namespace AppTemplate.UnitTests.UseCases.Users;
 public class GetOrCreateCurrentUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
-    private readonly ICacheInvalidator _cacheInvalidator = Substitute.For<ICacheInvalidator>();
-    private readonly TestMetrics _metrics = new();
 
     private static readonly GetOrCreateCurrentUserCommand Command = new(
         "keycloak-sub-1",
@@ -20,8 +17,7 @@ public class GetOrCreateCurrentUserHandlerTests
         new EmailAddress("ada@example.com")
     );
 
-    private GetOrCreateCurrentUserHandler CreateHandler() =>
-        new(_repository, TestCaches.Create(), _cacheInvalidator, _metrics.Application);
+    private GetOrCreateCurrentUserHandler CreateHandler() => new(_repository);
 
     [Fact]
     public async Task Handle_WithExistingUser_ReturnsItWithoutCreating()
@@ -35,14 +31,11 @@ public class GetOrCreateCurrentUserHandlerTests
             )
             .Returns(existingUser);
 
-        using var provisioned = _metrics.Collect<long>("users.provisioned");
-
         var result = await CreateHandler().Handle(Command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(Command.Name, result.Value.Name);
         await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
-        Assert.Empty(provisioned.GetMeasurementSnapshot());
     }
 
     [Fact]
@@ -60,12 +53,10 @@ public class GetOrCreateCurrentUserHandlerTests
         _repository
             .AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => callInfo.Arg<User>());
-        using var provisioned = _metrics.Collect<long>("users.provisioned");
 
         var result = await CreateHandler().Handle(Command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(1, Assert.Single(provisioned.GetMeasurementSnapshot()).Value);
         await _repository
             .Received(1)
             .AddAsync(
@@ -94,33 +85,7 @@ public class GetOrCreateCurrentUserHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ExistingUser_IsServedFromTheCacheOnLaterCalls()
-    {
-        var existingUser = User.Create(Command.ExternalId, Command.Name, Command.Email);
-        existingUser.Id = UserId.From(1); // as if loaded from the database
-        _repository
-            .FirstOrDefaultAsync(
-                Arg.Any<UserByExternalIdSpecification>(),
-                Arg.Any<CancellationToken>()
-            )
-            .Returns(existingUser);
-        var handler = CreateHandler();
-
-        await handler.Handle(Command, CancellationToken.None);
-        var second = await handler.Handle(Command, CancellationToken.None);
-
-        Assert.True(second.IsSuccess);
-        Assert.Equal(Command.Email, second.Value.Email);
-        await _repository
-            .Received(1)
-            .FirstOrDefaultAsync(
-                Arg.Any<UserByExternalIdSpecification>(),
-                Arg.Any<CancellationToken>()
-            );
-    }
-
-    [Fact]
-    public async Task Handle_NewUser_InvalidatesCachedUserData()
+    public async Task Handle_NewUser_RaisesUserProvisioned()
     {
         _repository
             .FirstOrDefaultAsync(
@@ -134,15 +99,12 @@ public class GetOrCreateCurrentUserHandlerTests
 
         await CreateHandler().Handle(Command, CancellationToken.None);
 
-        await _cacheInvalidator
-            .Received(1)
-            .InvalidateAsync(CacheTags.Users, Arg.Any<CancellationToken>());
-        // The welcome email is saved to the outbox with the user, not enqueued separately.
+        // Raised for whatever should happen to new users, dispatched once the user is saved.
         await _repository
             .Received(1)
             .AddAsync(
                 Arg.Is<User>(user =>
-                    user.IntegrationEvents.OfType<UserProvisioned>().Single().ExternalId
+                    user.DomainEvents.OfType<UserProvisioned>().Single().ExternalId
                     == Command.ExternalId
                 ),
                 Arg.Any<CancellationToken>()

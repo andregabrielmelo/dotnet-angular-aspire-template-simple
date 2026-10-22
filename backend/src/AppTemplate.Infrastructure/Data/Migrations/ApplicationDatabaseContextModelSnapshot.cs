@@ -28,11 +28,6 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    b.Property<string>("AvatarKey")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("avatar_key");
-
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -57,16 +52,6 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<DateTimeOffset?>("WelcomeEmailSentAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("welcome_email_sent_at_utc");
-
                     b.HasKey("Id")
                         .HasName("pk_users");
 
@@ -79,149 +64,6 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_users_external_id");
 
                     b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("AppTemplate.Infrastructure.Auditing.AuditEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("action");
-
-                    b.Property<string>("Actor")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("actor");
-
-                    b.Property<string>("Changes")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("changes");
-
-                    b.Property<string>("EntityKey")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("entity_key");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("entity_type");
-
-                    b.Property<DateTimeOffset>("OccurredAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at_utc");
-
-                    b.Property<string>("Outcome")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("outcome");
-
-                    b.Property<string>("TraceId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("trace_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_audit_entries");
-
-                    b.HasIndex("OccurredAtUtc")
-                        .HasDatabaseName("ix_audit_entries_occurred_at_utc");
-
-                    b.HasIndex("Actor", "OccurredAtUtc")
-                        .HasDatabaseName("ix_audit_entries_actor_occurred_at_utc");
-
-                    b.HasIndex("EntityType", "EntityKey", "OccurredAtUtc")
-                        .HasDatabaseName("ix_audit_entries_entity_type_entity_key_occurred_at_utc");
-
-                    b.ToTable("audit_entries", (string)null);
-                });
-
-            modelBuilder.Entity("AppTemplate.Infrastructure.Outbox.InboxMessage", b =>
-                {
-                    b.Property<Guid>("MessageId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("message_id");
-
-                    b.Property<string>("Consumer")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("consumer");
-
-                    b.Property<DateTimeOffset>("ProcessedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processed_at_utc");
-
-                    b.HasKey("MessageId", "Consumer")
-                        .HasName("pk_inbox_messages");
-
-                    b.ToTable("inbox_messages", (string)null);
-                });
-
-            modelBuilder.Entity("AppTemplate.Infrastructure.Outbox.OutboxMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer")
-                        .HasColumnName("attempts");
-
-                    b.Property<DateTimeOffset?>("DeadLetteredAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("dead_lettered_at_utc");
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("last_error");
-
-                    b.Property<DateTimeOffset?>("LockedUntilUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("locked_until_utc");
-
-                    b.Property<DateTimeOffset>("NextAttemptAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_attempt_at_utc");
-
-                    b.Property<DateTimeOffset>("OccurredAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at_utc");
-
-                    b.Property<string>("Payload")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("payload");
-
-                    b.Property<DateTimeOffset?>("ProcessedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processed_at_utc");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("type");
-
-                    b.HasKey("Id")
-                        .HasName("pk_outbox_messages");
-
-                    b.HasIndex("NextAttemptAtUtc", "OccurredAtUtc")
-                        .HasDatabaseName("ix_outbox_messages_pending")
-                        .HasFilter("processed_at_utc IS NULL AND dead_lettered_at_utc IS NULL");
-
-                    b.ToTable("outbox_messages", (string)null);
                 });
 
             modelBuilder.Entity("AppTemplate.Core.Aggregates.UserAggregate.User", b =>

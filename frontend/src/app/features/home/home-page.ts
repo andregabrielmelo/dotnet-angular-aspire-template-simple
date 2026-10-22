@@ -19,7 +19,6 @@ export class HomePage implements OnInit {
   // Bearer token out) that also creates the user's profile on first sign-in.
   protected readonly profile = this.currentUser.profile;
   protected readonly canManageUsers = () => this.currentUser.hasPermission(Permission.UsersRead);
-  protected readonly canViewJobs = () => this.currentUser.hasPermission(Permission.JobsRead);
 
   ngOnInit(): void {
     this.currentUser.load().subscribe();

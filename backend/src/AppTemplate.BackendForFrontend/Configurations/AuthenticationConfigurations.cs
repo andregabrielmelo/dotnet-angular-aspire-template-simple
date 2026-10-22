@@ -2,7 +2,6 @@ using AppTemplate.ServiceDefaults;
 using Duende.AccessTokenManagement.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace AppTemplate.BackendForFrontend.Configurations;
@@ -10,9 +9,6 @@ namespace AppTemplate.BackendForFrontend.Configurations;
 public static class AuthenticationConfigurations
 {
     public const string CookieName = "__Host-apptemplate";
-
-    /// <summary>AuthenticationProperties item carrying the brokered provider's alias.</summary>
-    public const string IdentityProviderHintItem = "kc_idp_hint";
 
     /// <summary>OpenID Connect "Initiating User Registration": open the registration form.</summary>
     public const string RegistrationPrompt = "create";
@@ -95,24 +91,6 @@ public static class AuthenticationConfigurations
                     // Refresh tokens, so the access token can be renewed without a new login.
                     options.Scope.Add("offline_access");
 
-                    // Keycloak-specific: skip Keycloak's own login form and go straight to a
-                    // brokered provider (Google, GitHub, ...) chosen in the SPA.
-                    var redirectToIdentityProvider = options.Events.OnRedirectToIdentityProvider;
-                    options.Events.OnRedirectToIdentityProvider = async context =>
-                    {
-                        if (
-                            context.Properties.Items.TryGetValue(
-                                IdentityProviderHintItem,
-                                out var alias
-                            ) && !string.IsNullOrEmpty(alias)
-                        )
-                        {
-                            context.ProtocolMessage.SetParameter("kc_idp_hint", alias);
-                        }
-
-                        await redirectToIdentityProvider(context);
-                    };
-
                     // Keycloak advertises pushed authorization requests (PAR), so the handler
                     // sends every parameter in a back-channel POST. Keycloak ignores
                     // prompt=create there and shows its sign-in form, so "Create account"
@@ -129,20 +107,6 @@ public static class AuthenticationConfigurations
                     };
                 }
             );
-
-        services
-            .AddOptions<ExternalIdentityProvidersOptions>()
-            .Configure<IConfiguration>(
-                (options, configuration) =>
-                    configuration
-                        .GetSection(ExternalIdentityProvidersOptions.SectionName)
-                        .Bind(options.Providers)
-            )
-            .ValidateOnStart();
-        services.AddSingleton<
-            IValidateOptions<ExternalIdentityProvidersOptions>,
-            ExternalIdentityProvidersOptionsValidator
-        >();
 
         // Refreshes the access token from the stored refresh token shortly before it expires.
         services.AddOpenIdConnectAccessTokenManagement();

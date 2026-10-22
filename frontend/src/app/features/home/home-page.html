@@ -20,11 +20,6 @@
         Manage users
       </a>
     }
-    @if (canViewJobs()) {
-      <a routerLink="/jobs" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">
-        Manage jobs
-      </a>
-    }
     <button
       type="button"
       (click)="logout()"

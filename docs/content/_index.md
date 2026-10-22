@@ -9,13 +9,16 @@ A GitHub template repository for starting new full-stack projects with a Clean A
 
 It's not a sample application - it's a skeleton with just enough real code (a `User` feature, wired end-to-end) to show you where things belong. Delete or replace it once you understand the shape of the project.
 
+This is the simple variant, with the features most projects use: Keycloak sign-in through a backend for frontend, permissions, email, structured logging, health checks, rate limiting and tests. Background jobs, a transactional outbox, auditing, caching, file storage, ETags and API versioning are in the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template).
+
 ## Stack
 
 - **.NET 10** backend using **Clean Architecture** (Core / UseCases / Infrastructure / Web)
 - **FastEndpoints** + the **REPR pattern** for API endpoints
 - **Mediator** for CQRS-style command/query handling
 - **EF Core** + **PostgreSQL** for persistence
-- **Angular** frontend, hosted and proxied through Aspire
+- **Angular** frontend, served through a backend for frontend that owns the session
+- **Keycloak** for sign-in, registration, password reset and permissions
 - **.NET Aspire** to orchestrate the API, database, and frontend together in local dev
 
 ## Getting Started

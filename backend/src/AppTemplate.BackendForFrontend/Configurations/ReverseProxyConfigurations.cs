@@ -11,7 +11,6 @@ namespace AppTemplate.BackendForFrontend.Configurations;
 public static class ReverseProxyConfigurations
 {
     private const string ApiRouteId = "api";
-    private const string AnonymousApiRouteId = "api-anonymous";
     private const string AccessTokenItemKey = "AppTemplate.AccessToken";
     private const string CookieOnlyPolicyName = "cookie-only";
 
@@ -38,20 +37,6 @@ public static class ReverseProxyConfigurations
                 ClusterId = "web",
                 AuthorizationPolicy = CookieOnlyPolicyName,
                 Match = new RouteMatch { Path = "/api/{**rest}" },
-            },
-            // The few API endpoints a signed-out user needs. No session and no access token:
-            // the Web API marks these AllowAnonymous and rate-limits them itself. They still
-            // require the X-CSRF header like every other /api call.
-            new()
-            {
-                RouteId = AnonymousApiRouteId,
-                ClusterId = "web",
-                Order = -1,
-                Match = new RouteMatch
-                {
-                    Path = "/api/v1/password-reset",
-                    Methods = [HttpMethods.Post],
-                },
             },
         };
         var clusters = new List<ClusterConfig>
@@ -96,7 +81,7 @@ public static class ReverseProxyConfigurations
             .AddServiceDiscoveryDestinationResolver()
             .AddTransforms(context =>
             {
-                if (context.Route.RouteId is not (ApiRouteId or AnonymousApiRouteId))
+                if (context.Route.RouteId is not ApiRouteId)
                 {
                     return;
                 }

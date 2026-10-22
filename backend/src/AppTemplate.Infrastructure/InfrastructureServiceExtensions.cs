@@ -1,14 +1,5 @@
-using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.Aggregates.UserAggregate.Events;
-using AppTemplate.Core.Events;
-using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
-using AppTemplate.Infrastructure.Files;
-using AppTemplate.Infrastructure.Images;
-using AppTemplate.Infrastructure.Inbox;
-using AppTemplate.Infrastructure.Jobs.Extensions;
-using AppTemplate.Infrastructure.Outbox;
 using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -50,7 +41,7 @@ public static class InfrastructureServiceExtensions
                     )
                     .UseSnakeCaseNamingConvention();
 
-                // Post-commit domain event dispatch, plus the outbox's, when AddOutbox registered it.
+                // Post-commit domain event dispatch.
                 options.AddInterceptors(provider.GetServices<ISaveChangesInterceptor>());
 
                 // TODO: Reavaluate the need for this
@@ -81,25 +72,6 @@ public static class InfrastructureServiceExtensions
         services
             .AddScoped(typeof(IRepository<>), typeof(EntityFrameworkRepository<>))
             .AddScoped<IListUsersQueryService, ListUsersQueryService>();
-
-        services.AddJobScheduling(config, connectionString);
-
-        // Every integration event type an entity may raise must be registered here.
-        services.AddInbox();
-        services.AddOutbox(
-            config,
-            outbox => outbox.AddEvent<UserProvisioned>().AddEvent<StoredFileOrphaned>()
-        );
-
-        services.AddFileStorage(config);
-        services.AddImageProcessing();
-
-        // Every IAuditable entity lists exactly the properties its audit entries may contain.
-        services.AddAuditing(
-            config,
-            audit =>
-                audit.Audit<User>(user => user.Name, user => user.Email, user => user.PhoneNumber)
-        );
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

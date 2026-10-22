@@ -64,19 +64,6 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false
-    },
-    {
-      "clientId": "apptemplate-user-admin",
-      "name": "AppTemplate user administration (Web API service account)",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "apptemplate-user-admin-dev-secret-change-me",
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
     }
   ],
   "smtpServer": {
@@ -89,17 +76,6 @@
     "starttls": "false"
   },
   "users": [
-    {
-      "username": "service-account-apptemplate-user-admin",
-      "enabled": true,
-      "serviceAccountClientId": "apptemplate-user-admin",
-      "clientRoles": {
-        "realm-management": [
-          "view-users",
-          "manage-users"
-        ]
-      }
-    },
     {
       "username": "admin",
       "email": "admin@apptemplate.local",
@@ -120,74 +96,18 @@
       ]
     }
   ],
-  "identityProviders": [
-    {
-      "alias": "google",
-      "displayName": "Google",
-      "providerId": "google",
-      "enabled": "${KC_IDP_GOOGLE_ENABLED}",
-      "trustEmail": false,
-      "storeToken": false,
-      "addReadTokenRoleOnCreate": false,
-      "linkOnly": false,
-      "firstBrokerLoginFlowAlias": "first broker login",
-      "config": {
-        "clientId": "${KC_IDP_GOOGLE_CLIENT_ID}",
-        "clientSecret": "${KC_IDP_GOOGLE_CLIENT_SECRET}",
-        "syncMode": "IMPORT",
-        "defaultScope": "openid profile email"
-      }
-    },
-    {
-      "alias": "github",
-      "displayName": "GitHub",
-      "providerId": "github",
-      "enabled": "${KC_IDP_GITHUB_ENABLED}",
-      "trustEmail": false,
-      "storeToken": false,
-      "addReadTokenRoleOnCreate": false,
-      "linkOnly": false,
-      "firstBrokerLoginFlowAlias": "first broker login",
-      "config": {
-        "clientId": "${KC_IDP_GITHUB_CLIENT_ID}",
-        "clientSecret": "${KC_IDP_GITHUB_CLIENT_SECRET}",
-        "syncMode": "IMPORT",
-        "defaultScope": "user:email"
-      }
-    },
-    {
-      "alias": "microsoft",
-      "displayName": "Microsoft",
-      "providerId": "microsoft",
-      "enabled": "${KC_IDP_MICROSOFT_ENABLED}",
-      "trustEmail": false,
-      "storeToken": false,
-      "addReadTokenRoleOnCreate": false,
-      "linkOnly": false,
-      "firstBrokerLoginFlowAlias": "first broker login",
-      "config": {
-        "clientId": "${KC_IDP_MICROSOFT_CLIENT_ID}",
-        "clientSecret": "${KC_IDP_MICROSOFT_CLIENT_SECRET}",
-        "syncMode": "IMPORT",
-        "defaultScope": "openid profile email"
-      }
-    }
-  ],
   "roles": {
     "realm": [
       {
         "name": "admin",
-        "description": "Full administration: users, background jobs and the audit log (all apptemplate-api permissions)",
+        "description": "Full administration of users (all apptemplate-api permissions)",
         "composite": true,
         "composites": {
           "client": {
             "apptemplate-api": [
               "users:read",
               "users:write",
-              "users:delete",
-              "jobs:read",
-              "jobs:manage",
-              "audit:read"
+              "users:delete"
             ]
           }
         }
@@ -206,18 +126,6 @@
         {
           "name": "users:delete",
           "description": "Delete users"
-        },
-        {
-          "name": "jobs:read",
-          "description": "List recurring background jobs and their recent runs"
-        },
-        {
-          "name": "jobs:manage",
-          "description": "Trigger, pause, resume, remove and restore recurring background jobs"
-        },
-        {
-          "name": "audit:read",
-          "description": "Read the audit log"
         }
       ]
     }

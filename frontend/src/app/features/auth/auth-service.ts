@@ -3,8 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { BROWSER_REDIRECT } from '../../core/auth/browser-redirect';
 import { BackendForFrontendUser } from './models/backend-for-frontend-user.model';
-import { ExternalIdentityProvider } from './models/external-identity-provider.model';
-import { API_V1 } from '../../core/api/api-paths';
 
 export const BACKEND_FOR_FRONTEND_PATH = 'backend-for-frontend';
 
@@ -50,33 +48,10 @@ export class AuthService {
     this.redirect(`/${BACKEND_FOR_FRONTEND_PATH}/login?returnUrl=${encodeURIComponent(returnUrl)}`);
   }
 
-  /** Third-party sign-in options enabled for this environment; empty if the call fails. */
-  loadExternalProviders(): Observable<ExternalIdentityProvider[]> {
-    return this.http
-      .get<ExternalIdentityProvider[]>(`${BACKEND_FOR_FRONTEND_PATH}/providers`)
-      .pipe(catchError(() => of([])));
-  }
-
-  /** Signs in through a Keycloak-brokered provider, skipping Keycloak's own login form. */
-  loginWith(providerAlias: string, returnUrl = '/home'): void {
-    this.redirect(
-      `/${BACKEND_FOR_FRONTEND_PATH}/login?provider=${encodeURIComponent(providerAlias)}` +
-        `&returnUrl=${encodeURIComponent(returnUrl)}`,
-    );
-  }
-
   register(returnUrl = '/home'): void {
     this.redirect(
       `/${BACKEND_FOR_FRONTEND_PATH}/register?returnUrl=${encodeURIComponent(returnUrl)}`,
     );
-  }
-
-  /**
-   * Asks Keycloak (through the API) to email a password reset link. The API answers the same
-   * way whether or not an account exists, so the caller can't learn which emails are registered.
-   */
-  requestPasswordReset(email: string): Observable<void> {
-    return this.http.post<void>(`${API_V1}/password-reset`, { email });
   }
 
   /** Ends both the local session and the Keycloak session, then returns to the app's root. */

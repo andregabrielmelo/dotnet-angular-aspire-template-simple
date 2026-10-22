@@ -1,4 +1,3 @@
-using AppTemplate.UseCases.Concurrency;
 using AppTemplate.Web.Configurations;
 
 namespace AppTemplate.Web.Extensions;
@@ -6,7 +5,7 @@ namespace AppTemplate.Web.Extensions;
 /// <summary>
 /// The only place an <see cref="Ardalis.Result.IResult"/> becomes an HTTP response, so every
 /// endpoint reports the same outcome with the same status code and problem details body
-/// (ADR 014). Endpoints return <c>Results&lt;Success, ProblemHttpResult&gt;</c>.
+/// (ADR 009). Endpoints return <c>Results&lt;Success, ProblemHttpResult&gt;</c>.
 /// </summary>
 public static class ResultExtensions
 {
@@ -58,12 +57,6 @@ public static class ResultExtensions
                 "You don't have permission to perform this operation."
             ),
             ResultStatus.NotFound => Problem(StatusCodes.Status404NotFound, MessagesOf(result)),
-            // A failed If-Match is a Conflict carrying this exact message (ADR 019).
-            ResultStatus.Conflict
-                when result.Errors.Contains(ConcurrencyResults.PreconditionFailed) => Problem(
-                StatusCodes.Status412PreconditionFailed,
-                ConcurrencyResults.PreconditionFailed
-            ),
             ResultStatus.Conflict => Problem(StatusCodes.Status409Conflict, MessagesOf(result)),
             ResultStatus.Unavailable => Problem(
                 StatusCodes.Status503ServiceUnavailable,

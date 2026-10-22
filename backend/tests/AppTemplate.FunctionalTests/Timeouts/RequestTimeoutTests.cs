@@ -62,7 +62,7 @@ public class RequestTimeoutTests(RequestTimeoutTests.ShortTimeoutFactory factory
         var query = new SlowDatabaseQuery();
         var stopwatch = Stopwatch.StartNew();
 
-        var response = await ClientWith(query).GetAsync("/v1/users");
+        var response = await ClientWith(query).GetAsync("/users");
 
         await AssertTimeoutProblemAsync(response);
         Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(10), $"took {stopwatch.Elapsed}");
@@ -75,28 +75,10 @@ public class RequestTimeoutTests(RequestTimeoutTests.ShortTimeoutFactory factory
     {
         var call = new SlowHttpCall();
 
-        var response = await ClientWith(call).GetAsync("/v1/users");
+        var response = await ClientWith(call).GetAsync("/users");
 
         await AssertTimeoutProblemAsync(response);
         Assert.True(await call.Handler.Cancelled.Task.WaitAsync(TimeSpan.FromSeconds(10)));
-    }
-
-    [Fact]
-    public void PasswordReset_UsesTheLongerExternalCallPolicy()
-    {
-        var endpoint = factory
-            .Services.GetRequiredService<EndpointDataSource>()
-            .Endpoints.OfType<RouteEndpoint>()
-            .Single(e =>
-                e.RoutePattern.RawText?.TrimStart('/') == "v1/password-reset"
-                && e.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains("POST")
-                    == true
-            );
-
-        Assert.Equal(
-            RequestTimeoutPolicies.ExternalCall,
-            endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>()?.PolicyName
-        );
     }
 
     public abstract class SlowQueryService : IListUsersQueryService

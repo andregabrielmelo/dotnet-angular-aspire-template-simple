@@ -12,4 +12,4 @@ npm run lint   # eslint (@angular-eslint)
 
 Formatting (prettier) and linting (eslint) are both enforced in CI - run `npm run format` and `npm run lint` before committing.
 
-See the [docs site](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/notes/cors-and-proxy/) for the single-origin (backend for frontend) setup and the rest of the template's architecture.
+See the [docs site](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/notes/cors-and-proxy/) for the single-origin (backend for frontend) setup and the rest of the template's architecture.

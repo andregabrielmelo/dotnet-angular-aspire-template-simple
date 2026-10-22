@@ -76,29 +76,6 @@ describe('AuthService', () => {
     expect(redirect).toHaveBeenCalledWith('/backend-for-frontend/register?returnUrl=%2Fhome');
   });
 
-  it('loadExternalProviders() returns the enabled providers, or none on failure', () => {
-    let providers: unknown;
-    service.loadExternalProviders().subscribe((p) => (providers = p));
-    httpMock
-      .expectOne('backend-for-frontend/providers')
-      .flush([{ alias: 'google', displayName: 'Google' }]);
-    expect(providers).toEqual([{ alias: 'google', displayName: 'Google' }]);
-
-    service.loadExternalProviders().subscribe((p) => (providers = p));
-    httpMock
-      .expectOne('backend-for-frontend/providers')
-      .flush(null, { status: 500, statusText: 'Server Error' });
-    expect(providers).toEqual([]);
-  });
-
-  it('loginWith() redirects to the backend for frontend with the provider hint', () => {
-    service.loginWith('google');
-
-    expect(redirect).toHaveBeenCalledWith(
-      '/backend-for-frontend/login?provider=google&returnUrl=%2Fhome',
-    );
-  });
-
   it('logout() clears the session and redirects to the logout URL', () => {
     service.loadUser().subscribe();
     httpMock.expectOne('backend-for-frontend/user').flush(user);
@@ -107,14 +84,5 @@ describe('AuthService', () => {
 
     expect(service.isAuthenticated()).toBe(false);
     expect(redirect).toHaveBeenCalledWith('/backend-for-frontend/logout?sid=abc');
-  });
-
-  it('requestPasswordReset() posts the email to the API', () => {
-    service.requestPasswordReset('ada@example.com').subscribe();
-
-    const request = httpMock.expectOne('api/v1/password-reset');
-    expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ email: 'ada@example.com' });
-    request.flush(null, { status: 202, statusText: 'Accepted' });
   });
 });

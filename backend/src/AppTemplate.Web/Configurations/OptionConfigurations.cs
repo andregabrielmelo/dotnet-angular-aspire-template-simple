@@ -1,5 +1,4 @@
 using AppTemplate.Infrastructure.Email;
-using AppTemplate.UseCases.Users.SendWelcomeEmail;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -18,16 +17,6 @@ public static class OptionConfigurations
             .Validate(
                 mail => !string.IsNullOrWhiteSpace(mail.Hostname) && mail.Port is > 0 and <= 65535,
                 "Mailserver needs a Hostname and a Port between 1 and 65535."
-            )
-            .ValidateOnStart();
-        services
-            .AddOptions<WelcomeEmailOptions>()
-            .Bind(configuration.GetSection(WelcomeEmailOptions.SectionName))
-            .Validate(
-                email =>
-                    !string.IsNullOrWhiteSpace(email.From)
-                    && !string.IsNullOrWhiteSpace(email.Subject),
-                "WelcomeEmail needs a From address and a Subject."
             )
             .ValidateOnStart();
 

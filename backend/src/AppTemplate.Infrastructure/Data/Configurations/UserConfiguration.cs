@@ -38,12 +38,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // migration that added it backfilled existing rows with the migration time.
         builder.Property(entity => entity.CreatedAtUtc).HasDefaultValueSql("now()");
 
-        builder.Property(entity => entity.AvatarKey).HasMaxLength(64);
-
-        // Npgsql maps a uint row version to the system column xmin: no schema change, and
-        // every UPDATE adds "WHERE xmin = @loaded", making it an optimistic concurrency check.
-        builder.Property(entity => entity.Version).IsRowVersion();
-
         builder.OwnsOne(builder => builder.PhoneNumber);
     }
 }

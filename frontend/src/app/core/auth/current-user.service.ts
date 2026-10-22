@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, of, tap } from 'rxjs';
 import { Permission } from './permissions';
-import { API_V1 } from '../api/api-paths';
+import { API_BASE } from '../api/api-paths';
 import { ApiSchema } from '../api/api-schema';
 
 export type CurrentUser = ApiSchema<'CurrentUserResponse'>;
@@ -26,7 +26,7 @@ export class CurrentUserService {
       return of(this.profileSignal());
     }
 
-    return this.http.get<CurrentUser>(`${API_V1}/users/me`).pipe(
+    return this.http.get<CurrentUser>(`${API_BASE}/users/me`).pipe(
       catchError(() => of(null)),
       tap((profile) => {
         this.profileSignal.set(profile);

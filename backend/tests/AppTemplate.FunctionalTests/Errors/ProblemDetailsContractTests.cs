@@ -18,7 +18,7 @@ namespace AppTemplate.FunctionalTests.Errors;
 
 /// <summary>
 /// Every failure, whatever produces it, is an RFC 9457 problem details response with a
-/// <c>traceId</c> (ADR 014): FastEndpoints validation, use case results, authentication and
+/// <c>traceId</c> (ADR 009): FastEndpoints validation, use case results, authentication and
 /// authorization, unmatched routes and unhandled exceptions.
 /// </summary>
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
@@ -48,7 +48,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     {
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync("/v1/users/0");
+            .GetAsync("/users/0");
 
         var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest);
         Assert.Equal(
@@ -66,7 +66,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     [Fact]
     public async Task Unauthenticated_IsA401Problem()
     {
-        var response = await factory.CreateClient().GetAsync("/v1/users/me");
+        var response = await factory.CreateClient().GetAsync("/users/me");
 
         await AssertProblemAsync(response, HttpStatusCode.Unauthorized);
     }
@@ -74,7 +74,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     [Fact]
     public async Task MissingPermission_IsA403Problem()
     {
-        var response = await factory.CreateAuthenticatedClient(NewSubject()).GetAsync("/v1/users");
+        var response = await factory.CreateAuthenticatedClient(NewSubject()).GetAsync("/users");
 
         await AssertProblemAsync(response, HttpStatusCode.Forbidden);
     }
@@ -84,12 +84,12 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     {
         var target = await factory
             .CreateAuthenticatedClient(NewSubject())
-            .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
+            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
 
         // Another user's profile without users:write is rejected by the use case itself.
         var response = await factory
             .CreateAuthenticatedClient(NewSubject())
-            .PutAsJsonAsync($"/v1/users/{target!.Id}", new { id = target.Id, name = "Hijacked" });
+            .PutAsJsonAsync($"/users/{target!.Id}", new { id = target.Id, name = "Hijacked" });
 
         var body = await AssertProblemAsync(response, HttpStatusCode.Forbidden);
         Assert.Equal(
@@ -103,7 +103,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     {
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync($"/v1/users/{int.MaxValue}");
+            .GetAsync($"/users/{int.MaxValue}");
 
         await AssertProblemAsync(response, HttpStatusCode.NotFound);
     }
@@ -126,7 +126,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
                 );
         }
 
-        var response = await factory.CreateAuthenticatedClient(subject).GetAsync("/v1/users/me");
+        var response = await factory.CreateAuthenticatedClient(subject).GetAsync("/users/me");
 
         var body = await AssertProblemAsync(response, HttpStatusCode.Conflict);
         Assert.Equal(
@@ -159,7 +159,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
         client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, NewSubject());
         client.DefaultRequestHeaders.Add(TestAuthHandler.PermissionsHeader, Permission.UsersRead);
 
-        var response = await client.GetAsync("/v1/users");
+        var response = await client.GetAsync("/users");
 
         var body = await AssertProblemAsync(response, HttpStatusCode.InternalServerError);
         var raw = body.GetRawText();
@@ -185,11 +185,11 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
         client.DefaultRequestHeaders.Add(TestAuthHandler.PermissionsHeader, Permission.UsersRead);
 
         var invalid = await AssertProblemAsync(
-            await client.GetAsync("/v1/users/0"),
+            await client.GetAsync("/users/0"),
             HttpStatusCode.BadRequest
         );
         var failed = await AssertProblemAsync(
-            await client.GetAsync("/v1/users"),
+            await client.GetAsync("/users"),
             HttpStatusCode.InternalServerError
         );
 

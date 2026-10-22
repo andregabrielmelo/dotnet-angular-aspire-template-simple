@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AppTemplate.Web.Configurations;
-using AppTemplate.Web.Features.AuthenticationFeatures;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
@@ -55,7 +54,7 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
     {
         var client = AnonymousClient(NewAddress());
 
-        var rejected = await ExhaustAsync(() => client.GetAsync("/v1/users/me"));
+        var rejected = await ExhaustAsync(() => client.GetAsync("/users/me"));
 
         Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
         Assert.Equal("application/problem+json", rejected.Content.Headers.ContentType?.MediaType);
@@ -76,13 +75,13 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
         var anonymous = AnonymousClient(address);
         Assert.Equal(
             HttpStatusCode.TooManyRequests,
-            (await ExhaustAsync(() => anonymous.GetAsync("/v1/users/me"))).StatusCode
+            (await ExhaustAsync(() => anonymous.GetAsync("/users/me"))).StatusCode
         );
 
         var user = factory.CreateClient();
         user.DefaultRequestHeaders.Add("X-Forwarded-For", address);
         user.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, $"sub-{Guid.NewGuid():N}");
-        var response = await user.GetAsync("/v1/users/me");
+        var response = await user.GetAsync("/users/me");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -93,11 +92,11 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
         var first = factory.CreateAuthenticatedClient($"sub-{Guid.NewGuid():N}");
         Assert.Equal(
             HttpStatusCode.TooManyRequests,
-            (await ExhaustAsync(() => first.GetAsync("/v1/users/me"))).StatusCode
+            (await ExhaustAsync(() => first.GetAsync("/users/me"))).StatusCode
         );
 
         var second = factory.CreateAuthenticatedClient($"sub-{Guid.NewGuid():N}");
-        Assert.Equal(HttpStatusCode.OK, (await second.GetAsync("/v1/users/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await second.GetAsync("/users/me")).StatusCode);
     }
 
     [Fact]
@@ -107,7 +106,7 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
         var n = 0;
         Task<HttpResponseMessage> SendWithNewSpoofedAddress()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, "/v1/users/me");
+            var request = new HttpRequestMessage(HttpMethod.Get, "/users/me");
             request.Headers.Add(TestPeerAddress.HeaderName, peer);
             request.Headers.Add("X-Forwarded-For", $"198.51.100.{++n}");
             return factory.CreateClient().SendAsync(request);
@@ -118,48 +117,10 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
         Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
     }
 
-    [Fact]
-    public async Task RejectedRequest_NeverReachesTheEndpoint()
-    {
-        var client = AnonymousClient(NewAddress());
-        var before = factory.PasswordResetService.RequestedEmails.Count;
-
-        await ExhaustAsync(() => client.GetAsync("/v1/users/me"));
-        var rejected = await client.PostAsJsonAsync(
-            "/v1/password-reset",
-            new ForgotPasswordRequest { Email = "ada@example.com" }
-        );
-
-        Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
-        Assert.Equal(before, factory.PasswordResetService.RequestedEmails.Count);
-    }
-
-    [Fact]
-    public void SensitiveEndpoints_RequireTheirNamedPolicy()
-    {
-        var policies = factory
-            .Services.GetRequiredService<EndpointDataSource>()
-            .Endpoints.OfType<RouteEndpoint>()
-            .Where(e => e.RoutePattern.RawText is not null)
-            .ToDictionary(
-                e =>
-                    $"{e.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.FirstOrDefault()} {e.RoutePattern.RawText!.TrimStart('/')}",
-                e => e.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName
-            );
-
-        Assert.Equal(RateLimitPolicies.PasswordReset, policies["POST v1/password-reset"]);
-        var jobMutations = policies.Where(p =>
-            p.Key.Contains("v1/admin/jobs", StringComparison.Ordinal)
-            && !p.Key.StartsWith("GET ", StringComparison.Ordinal)
-        );
-        Assert.NotEmpty(jobMutations);
-        Assert.All(jobMutations, p => Assert.Equal(RateLimitPolicies.JobMutations, p.Value));
-    }
-
     [Theory]
     [InlineData("/health", true)]
     [InlineData("/alive", true)]
-    [InlineData("/v1/users", false)]
+    [InlineData("/users", false)]
     public void HealthEndpoints_AreExcluded(string path, bool excluded) =>
         Assert.Equal(excluded, ClientPartition.IsExcluded(path));
 

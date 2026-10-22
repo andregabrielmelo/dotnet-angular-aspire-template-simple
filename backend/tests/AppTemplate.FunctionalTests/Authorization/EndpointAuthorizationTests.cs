@@ -7,7 +7,7 @@ using Xunit;
 namespace AppTemplate.FunctionalTests.Authorization;
 
 /// <summary>
-/// Every route requires a signed-in user unless it is deliberately anonymous (ADR 010).
+/// Every route requires a signed-in user unless it is deliberately anonymous (ADR 008).
 /// Anonymous routes are listed here, so making an endpoint public is a reviewed change to this
 /// test. Routes that declare nothing fall back to requiring authentication.
 /// </summary>
@@ -17,12 +17,10 @@ public class EndpointAuthorizationTests(AppTemplateWebApplicationFactory factory
 {
     private static readonly string[] ExpectedAnonymousRoutes =
     [
-        "POST /v1/password-reset",
         // Health probes (ServiceDefaults.MapDefaultEndpoints): orchestrators call them without
         // credentials, and they answer with only a status word.
         "ANY /alive",
         "ANY /health",
-        "ANY /health/dependencies",
     ];
 
     private IEnumerable<RouteEndpoint> RouteEndpoints() =>

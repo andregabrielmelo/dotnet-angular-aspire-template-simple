@@ -27,9 +27,8 @@ public static class MediatorConfigurations
                 typeof(MediatorConfigurations), // Web
             ];
 
-            // Register pipeline behaviors here (order matters). Auditing applies only to
-            // IAuditedCommand (a generic constraint), inside logging.
-            options.PipelineBehaviors = [typeof(LoggingBehavior<,>), typeof(AuditingBehavior<,>)];
+            // Register pipeline behaviors here (order matters).
+            options.PipelineBehaviors = [typeof(LoggingBehavior<,>)];
 
             // If you have stream behaviors:
             // options.StreamPipelineBehaviors = [ typeof(YourStreamBehavior<,>) ];

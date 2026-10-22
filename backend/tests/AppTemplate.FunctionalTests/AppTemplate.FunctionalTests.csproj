@@ -15,26 +15,10 @@
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Testcontainers.PostgreSql" />
-    <PackageReference Include="Testcontainers.Redis" />
-    <PackageReference Include="Hangfire.InMemory" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
     <PackageReference Include="coverlet.collector">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- The AppHost's Garage image, bootstrap and config, so the storage tests run what dev runs. -->
-    <Compile
-      Include="..\..\src\AppTemplate.AppHost\Garage\GarageDefaults.cs"
-      Link="Garage\GarageDefaults.cs"
-    />
-    <None
-      Include="..\..\src\AppTemplate.AppHost\Garage\garage.toml"
-      Link="Garage\garage.toml"
-      CopyToOutputDirectory="PreserveNewest"
-    />
   </ItemGroup>
 
   <ItemGroup>

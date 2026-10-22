@@ -23,7 +23,7 @@ public class ListUsersQueryService : IListUsersQueryService
             // EF Core materializes User from this SQL, so it must return every mapped column
             // (snake_case names, see UseSnakeCaseNamingConvention) - not just the projected ones.
             .Users.FromSqlRaw(
-                "SELECT id, external_id, name, email, welcome_email_sent_at_utc, phone_number_country_code, phone_number_number, phone_number_extension FROM users"
+                "SELECT id, external_id, name, email, created_at_utc, phone_number_country_code, phone_number_number, phone_number_extension FROM users"
             )
             .OrderBy(c => c.Id)
             .Skip((page - 1) * perPage)

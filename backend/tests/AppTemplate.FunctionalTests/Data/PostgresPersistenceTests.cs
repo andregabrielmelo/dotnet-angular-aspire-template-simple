@@ -125,11 +125,11 @@ public class PostgresPersistenceTests(AppTemplateWebApplicationFactory factory)
     {
         var me = await factory
             .CreateAuthenticatedClient(NewSubject())
-            .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me"); // provisions on first call
+            .GetFromJsonAsync<CurrentUserResponse>("/users/me"); // provisions on first call
 
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetFromJsonAsync<UserPage>($"/v1/users?page=1&per_page={Constants.MAX_PAGE_SIZE}");
+            .GetFromJsonAsync<UserPage>($"/users?page=1&per_page={Constants.MAX_PAGE_SIZE}");
 
         Assert.Contains(response!.Items, item => item.Id == me!.Id);
     }

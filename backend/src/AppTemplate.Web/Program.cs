@@ -1,5 +1,4 @@
-﻿using AppTemplate.Infrastructure.Jobs.Extensions;
-using AppTemplate.ServiceDefaults;
+﻿using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,7 +14,6 @@ builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger, b
 builder.Services.AddServiceConfigurations(startupLogger, builder);
 builder.Services.AddAuthenticationConfigurations(startupLogger, builder);
 builder.Services.AddAuthorizationConfigurations(startupLogger, builder);
-builder.Services.AddCachingConfigurations(startupLogger, builder);
 builder.Services.AddProblemDetailsConfigurations(startupLogger);
 builder.Services.AddForwardedHeadersConfigurations(builder.Configuration);
 builder.Services.AddRateLimitingConfigurations(builder.Configuration);
@@ -26,7 +24,6 @@ builder
     .SwaggerDocument(o =>
     {
         o.ShortSchemaNames = true;
-        o.MaxEndpointVersion = ApiVersions.Latest;
         o.DocumentSettings = s =>
         {
             s.Title = "AppTemplate API";
@@ -49,8 +46,6 @@ if (await app.TryExportOpenApiAsync())
     return;
 }
 await app.StartDatabase(); // decides for itself: Development, or Database:ApplyMigrationsOnStartup
-
-await app.UseJobSchedulingAsync();
 
 app.MapDefaultEndpoints(); // Aspire health checks and metrics
 

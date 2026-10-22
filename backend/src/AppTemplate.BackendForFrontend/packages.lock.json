@@ -52,6 +52,18 @@
           "System.IO.Hashing": "8.0.0"
         }
       },
+      "Duende.AccessTokenManagement": {
+        "type": "Transitive",
+        "resolved": "4.2.0",
+        "contentHash": "m40Zn23ex+HTIN2eACfej8zLSJUUt7Vh9xKsvOIouBhhoAzQzV+hgXaVn9Pvzq8P2guhet7eRmpqqaCpI0lQFg==",
+        "dependencies": {
+          "Duende.IdentityModel": "8.1.0",
+          "Microsoft.Extensions.Caching.Hybrid": "10.0.0",
+          "Microsoft.Extensions.Http.Resilience": "10.0.0",
+          "Microsoft.Extensions.Telemetry.Abstractions": "10.0.0",
+          "System.IdentityModel.Tokens.Jwt": "[8.0.1, 9.0.0)"
+        }
+      },
       "Duende.IdentityModel": {
         "type": "Transitive",
         "resolved": "8.1.0",
@@ -92,6 +104,11 @@
         "type": "Transitive",
         "resolved": "10.8.0",
         "contentHash": "/FYCIyhRLrDwIg29tB/21/Rp7XMaEP/gWR5Cxyi4GgWcN/v/XXUpU52yhQux0s2SQy1Z0C1wnhptCMvLaaT45Q=="
+      },
+      "Microsoft.Extensions.Caching.Hybrid": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "xvhmF2dlwC3e8KKSuWOjJkjQdKG80991CUqjDnqzV1Od0CgMqbDw49kGJ9RiGrp3nbLTYCSb3c+KYo6TcENYRw=="
       },
       "Microsoft.Extensions.DependencyInjection.AutoActivation": {
         "type": "Transitive",
@@ -301,19 +318,6 @@
           "Serilog.Sinks.OpenTelemetry": "[4.2.0, )"
         }
       },
-      "Duende.AccessTokenManagement": {
-        "type": "CentralTransitive",
-        "requested": "[4.2.0, )",
-        "resolved": "4.2.0",
-        "contentHash": "m40Zn23ex+HTIN2eACfej8zLSJUUt7Vh9xKsvOIouBhhoAzQzV+hgXaVn9Pvzq8P2guhet7eRmpqqaCpI0lQFg==",
-        "dependencies": {
-          "Duende.IdentityModel": "8.1.0",
-          "Microsoft.Extensions.Caching.Hybrid": "10.0.0",
-          "Microsoft.Extensions.Http.Resilience": "10.0.0",
-          "Microsoft.Extensions.Telemetry.Abstractions": "10.0.0",
-          "System.IdentityModel.Tokens.Jwt": "[8.0.1, 9.0.0)"
-        }
-      },
       "Microsoft.AspNetCore.Authentication.JwtBearer": {
         "type": "CentralTransitive",
         "requested": "[10.0.12, )",
@@ -322,12 +326,6 @@
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.0.1"
         }
-      },
-      "Microsoft.Extensions.Caching.Hybrid": {
-        "type": "CentralTransitive",
-        "requested": "[10.8.0, )",
-        "resolved": "10.0.0",
-        "contentHash": "xvhmF2dlwC3e8KKSuWOjJkjQdKG80991CUqjDnqzV1Od0CgMqbDw49kGJ9RiGrp3nbLTYCSb3c+KYo6TcENYRw=="
       },
       "Microsoft.Extensions.Compliance.Abstractions": {
         "type": "CentralTransitive",

@@ -1,8 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Caching;
-using AppTemplate.UseCases.Concurrency;
 
 namespace AppTemplate.UseCases.Users.Update;
 
@@ -11,11 +9,8 @@ namespace AppTemplate.UseCases.Users.Update;
 /// else's requires <see cref="Permission.UsersWrite"/>. This needs the loaded user, so it is
 /// decided here rather than by an endpoint policy.
 /// </summary>
-public class UpdateUserHandler(
-    IRepository<User> _repository,
-    ICurrentUser _currentUser,
-    ICacheInvalidator _cacheInvalidator
-) : Mediator.ICommandHandler<UpdateUserCommand, Result<UserDto>>
+public class UpdateUserHandler(IRepository<User> _repository, ICurrentUser _currentUser)
+    : Mediator.ICommandHandler<UpdateUserCommand, Result<UserDto>>
 {
     public async ValueTask<Result<UserDto>> Handle(
         UpdateUserCommand command,
@@ -30,11 +25,6 @@ public class UpdateUserHandler(
             _currentUser.ExternalId is not null && _currentUser.ExternalId == user.ExternalId;
         if (!isOwnProfile && !_currentUser.HasPermission(Permission.UsersWrite))
             return Result<UserDto>.Forbidden();
-
-        // Checked against the version just loaded; the UPDATE then repeats the check atomically
-        // (WHERE xmin = that version), so a write landing in between is caught below.
-        if (command.Precondition is { } precondition && !precondition.IsMetBy(user.Version))
-            return Result<UserDto>.Conflict(ConcurrencyResults.PreconditionFailed);
 
         PhoneNumber? phoneNumber = null;
         if (!string.IsNullOrWhiteSpace(command.PhoneNumber))
@@ -55,21 +45,9 @@ public class UpdateUserHandler(
             user.UpdatePhoneNumber(phoneNumber);
         }
 
-        try
-        {
-            await _repository.UpdateAsync(user, cancellationToken);
-        }
-        catch (ConcurrencyConflictException)
-        {
-            return Result<UserDto>.Conflict(
-                command.Precondition is null
-                    ? ConcurrencyResults.ConcurrentChange
-                    : ConcurrencyResults.PreconditionFailed
-            );
-        }
-        await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
+        await _repository.UpdateAsync(user, cancellationToken);
 
-        var dto = new UserDto(user.Id, user.Name, user.PhoneNumber, user.Version);
+        var dto = new UserDto(user.Id, user.Name, user.PhoneNumber);
         return Result<UserDto>.Success(dto);
     }
 }

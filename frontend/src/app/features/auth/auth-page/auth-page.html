@@ -19,25 +19,7 @@
     </button>
   </div>
 
-  @if (externalProviders().length > 0) {
-    <div class="my-6 flex items-center gap-3 text-xs text-gray-500" aria-hidden="true">
-      <span class="h-px flex-1 bg-gray-200"></span>or<span class="h-px flex-1 bg-gray-200"></span>
-    </div>
-
-    <div class="space-y-3">
-      @for (provider of externalProviders(); track provider.alias) {
-        <button
-          type="button"
-          (click)="loginWith(provider.alias)"
-          class="w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium"
-        >
-          Continue with {{ provider.displayName }}
-        </button>
-      }
-    </div>
-  }
-
-  <p class="mt-4 text-center text-sm">
-    <a routerLink="/auth/forgot-password" class="text-blue-600 underline">Forgot your password?</a>
+  <p class="mt-4 text-center text-sm text-gray-600">
+    Forgot your password? Choose Sign in, then use the reset link on the sign-in page.
   </p>
 </div>

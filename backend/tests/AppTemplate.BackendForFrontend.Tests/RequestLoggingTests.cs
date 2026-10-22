@@ -25,16 +25,16 @@ public class RequestLoggingTests : IClassFixture<RequestLoggingTests.CapturingPr
             .Headers.GetValues("Set-Cookie")
             .Select(cookie => cookie.Split(';')[0].Split('=', 2)[1])
             .First(value => value.Length > 20);
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/users/me?probe=1");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/users/me?probe=1");
         request.Headers.Add(AntiforgeryHeaderMiddleware.HeaderName, "1");
 
         var response = await client.SendAsync(request);
-        await _factory.Logs.WaitForAsync("HTTP GET /api/v1/users/me");
+        await _factory.Logs.WaitForAsync("HTTP GET /api/users/me");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var requestLine = _factory
             .Logs.Console.Split('\n')
-            .Single(line => line.Contains("HTTP GET /api/v1/users/me responded 200"));
+            .Single(line => line.Contains("HTTP GET /api/users/me responded 200"));
         Assert.Contains("\"Subject\":\"user-1\"", requestLine);
         Assert.DoesNotContain("probe=1", requestLine); // never the query string
         foreach (var secret in new[] { sessionCookie, ProxyRoutingTests.AccessToken })

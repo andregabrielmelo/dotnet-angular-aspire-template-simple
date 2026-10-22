@@ -98,16 +98,15 @@ jobs:
       # Functional tests run against a real Postgres via Testcontainers, which needs a Docker
       # daemon that runs Linux containers - only the Linux runners have one. Windows and macOS
       # run everything else (unit tests, and functional tests that don't touch the database).
-      # The end-to-end tests start the whole AppHost and run in their own workflow (e2e.yml).
       - name: Test
         if: runner.os == 'Linux'
         working-directory: backend
-        run: dotnet test AppTemplate.slnx --configuration Release --no-build --filter "Category!=RequiresFullStack" --logger "console;verbosity=normal"
+        run: dotnet test AppTemplate.slnx --configuration Release --no-build --logger "console;verbosity=normal"
 
       - name: Test (without Docker)
         if: runner.os != 'Linux'
         working-directory: backend
-        run: dotnet test AppTemplate.slnx --configuration Release --no-build --filter "Category!=RequiresDocker&Category!=RequiresFullStack" --logger "console;verbosity=normal"
+        run: dotnet test AppTemplate.slnx --configuration Release --no-build --filter "Category!=RequiresDocker" --logger "console;verbosity=normal"
 
       # backend/openapi/v1.json is the committed API contract the Angular types are generated
       # from. Regenerate it and fail if it differs: an endpoint or DTO changed without

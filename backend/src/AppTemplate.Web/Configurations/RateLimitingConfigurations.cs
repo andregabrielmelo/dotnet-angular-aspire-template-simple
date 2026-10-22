@@ -1,7 +1,5 @@
 using System.Globalization;
 using System.Threading.RateLimiting;
-using AppTemplate.Web.Features.AuthenticationFeatures;
-using AppTemplate.Web.Features.JobFeatures;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
@@ -22,28 +20,10 @@ public sealed class RateLimitingSettings
 }
 
 /// <summary>
-/// Stricter, per-endpoint limits for sensitive or expensive operations, applied on top of the
-/// global limiter with <c>Options(x => x.RequireRateLimiting(RateLimitPolicies.X))</c>.
-/// </summary>
-public static class RateLimitPolicies
-{
-    /// <summary>Limits password reset email flooding: <see cref="ForgotPasswordEndpoint.RequestsPerWindow"/> per minute.</summary>
-    public const string PasswordReset = "password-reset";
-
-    /// <summary>Job management mutations: <see cref="JobEndpoints.MutationsPerMinute"/> per minute.</summary>
-    public const string JobMutations = "job-mutations";
-
-    /// <summary>Avatar uploads, which decode images: <see cref="AvatarUploadsPerMinute"/> per minute.</summary>
-    public const string AvatarUploads = "avatar-uploads";
-
-    public const int AvatarUploadsPerMinute = 10;
-}
-
-/// <summary>
-/// Two layers of protection, one mechanism (ASP.NET Core rate limiting). The global limiter
-/// caps overall traffic per caller; named policies (<see cref="RateLimitPolicies"/>) add
-/// stricter limits to sensitive endpoints. Both key on <see cref="ClientPartition"/>, never
-/// on anything the client sends, and both reject with the same 429 problem details response.
+/// A global limiter (ASP.NET Core rate limiting) caps overall traffic per caller. It keys on
+/// <see cref="ClientPartition"/>, never on anything the client sends, and rejects with a 429
+/// problem details response. For a sensitive or expensive endpoint, add a named policy with
+/// <c>options.AddPolicy</c> and apply it with <c>Options(x => x.RequireRateLimiting(name))</c>.
 /// </summary>
 public static class RateLimitingConfigurations
 {
@@ -90,35 +70,6 @@ public static class RateLimitingConfigurations
 
                             return FixedWindow(partition, permitLimit, settings.Window);
                         }
-                    );
-
-                    options.AddPolicy(
-                        RateLimitPolicies.PasswordReset,
-                        context =>
-                            FixedWindow(
-                                ClientPartition.Of(context),
-                                ForgotPasswordEndpoint.RequestsPerWindow,
-                                TimeSpan.FromSeconds(ForgotPasswordEndpoint.WindowSeconds)
-                            )
-                    );
-                    options.AddPolicy(
-                        RateLimitPolicies.JobMutations,
-                        context =>
-                            FixedWindow(
-                                ClientPartition.Of(context),
-                                JobEndpoints.MutationsPerMinute,
-                                TimeSpan.FromMinutes(1)
-                            )
-                    );
-
-                    options.AddPolicy(
-                        RateLimitPolicies.AvatarUploads,
-                        context =>
-                            FixedWindow(
-                                ClientPartition.Of(context),
-                                RateLimitPolicies.AvatarUploadsPerMinute,
-                                TimeSpan.FromMinutes(1)
-                            )
                     );
 
                     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

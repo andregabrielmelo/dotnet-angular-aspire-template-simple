@@ -50,11 +50,6 @@ public static class AuthorizationConfigurations
             );
         }
 
-        services.AddSingleton<
-            IAuthorizationMiddlewareResultHandler,
-            AuditingAuthorizationResultHandler
-        >();
-
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
 

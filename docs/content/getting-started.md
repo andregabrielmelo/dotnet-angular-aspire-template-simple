@@ -7,7 +7,7 @@ weight: 10
 
 ## 1. Create your repo from this template
 
-Click **Use this template** on GitHub (or `gh repo create your-project --template andregabrielmelo/dotnet-angular-aspire-template --clone --public`), then clone it locally.
+Click **Use this template** on GitHub (or `gh repo create your-project --template andregabrielmelo/dotnet-angular-aspire-template-simple --clone --public`), then clone it locally.
 
 ## 2. Rename `AppTemplate`
 
@@ -23,7 +23,7 @@ This is a plain find-and-replace across the repo (not a `dotnet new` template en
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js](https://nodejs.org/) (LTS) and npm
-- [Docker](https://www.docker.com/) (Aspire runs Postgres in a container)
+- [Docker](https://www.docker.com/) or Podman (Aspire runs Postgres, Keycloak and Mailpit in containers)
 - The [Aspire CLI/workload](https://learn.microsoft.com/dotnet/aspire/fundamentals/setup-tooling), or just run the AppHost project from your IDE
 
 ## 4. Run it
@@ -33,7 +33,7 @@ cd backend
 dotnet run --project src/YourProjectName.AppHost
 ```
 
-The Aspire dashboard opens and starts three resources: Postgres (in a container, with a persistent data volume), the Web API, and the Angular frontend (via `npm ci` + `npm start`, proxied to the API - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)).
+The Aspire dashboard opens and starts Postgres (in a container, with a persistent data volume), Keycloak (with the `apptemplate` realm imported), Mailpit (catching development emails), the Web API, the backend for frontend, and the Angular frontend (via `npm ci` + `npm start`, served through the backend for frontend - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). Open the app at `https://localhost:7100`; the development realm has an `admin`/`admin` account. On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)).
 
 ## 5. Add your own feature
 

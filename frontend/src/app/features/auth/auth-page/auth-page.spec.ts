@@ -6,13 +6,11 @@ import { AuthPage } from './auth-page';
 import { AuthService } from '../auth-service';
 
 describe('AuthPage', () => {
-  function setup(user: unknown, providers = [{ alias: 'google', displayName: 'Google' }]) {
+  function setup(user: unknown) {
     const authService = {
       loadUser: () => of(user),
-      loadExternalProviders: () => of(providers),
       login: vi.fn(),
       register: vi.fn(),
-      loginWith: vi.fn(),
     };
     const navigateByUrl = vi.fn();
     TestBed.configureTestingModule({
@@ -40,22 +38,5 @@ describe('AuthPage', () => {
     expect(navigateByUrl).not.toHaveBeenCalled();
     expect(authService.login).toHaveBeenCalled();
     expect(authService.register).toHaveBeenCalled();
-  });
-
-  it('offers the enabled third-party providers', () => {
-    const { fixture, authService } = setup(null);
-
-    const button = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
-    ).find((b) => b.textContent?.includes('Continue with Google'));
-    button!.click();
-
-    expect(authService.loginWith).toHaveBeenCalledWith('google');
-  });
-
-  it('hides the third-party section when no provider is enabled', () => {
-    const { fixture } = setup(null, []);
-
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Continue with');
   });
 });

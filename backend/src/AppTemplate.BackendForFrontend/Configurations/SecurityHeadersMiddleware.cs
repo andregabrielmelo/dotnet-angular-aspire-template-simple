@@ -9,15 +9,13 @@ public static class SecurityHeadersMiddleware
     /// eval. Styles allow <c>'unsafe-inline'</c> because Angular injects component styles as
     /// <c>&lt;style&gt;</c> elements at runtime. <c>connect-src 'self'</c> covers the API, the
     /// session endpoints and, in Development, the dev server's same-origin HMR WebSocket.
-    /// <c>img-src blob:</c> shows images the app fetched itself (avatars come through the API,
-    /// which needs the CSRF header an <c>&lt;img src&gt;</c> can't send).
     /// Signing in is a top-level navigation to Keycloak, which CSP doesn't restrict.
     /// </summary>
     public const string ContentSecurityPolicy =
         "default-src 'self'; "
         + "script-src 'self'; "
         + "style-src 'self' 'unsafe-inline'; "
-        + "img-src 'self' data: blob:; "
+        + "img-src 'self' data:; "
         + "font-src 'self'; "
         + "connect-src 'self'; "
         + "object-src 'none'; "
