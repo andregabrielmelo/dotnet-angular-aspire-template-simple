@@ -50,9 +50,15 @@ public class SecurityHeadersTests : IClassFixture<SecurityHeadersTests.SpaFactor
     [Fact]
     public async Task JsonResponse_HasNosniffButNoDocumentPolicy()
     {
-        var response = await _client.GetAsync(BackendForFrontendEndpoints.BasePath + "/providers");
+        // A signed-out call to the user endpoint, CSRF header included: a JSON problem response.
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            BackendForFrontendEndpoints.UserPath
+        );
+        request.Headers.Add(AntiforgeryHeaderMiddleware.HeaderName, "1");
+        var response = await _client.SendAsync(request);
 
-        response.EnsureSuccessStatusCode();
+        Assert.Contains("json", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal("nosniff", Header(response, "X-Content-Type-Options"));
         Assert.Equal("strict-origin-when-cross-origin", Header(response, "Referrer-Policy"));
         Assert.False(response.Headers.Contains("Content-Security-Policy"));

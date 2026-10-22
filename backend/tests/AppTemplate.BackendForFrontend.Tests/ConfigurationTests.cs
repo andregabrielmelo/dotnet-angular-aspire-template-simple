@@ -7,23 +7,11 @@ using Xunit;
 namespace AppTemplate.BackendForFrontend.Tests;
 
 /// <summary>
-/// The backend for frontend's own options: registered and validated, and a missing required
-/// Keycloak setting stops startup naming the key instead of falling back to a literal.
+/// A missing required Keycloak setting stops startup naming the key instead of falling back
+/// to a literal.
 /// </summary>
-public class ConfigurationTests(BackendForFrontendFactory factory)
-    : IClassFixture<BackendForFrontendFactory>
+public class ConfigurationTests
 {
-    [Fact]
-    public void ExternalIdentityProviders_AreRegisteredAndValidated()
-    {
-        Assert.NotEmpty(
-            factory.Services.GetServices<IConfigureOptions<ExternalIdentityProvidersOptions>>()
-        );
-        Assert.NotEmpty(
-            factory.Services.GetServices<IValidateOptions<ExternalIdentityProvidersOptions>>()
-        );
-    }
-
     [Theory]
     [InlineData("Keycloak:Realm")]
     [InlineData("Keycloak:ClientId")]

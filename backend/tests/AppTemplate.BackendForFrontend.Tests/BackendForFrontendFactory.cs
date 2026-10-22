@@ -10,7 +10,7 @@ namespace AppTemplate.BackendForFrontend.Tests;
 /// <summary>
 /// Hosts the backend for frontend without Keycloak: the OpenID Connect handler gets a static
 /// discovery document, so challenges produce a real redirect URL to assert on without any
-/// network call. Google is enabled and GitHub disabled as external providers.
+/// network call.
 /// </summary>
 public class BackendForFrontendFactory : WebApplicationFactory<Program>
 {
@@ -22,8 +22,6 @@ public class BackendForFrontendFactory : WebApplicationFactory<Program>
         builder.UseSetting("Keycloak:ClientSecret", "tests");
         // Outside Development the authority must be a real HTTPS URL (see ADR 007).
         builder.UseSetting("Keycloak:Authority", "https://keycloak.test/realms/apptemplate");
-        builder.UseSetting("ExternalIdentityProviders:google:Enabled", "true");
-        builder.UseSetting("ExternalIdentityProviders:github:Enabled", "false");
 
         builder.ConfigureServices(services =>
             services.PostConfigure<OpenIdConnectOptions>(

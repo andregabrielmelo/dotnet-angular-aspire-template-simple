@@ -13,15 +13,6 @@ builder.Services.AddReverseProxyConfigurations(builder);
 // problem details contract as the Web API. Proxied API responses pass through untouched.
 builder.Services.AddProblemDetails();
 
-// Public, identical-for-everyone responses only (the default policy never caches requests
-// from signed-in users or responses that set cookies).
-builder.Services.AddOutputCache(options =>
-    options.AddPolicy(
-        BackendForFrontendEndpoints.ProvidersCachePolicy,
-        policy => policy.Expire(TimeSpan.FromMinutes(5))
-    )
-);
-
 var app = builder.Build();
 
 // First, so its OnStarting callback covers every response: errors, proxied ones, the SPA.
@@ -52,7 +43,6 @@ app.UseAntiforgeryHeaderCheck();
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseOutputCache();
 
 app.MapBackendForFrontendEndpoints();
 app.MapReverseProxyWithAccessTokens();

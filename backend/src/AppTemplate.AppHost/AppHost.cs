@@ -89,6 +89,4 @@ var backendForFrontend = builder
     .WaitFor(frontend)
     .WithExternalHttpEndpoints();
 
-ExternalIdentityProviders.Configure(builder, keycloak, backendForFrontend);
-
 builder.Build().Run();

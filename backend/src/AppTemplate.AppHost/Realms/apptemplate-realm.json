@@ -96,59 +96,6 @@
       ]
     }
   ],
-  "identityProviders": [
-    {
-      "alias": "google",
-      "displayName": "Google",
-      "providerId": "google",
-      "enabled": "${KC_IDP_GOOGLE_ENABLED}",
-      "trustEmail": false,
-      "storeToken": false,
-      "addReadTokenRoleOnCreate": false,
-      "linkOnly": false,
-      "firstBrokerLoginFlowAlias": "first broker login",
-      "config": {
-        "clientId": "${KC_IDP_GOOGLE_CLIENT_ID}",
-        "clientSecret": "${KC_IDP_GOOGLE_CLIENT_SECRET}",
-        "syncMode": "IMPORT",
-        "defaultScope": "openid profile email"
-      }
-    },
-    {
-      "alias": "github",
-      "displayName": "GitHub",
-      "providerId": "github",
-      "enabled": "${KC_IDP_GITHUB_ENABLED}",
-      "trustEmail": false,
-      "storeToken": false,
-      "addReadTokenRoleOnCreate": false,
-      "linkOnly": false,
-      "firstBrokerLoginFlowAlias": "first broker login",
-      "config": {
-        "clientId": "${KC_IDP_GITHUB_CLIENT_ID}",
-        "clientSecret": "${KC_IDP_GITHUB_CLIENT_SECRET}",
-        "syncMode": "IMPORT",
-        "defaultScope": "user:email"
-      }
-    },
-    {
-      "alias": "microsoft",
-      "displayName": "Microsoft",
-      "providerId": "microsoft",
-      "enabled": "${KC_IDP_MICROSOFT_ENABLED}",
-      "trustEmail": false,
-      "storeToken": false,
-      "addReadTokenRoleOnCreate": false,
-      "linkOnly": false,
-      "firstBrokerLoginFlowAlias": "first broker login",
-      "config": {
-        "clientId": "${KC_IDP_MICROSOFT_CLIENT_ID}",
-        "clientSecret": "${KC_IDP_MICROSOFT_CLIENT_SECRET}",
-        "syncMode": "IMPORT",
-        "defaultScope": "openid profile email"
-      }
-    }
-  ],
   "roles": {
     "realm": [
       {

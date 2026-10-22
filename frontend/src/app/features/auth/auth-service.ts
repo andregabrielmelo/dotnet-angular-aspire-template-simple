@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { BROWSER_REDIRECT } from '../../core/auth/browser-redirect';
 import { BackendForFrontendUser } from './models/backend-for-frontend-user.model';
-import { ExternalIdentityProvider } from './models/external-identity-provider.model';
 
 export const BACKEND_FOR_FRONTEND_PATH = 'backend-for-frontend';
 
@@ -47,21 +46,6 @@ export class AuthService {
 
   login(returnUrl = '/home'): void {
     this.redirect(`/${BACKEND_FOR_FRONTEND_PATH}/login?returnUrl=${encodeURIComponent(returnUrl)}`);
-  }
-
-  /** Third-party sign-in options enabled for this environment; empty if the call fails. */
-  loadExternalProviders(): Observable<ExternalIdentityProvider[]> {
-    return this.http
-      .get<ExternalIdentityProvider[]>(`${BACKEND_FOR_FRONTEND_PATH}/providers`)
-      .pipe(catchError(() => of([])));
-  }
-
-  /** Signs in through a Keycloak-brokered provider, skipping Keycloak's own login form. */
-  loginWith(providerAlias: string, returnUrl = '/home'): void {
-    this.redirect(
-      `/${BACKEND_FOR_FRONTEND_PATH}/login?provider=${encodeURIComponent(providerAlias)}` +
-        `&returnUrl=${encodeURIComponent(returnUrl)}`,
-    );
   }
 
   register(returnUrl = '/home'): void {
