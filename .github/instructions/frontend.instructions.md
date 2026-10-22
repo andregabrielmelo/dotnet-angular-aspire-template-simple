@@ -4,7 +4,7 @@ applyTo: "frontend/**"
 
 # Frontend instructions
 
-These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are in [`docs/content/best-practices.md`](../../docs/content/best-practices.md#angular).
+These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are in [`docs/content/best-practices.md`](../../docs/content/best-practices.md#angular). For a complete feature (model, service, page, route and specs), see step 8 of [Adding a feature, step by step](../../docs/content/guides/adding-a-feature.md#8-frontend-the-angular-feature).
 
 ## Structure
 

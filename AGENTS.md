@@ -8,6 +8,7 @@ Commands, project layout and the full architecture overview are in [`CLAUDE.md`]
 
 - Read the ADR that covers the area you are touching before introducing a library, a pattern or a new abstraction. If your change contradicts one, stop and say so. Don't silently invent a competing pattern.
 - When the ADRs don't settle a structural question, check the sources in [Further reading](docs/content/further-reading.md) (the two templates this project builds on and the blogs it leans on) before inventing an answer, and say which one you followed.
+- For *how* to build things, follow the guides in [`docs/content/guides/`](docs/content/guides/): the [project map](docs/content/guides/project-map.md) (layout, a request's path, vocabulary), [adding a feature](docs/content/guides/adding-a-feature.md) (a complete worked example through every layer) and [common tasks](docs/content/guides/cookbook.md). This file holds the rules they follow.
 - Search before assuming something is missing. The template already has authentication, permissions, email and Postgres-backed tests.
 - This is the simple variant of [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template). When a task needs background jobs, a transactional outbox, auditing, caching, file storage, ETags or API versioning, copy the shape from there (code, tests and ADR) instead of designing it from scratch.
 - Copy the shape of the `User` feature: `Core/Aggregates/UserAggregate`, then `UseCases/Users/<UseCase>/`, then `Web/Features/UserFeatures/`. It is the executable reference for every layer.
@@ -56,6 +57,7 @@ Dependencies point inward:
 - **Repository or query service?**
   - Use `IRepository<T>` with an `Ardalis.Specification` for aggregate-oriented writes: load, change through domain methods, save.
   - Use a query-service interface defined in UseCases and implemented in Infrastructure for read models, projections, joins, pagination and hand-written SQL (`IListUsersQueryService`).
+  - List query services read with `FromSqlRaw` (see `ListUsersQueryService`): the SQL selects every mapped column by its snake_case name and filters with `WHERE`, input goes only through `{n}` placeholders, and ordering, paging, the DTO projection and the count are composed in LINQ on top.
   - Lookups that are not followed by a mutation call `.AsNoTracking()` in their specification.
   - Don't add a repository method for every query, and don't load whole aggregates for read-only endpoints.
   - The full decision table is in [When To Abstract](docs/content/design-decisions.md#when-to-abstract).

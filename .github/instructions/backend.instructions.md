@@ -4,7 +4,7 @@ applyTo: "backend/**"
 
 # Backend instructions
 
-These extend [`AGENTS.md`](../../AGENTS.md); read it first. This file covers only the details of writing backend code.
+These extend [`AGENTS.md`](../../AGENTS.md); read it first. This file covers only the details of writing backend code. For a complete worked example of every backend layer, see [Adding a feature, step by step](../../docs/content/guides/adding-a-feature.md) (steps 2 to 7 and 9).
 
 ## Endpoint shape
 
@@ -55,6 +55,7 @@ UseCases/<Feature>/<UseCase>/
 ```
 
 - **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types.
+- **List query services** (`Infrastructure/Data/Queries/`) read with `FromSqlRaw`: every mapped column in snake_case, `WHERE` with `{n}` parameters only, and `OrderBy`/`Skip`/`Take`/`Select`/`CountAsync` in LINQ on top. See `ListUsersQueryService` and step 3 of [Adding a feature](../../docs/content/guides/adding-a-feature.md#3-infrastructure-the-database).
 - **Unit tests:** put them in `tests/AppTemplate.UnitTests/UseCases/<Feature>/<UseCase>HandlerTests.cs`.
 
 ## Adding a persistent type

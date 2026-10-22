@@ -17,7 +17,7 @@ dotnet run --project src/YourProjectName.AppHost
 
 ## Adding a feature
 
-Copy the shape of the `User` feature (a full vertical slice) rather than starting from nothing:
+Follow [Adding a feature, step by step](docs/content/guides/adding-a-feature.md): it builds a complete `Project` feature with the code for every step, from the domain model to the Angular page and the tests. In short, copying the shape of the `User` feature:
 
 1. **Core** - add an aggregate under `Aggregates/<YourAggregate>Aggregate/`, plus any value objects and specifications it needs.
 2. **UseCases** - add commands/queries and their handlers under `<YourAggregate>s/<Action>/`.
@@ -25,7 +25,7 @@ Copy the shape of the `User` feature (a full vertical slice) rather than startin
 4. **Web** - add one FastEndpoints class per endpoint under `Features/<YourAggregate>Features/`, each with its own FluentValidation validator.
 5. **Tests** - a unit test class per handler in `AppTemplate.UnitTests`, and functional tests for the new endpoints in `AppTemplate.FunctionalTests`.
 
-Delete the `User` feature once you no longer need it as a reference.
+Delete the `User` feature once you no longer need it as a reference. For smaller tasks (a permission, a public endpoint, sending email, a new setting) see [Common tasks](docs/content/guides/cookbook.md), and for orientation, [How the project fits together](docs/content/guides/project-map.md).
 
 ## Common commands
 

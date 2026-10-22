@@ -25,7 +25,7 @@ This is the simple variant, with the features most projects use: Keycloak sign-i
 
 Use the **Use this template** button on GitHub, then head to [Getting Started]({{< relref "getting-started" >}}) to rename the solution and run it locally.
 
-See [Goals & Design Decisions]({{< relref "design-decisions" >}}) for why the stack is put together the way it is, [Architecture Decisions]({{< relref "architecture-decisions" >}}) for a record of the specific calls made along the way, [Best Practices]({{< relref "best-practices" >}}) for explicit conventions to follow, and [API Reference]({{< relref "api-reference" >}}) for how the OpenAPI docs work.
+The [Guides]({{< relref "guides" >}}) show how to work in it: how the project fits together, adding a feature step by step, and common tasks. See [Goals & Design Decisions]({{< relref "design-decisions" >}}) for why the stack is put together the way it is, [Architecture Decisions]({{< relref "architecture-decisions" >}}) for a record of the specific calls made along the way, [Best Practices]({{< relref "best-practices" >}}) for explicit conventions to follow, and [API Reference]({{< relref "api-reference" >}}) for how the OpenAPI docs work.
 
 ## Inspiration
 
