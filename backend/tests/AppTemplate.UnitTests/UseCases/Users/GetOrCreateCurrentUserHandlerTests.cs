@@ -10,7 +10,6 @@ namespace AppTemplate.UnitTests.UseCases.Users;
 public class GetOrCreateCurrentUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
-    private readonly TestMetrics _metrics = new();
 
     private static readonly GetOrCreateCurrentUserCommand Command = new(
         "keycloak-sub-1",
@@ -18,7 +17,7 @@ public class GetOrCreateCurrentUserHandlerTests
         new EmailAddress("ada@example.com")
     );
 
-    private GetOrCreateCurrentUserHandler CreateHandler() => new(_repository, _metrics.Application);
+    private GetOrCreateCurrentUserHandler CreateHandler() => new(_repository);
 
     [Fact]
     public async Task Handle_WithExistingUser_ReturnsItWithoutCreating()
@@ -32,14 +31,11 @@ public class GetOrCreateCurrentUserHandlerTests
             )
             .Returns(existingUser);
 
-        using var provisioned = _metrics.Collect<long>("users.provisioned");
-
         var result = await CreateHandler().Handle(Command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(Command.Name, result.Value.Name);
         await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
-        Assert.Empty(provisioned.GetMeasurementSnapshot());
     }
 
     [Fact]
@@ -57,12 +53,10 @@ public class GetOrCreateCurrentUserHandlerTests
         _repository
             .AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => callInfo.Arg<User>());
-        using var provisioned = _metrics.Collect<long>("users.provisioned");
 
         var result = await CreateHandler().Handle(Command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(1, Assert.Single(provisioned.GetMeasurementSnapshot()).Value);
         await _repository
             .Received(1)
             .AddAsync(

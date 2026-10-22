@@ -62,11 +62,9 @@ public static class Extensions
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
-                    // Business metrics (UseCases/Telemetry/ApplicationMetrics.cs).
-                    .AddMeter("AppTemplate.*")
                     // Connection pool and command metrics; Npgsql emits them itself.
                     .AddMeter("Npgsql")
-                    // EF Core's own metrics (queries, SaveChanges, optimistic concurrency failures).
+                    // EF Core's own metrics (queries, SaveChanges).
                     .AddMeter("Microsoft.EntityFrameworkCore");
             })
             .WithTracing(tracing =>

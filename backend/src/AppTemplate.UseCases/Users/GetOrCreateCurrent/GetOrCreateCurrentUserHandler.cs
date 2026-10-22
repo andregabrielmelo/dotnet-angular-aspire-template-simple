@@ -1,7 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Telemetry;
 
 namespace AppTemplate.UseCases.Users.GetOrCreateCurrent;
 
@@ -11,10 +10,8 @@ public record CurrentUserDto(UserId Id, UserName Name, EmailAddress Email);
 /// Just-in-time provisioning: registration happens in the OpenID Connect provider (Keycloak),
 /// so the domain <see cref="User"/> row is created the first time that identity calls the API.
 /// </summary>
-public class GetOrCreateCurrentUserHandler(
-    IRepository<User> _repository,
-    ApplicationMetrics _metrics
-) : ICommandHandler<GetOrCreateCurrentUserCommand, Result<CurrentUserDto>>
+public class GetOrCreateCurrentUserHandler(IRepository<User> _repository)
+    : ICommandHandler<GetOrCreateCurrentUserCommand, Result<CurrentUserDto>>
 {
     public async ValueTask<Result<CurrentUserDto>> Handle(
         GetOrCreateCurrentUserCommand command,
@@ -43,7 +40,6 @@ public class GetOrCreateCurrentUserHandler(
 
         var newUser = User.Create(command.ExternalId, command.Name, command.Email);
         var createdUser = await _repository.AddAsync(newUser, cancellationToken);
-        _metrics.UserProvisioned();
 
         return ToDto(createdUser);
     }

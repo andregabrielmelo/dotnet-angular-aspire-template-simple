@@ -1,7 +1,6 @@
 ﻿using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Email;
-using AppTemplate.UseCases.Telemetry;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -18,7 +17,6 @@ public static class ServiceConfigurations
             .AddMediatorSourceGenerator(logger);
 
         services.AddScoped<IEmailSender, MimeKitEmailSender>();
-        services.AddSingleton<ApplicationMetrics>();
 
         logger.LogInformation(
             "{Project} services registered",

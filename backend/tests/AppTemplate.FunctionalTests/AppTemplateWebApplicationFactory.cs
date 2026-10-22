@@ -1,7 +1,5 @@
-using System.Diagnostics.Metrics;
 using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure.Data;
-using AppTemplate.UseCases.Telemetry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -9,7 +7,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Xunit;
 
 namespace AppTemplate.FunctionalTests;
@@ -84,11 +81,6 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, 
     Task IAsyncLifetime.DisposeAsync() => DisposeAsync().AsTask();
 
     private static int _nextClientAddress;
-
-    /// <summary>Records one of this host's <see cref="ApplicationMetrics"/> instruments from now on.</summary>
-    public MetricCollector<T> CollectMetric<T>(string instrument)
-        where T : struct =>
-        new(Services.GetRequiredService<IMeterFactory>(), ApplicationMetrics.MeterName, instrument);
 
     /// <summary>
     /// A client whose requests are authenticated as the given <c>sub</c>, holding the given
