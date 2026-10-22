@@ -57,6 +57,7 @@ Dependencies point inward:
 - **Repository or query service?**
   - Use `IRepository<T>` with an `Ardalis.Specification` for aggregate-oriented writes: load, change through domain methods, save.
   - Use a query-service interface defined in UseCases and implemented in Infrastructure for read models, projections, joins, pagination and hand-written SQL (`IListUsersQueryService`).
+  - List query services read with `FromSqlRaw` (see `ListUsersQueryService`): the SQL selects every mapped column by its snake_case name and filters with `WHERE`, input goes only through `{n}` placeholders, and ordering, paging, the DTO projection and the count are composed in LINQ on top.
   - Lookups that are not followed by a mutation call `.AsNoTracking()` in their specification.
   - Don't add a repository method for every query, and don't load whole aggregates for read-only endpoints.
   - The full decision table is in [When To Abstract](docs/content/design-decisions.md#when-to-abstract).

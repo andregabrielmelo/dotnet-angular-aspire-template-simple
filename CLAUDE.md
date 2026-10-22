@@ -117,7 +117,7 @@ Logging is Serilog only, configured for every host by `AddServiceDefaults()` (`S
 
 Rate limiting (`Web/Configurations/RateLimitingConfigurations.cs`) is a global limiter, partitioned by validated `sub` or by client address; add a named policy there for a sensitive endpoint. `X-Forwarded-For` is honored only from `ForwardedHeaders:KnownProxies` (loopback in Development). Every request has a 30-second timeout (`RequestTimeoutConfigurations.cs`, 504 problem details). Don't use FastEndpoints' `Throttle`; see `docs/content/best-practices.md`.
 
-Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL (see `ListUsersQueryService`'s `FromSqlRaw`) must use snake_case column names, not the C# property names.
+Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL must use snake_case column names, not the C# property names. List query services always read with `FromSqlRaw` (see `ListUsersQueryService`): every mapped column, input only as `{n}` parameters, and ordering, paging and projection in LINQ on top.
 
 ### Aspire orchestration (`backend/src/AppTemplate.AppHost/AppHost.cs`)
 

@@ -211,7 +211,7 @@ dotnet csharpier format .
 
 Read the generated `Data/Migrations/*_AddProjects.cs`: a `projects` table with snake_case columns (`owner_external_id`, `created_at_utc`), the primary key, and the index. It's applied automatically when the app starts in Development. `MigrationDriftTests` fails if you change the model and forget this step.
 
-**The list query service**, `Infrastructure/Data/Queries/ListProjectsQueryService.cs`. Its interface comes in step 4. It reads straight into DTOs, without loading aggregates:
+**The list query service**, `Infrastructure/Data/Queries/ListProjectsQueryService.cs`. Its interface comes in step 4. It reads straight into DTOs, without loading aggregates, and like every list query service it starts from `FromSqlRaw` (mirrors `ListUsersQueryService.cs`):
 
 ```csharp
 using AppTemplate.UseCases.Projects;
@@ -228,7 +228,14 @@ public class ListProjectsQueryService(ApplicationDatabaseContext _db) : IListPro
         CancellationToken cancellationToken
     )
     {
-        var owned = _db.Projects.AsNoTracking().Where(p => p.OwnerExternalId == ownerExternalId);
+        var owned = _db
+            // EF Core materializes Project from this SQL, so it must return every mapped column
+            // (snake_case names). Input is always a {n} placeholder, which EF sends as a parameter.
+            .Projects.FromSqlRaw(
+                "SELECT id, owner_external_id, name, created_at_utc FROM projects WHERE owner_external_id = {0}",
+                ownerExternalId
+            )
+            .AsNoTracking();
 
         var totalCount = await owned.CountAsync(cancellationToken);
         var items = await owned
@@ -244,7 +251,11 @@ public class ListProjectsQueryService(ApplicationDatabaseContext _db) : IListPro
 }
 ```
 
-`ListUsersQueryService` shows the alternative: raw SQL with `FromSqlRaw`. Use that only when LINQ can't express the query or is measurably slow. If you do, column names are snake_case and input is always a parameter.
+**List query services always use `FromSqlRaw`,** so the SQL that selects and filters is right there in code review. The rules:
+- **Select every mapped column** of the entity, by its snake_case name (`owner_external_id`, not `OwnerExternalId`). EF materializes the entity from this SQL, so a missing column fails at runtime. When you add a property to the entity, add its column here too.
+- **Pass input only as `{0}`, `{1}`... placeholders** after the SQL string. EF sends each one as a database parameter. Never concatenate or interpolate a value into the string: `FromSqlRaw($"... = '{owner}'")` is SQL injection.
+- **Leave ordering, paging, the projection and the count to LINQ** on top of `FromSqlRaw`. EF wraps the SQL in a subquery and adds `ORDER BY`, `LIMIT`/`OFFSET` and `COUNT` itself, so the total always matches the filter.
+- **Keep the `WHERE` in the SQL** for every filter, so the query that runs is the one you read.
 
 **Register it** in `Infrastructure/InfrastructureServiceExtensions.cs`, next to the users one:
 
@@ -263,7 +274,7 @@ Everything here lives in `backend/src/AppTemplate.UseCases/Projects/`, one folde
 
 **Repository or query service?**
 - **Changing something** (load it, call a domain method, save it): use `IRepository<T>`, plus a specification for anything beyond lookup by id.
-- **Reading a list, a projection or a join**: use a query service that returns DTOs.
+- **Reading a list, a projection or a join**: use a query service that returns DTOs. For lists it reads with `FromSqlRaw` (step 3).
 - **Reading one item to authorize and return it**: a repository with an `AsNoTracking` specification is fine, as in `GetProjectHandler` below.
 
 More detail in [When To Abstract]({{< relref "design-decisions#when-to-abstract" >}}).

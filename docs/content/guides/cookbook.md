@@ -41,8 +41,16 @@ Short recipes for things that come up after the first feature. Each one lists th
 
 1. Add the parameters to the request class, with `[BindFrom("snake_case_name")]` (see `ListUsersRequest` in `Web/Features/UserFeatures/ListEndpoint.cs`), and validate them, for example against a fixed set of sort keys.
 2. Pass them through the query record to the query-service interface.
-3. Apply them in the query service, *before* `Skip`/`Take`. Keep a stable order by ending with a unique column (`.ThenBy(p => p.Id)`), or pages repeat and skip rows.
-4. Never build SQL from a sort key or filter string. Map each allowed value to a LINQ expression, or use parameters if the query is raw SQL.
+3. **Filters** go in the query service's `FromSqlRaw` SQL as `WHERE` conditions, with each value as a `{n}` placeholder, which EF sends as a parameter:
+   ```csharp
+   _db.Projects.FromSqlRaw(
+       "SELECT id, owner_external_id, name, created_at_utc FROM projects WHERE owner_external_id = {0} AND name ILIKE {1}",
+       ownerExternalId,
+       $"%{nameContains}%"
+   )
+   ```
+   For an optional filter, choose between two constant SQL strings (with and without the condition) in code. Never assemble the SQL from request values.
+4. **Sorting** is LINQ on top, never SQL text built from input. Map each allowed sort key to a fixed `OrderBy` (for example a `switch` over `"name"`/`"created"`), and end with a unique column (`.ThenBy(p => p.Id)`) so pages don't repeat or skip rows. Never paste a sort key or any other request value into the SQL string.
 5. Add an index for a filter used on every call (`builder.HasIndex(...)`, then a migration).
 6. Test it in functional tests: the filter, each sort order, and paging with the filter applied.
 
