@@ -1,132 +1,78 @@
-﻿namespace AppTemplate.Web.Extensions;
+using AppTemplate.Web.Configurations;
 
+namespace AppTemplate.Web.Extensions;
+
+/// <summary>
+/// The only place an <see cref="Ardalis.Result.IResult"/> becomes an HTTP response, so every
+/// endpoint reports the same outcome with the same status code and problem details body
+/// (ADR 009). Endpoints return <c>Results&lt;Success, ProblemHttpResult&gt;</c>.
+/// </summary>
 public static class ResultExtensions
 {
-    /// <summary>
-    /// Maps Result to TypedResults for endpoints that return Created, ValidationProblem, or ProblemHttpResult
-    /// </summary>
-    public static Results<Created<TResponse>, ValidationProblem, ProblemHttpResult> ToCreatedResult<
-        TValue,
-        TResponse
-    >(
+    public static Results<Ok<TResponse>, ProblemHttpResult> ToOkResult<TValue, TResponse>(
+        this Result<TValue> result,
+        Func<TValue, TResponse> mapResponse
+    ) => result.IsSuccess ? TypedResults.Ok(mapResponse(result.Value)) : result.ToProblem();
+
+    public static Results<Created<TResponse>, ProblemHttpResult> ToCreatedResult<TValue, TResponse>(
         this Result<TValue> result,
         Func<TValue, string> locationBuilder,
         Func<TValue, TResponse> mapResponse
-    )
-    {
-        return result.Status switch
+    ) =>
+        result.IsSuccess
+            ? TypedResults.Created(locationBuilder(result.Value), mapResponse(result.Value))
+            : result.ToProblem();
+
+    public static Results<NoContent, ProblemHttpResult> ToNoContentResult(this Result result) =>
+        result.IsSuccess ? TypedResults.NoContent() : result.ToProblem();
+
+    public static Results<Accepted, ProblemHttpResult> ToAcceptedResult(this Result result) =>
+        result.IsSuccess ? TypedResults.Accepted((string?)null) : result.ToProblem();
+
+    /// <summary>
+    /// Maps a failed result to its status code. Messages from <c>Invalid</c>, <c>NotFound</c>
+    /// and <c>Conflict</c> are written by use cases for the caller and are passed on.
+    /// <c>Error</c>, <c>CriticalError</c> and <c>Unavailable</c> get a generic detail, because
+    /// their messages may describe internals. Use cases log those details themselves.
+    /// </summary>
+    public static ProblemHttpResult ToProblem(this Ardalis.Result.IResult result) =>
+        result.Status switch
         {
-            ResultStatus.Ok => TypedResults.Created(
-                locationBuilder(result.Value),
-                mapResponse(result.Value)
+            ResultStatus.Invalid => TypedResults.Problem(
+                ProblemDetailsConfigurations.ValidationProblem(
+                    result
+                        .ValidationErrors.GroupBy(error =>
+                            ProblemDetailsConfigurations.ErrorKey(error.Identifier)
+                        )
+                        .ToDictionary(
+                            group => group.Key,
+                            group => group.Select(error => error.ErrorMessage).ToArray()
+                        ),
+                    httpContext: null
+                )
             ),
-            ResultStatus.Invalid => TypedResults.ValidationProblem(
-                result
-                    .ValidationErrors.GroupBy(e => e.Identifier ?? string.Empty)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+            ResultStatus.Unauthorized => Problem(StatusCodes.Status401Unauthorized, detail: null),
+            ResultStatus.Forbidden => Problem(
+                StatusCodes.Status403Forbidden,
+                "You don't have permission to perform this operation."
             ),
-            _ => TypedResults.Problem(
-                title: "Create failed",
-                detail: string.Join("; ", result.Errors),
-                statusCode: StatusCodes.Status400BadRequest
+            ResultStatus.NotFound => Problem(StatusCodes.Status404NotFound, MessagesOf(result)),
+            ResultStatus.Conflict => Problem(StatusCodes.Status409Conflict, MessagesOf(result)),
+            ResultStatus.Unavailable => Problem(
+                StatusCodes.Status503ServiceUnavailable,
+                "The service is temporarily unavailable. Please try again later."
             ),
+            ResultStatus.Ok or ResultStatus.Created or ResultStatus.NoContent =>
+                throw new InvalidOperationException(
+                    $"A successful result ({result.Status}) has no problem response."
+                ),
+            _ => Problem(StatusCodes.Status500InternalServerError, "An unexpected error occurred."),
         };
-    }
 
-    /// <summary>
-    /// Maps Result to TypedResults for GetById endpoints that return Ok, NotFound, or ProblemHttpResult
-    /// </summary>
-    public static Results<Ok<TResponse>, NotFound, ProblemHttpResult> ToGetByIdResult<
-        TValue,
-        TResponse
-    >(this Result<TValue> result, Func<TValue, TResponse> mapResponse)
-    {
-        return ToOkOrNotFoundResult(result, mapResponse, "Get");
-    }
+    private static string? MessagesOf(Ardalis.Result.IResult result) =>
+        result.Errors.Any() ? string.Join("; ", result.Errors) : null;
 
-    /// <summary>
-    /// Maps Result to TypedResults for Update endpoints that return Ok, NotFound, or ProblemHttpResult
-    /// </summary>
-    public static Results<Ok<TResponse>, NotFound, ProblemHttpResult> ToUpdateResult<
-        TValue,
-        TResponse
-    >(this Result<TValue> result, Func<TValue, TResponse> mapResponse)
-    {
-        return ToOkOrNotFoundResult(result, mapResponse, "Update");
-    }
-
-    /// <summary>
-    /// Maps Result to TypedResults for endpoints that return NoContent, ValidationProblem, NotFound, or ProblemHttpResult
-    /// </summary>
-    public static Results<
-        NoContent,
-        ValidationProblem,
-        NotFound,
-        ProblemHttpResult
-    > ToNoContentResult(this Result result)
-    {
-        return result.Status switch
-        {
-            ResultStatus.Ok => TypedResults.NoContent(),
-            ResultStatus.NotFound => TypedResults.NotFound(),
-            ResultStatus.Invalid => TypedResults.ValidationProblem(
-                result
-                    .ValidationErrors.GroupBy(e => e.Identifier ?? string.Empty)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
-            ),
-            _ => TypedResults.Problem(
-                title: "Operation failed",
-                detail: string.Join("; ", result.Errors),
-                statusCode: StatusCodes.Status400BadRequest
-            ),
-        };
-    }
-
-    /// <summary>
-    /// Maps Result to TypedResults for Delete endpoints that return NoContent, NotFound, or ProblemHttpResult
-    /// </summary>
-    public static Results<NoContent, NotFound, ProblemHttpResult> ToDeleteResult(this Result result)
-    {
-        return result.Status switch
-        {
-            ResultStatus.Ok => TypedResults.NoContent(),
-            ResultStatus.NotFound => TypedResults.NotFound(),
-            _ => TypedResults.Problem(
-                title: "Delete failed",
-                detail: string.Join("; ", result.Errors),
-                statusCode: StatusCodes.Status400BadRequest
-            ),
-        };
-    }
-
-    /// <summary>
-    /// Private helper method for Ok/NotFound result patterns
-    /// </summary>
-    private static Results<Ok<TResponse>, NotFound, ProblemHttpResult> ToOkOrNotFoundResult<
-        TValue,
-        TResponse
-    >(Result<TValue> result, Func<TValue, TResponse> mapResponse, string operationName)
-    {
-        return result.Status switch
-        {
-            ResultStatus.Ok => TypedResults.Ok(mapResponse(result.Value)),
-            ResultStatus.NotFound => TypedResults.NotFound(),
-            _ => TypedResults.Problem(
-                title: $"{operationName} failed",
-                detail: string.Join("; ", result.Errors),
-                statusCode: StatusCodes.Status400BadRequest
-            ),
-        };
-    }
-
-    /// <summary>
-    /// Maps Result to TypedResults for endpoints that return Ok only (like List endpoints)
-    /// </summary>
-    public static Ok<TResponse> ToOkOnlyResult<TValue, TResponse>(
-        this Result<TValue> result,
-        Func<TValue, TResponse> mapResponse
-    )
-    {
-        return TypedResults.Ok(mapResponse(result.Value));
-    }
+    // Title and type come from the status code (ProblemDetailsDefaults).
+    private static ProblemHttpResult Problem(int statusCode, string? detail) =>
+        TypedResults.Problem(detail: detail, statusCode: statusCode);
 }

@@ -1,116 +1,278 @@
 using System.Net;
 using System.Net.Http.Json;
+using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
 using AppTemplate.Web.Features.UserFeatures;
 using Xunit;
 
 namespace AppTemplate.FunctionalTests.UserFeatures;
 
-public class UserEndpointsTests : IClassFixture<AppTemplateWebApplicationFactory>
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
+public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
+    : IClassFixture<AppTemplateWebApplicationFactory>
 {
-    private readonly HttpClient _client;
+    private static string NewSubject() => $"sub-{Guid.NewGuid():N}";
 
-    public UserEndpointsTests(AppTemplateWebApplicationFactory factory)
+    private async Task<CurrentUserResponse> ProvisionAsync(
+        string subject,
+        params string[] permissions
+    )
     {
-        _client = factory.CreateClient();
+        var me = await factory
+            .CreateAuthenticatedClient(subject, permissions)
+            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
+        return me!;
+    }
+
+    // --- Authentication -------------------------------------------------------------------
+
+    [Fact]
+    public async Task List_WithoutAuthentication_ReturnsUnauthorized()
+    {
+        var response = await factory.CreateClient().GetAsync("/users");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    // --- /users/me (any authenticated user) -------------------------------------------------
+
+    [Fact]
+    public async Task Me_OnFirstCall_ProvisionsTheUserFromTokenClaims()
+    {
+        var subject = NewSubject();
+
+        var me = await ProvisionAsync(subject);
+
+        Assert.Equal($"Test {subject}", me.Name);
+        Assert.Equal($"{subject}@example.com", me.Email);
+        Assert.Empty(me.Permissions);
     }
 
     [Fact]
-    public async Task CreateThenGet_ReturnsTheCreatedUser()
+    public async Task Me_CalledTwice_ReturnsTheSameUser()
     {
-        var request = new CreateUserRequest
-        {
-            Name = "Ada Lovelace",
-            Email = $"ada-{Guid.NewGuid():N}@example.com",
-            Password = "Passw0rd!",
-        };
+        var client = factory.CreateAuthenticatedClient(NewSubject());
 
-        var createResponse = await _client.PostAsJsonAsync("/users", request);
-        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var first = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
+        var second = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
 
-        var created = await createResponse.Content.ReadFromJsonAsync<CreateUserResponse>();
-        Assert.NotNull(created);
-        Assert.Equal("Ada Lovelace", created!.Name);
-
-        var getResponse = await _client.GetAsync($"/users/{created.Id}");
-        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        Assert.Equal(first!.Id, second!.Id);
     }
 
     [Fact]
-    public async Task Create_WithInvalidEmail_ReturnsValidationProblem()
+    public async Task Me_ReturnsOnlyKnownPermissions()
     {
-        var request = new CreateUserRequest
-        {
-            Name = "Ada Lovelace",
-            Email = "not-an-email",
-            Password = "Passw0rd!",
-        };
+        var me = await ProvisionAsync(NewSubject(), Permission.UsersRead, "not-a-permission");
 
-        var response = await _client.PostAsJsonAsync("/users", request);
+        Assert.Equal([Permission.UsersRead], me.Permissions);
+    }
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    // --- Permission policies ----------------------------------------------------------------
+
+    [Fact]
+    public async Task List_WithoutUsersRead_IsForbidden()
+    {
+        var response = await factory.CreateAuthenticatedClient(NewSubject()).GetAsync("/users");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task List_WithUsersRead_ReturnsUsers()
+    {
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .GetAsync("/users");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_WithoutUsersRead_IsForbidden()
+    {
+        var me = await ProvisionAsync(NewSubject());
+
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject())
+            .GetAsync($"/users/{me.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_WithUsersRead_ReturnsTheUser()
+    {
+        var me = await ProvisionAsync(NewSubject());
+
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .GetAsync($"/users/{me.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
     public async Task GetById_WithUnknownId_ReturnsNotFound()
     {
-        var response = await _client.GetAsync("/users/999999");
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .GetAsync("/users/999999");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task UpdateThenGet_ReturnsTheUpdatedUserInsteadOfTheCachedOne()
+    public async Task Delete_WithoutUsersDelete_IsForbiddenAndKeepsTheUser()
     {
-        var created = await CreateUserAsync("Ada Lovelace", phoneNumber: "5551234");
+        var target = await ProvisionAsync(NewSubject());
 
-        // First GET populates the cache
-        var before = await _client.GetFromJsonAsync<UserRecord>($"/users/{created.Id}");
-        Assert.Equal("Ada Lovelace", before!.Name);
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead, Permission.UsersWrite)
+            .DeleteAsync($"/users/{target.Id}");
 
-        var updateResponse = await _client.PutAsJsonAsync(
-            $"/users/{created.Id}",
-            new UpdateUserRequest { Id = created.Id, Name = "Ada King" }
-        );
-        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
-
-        var after = await _client.GetFromJsonAsync<UserRecord>($"/users/{created.Id}");
-        Assert.Equal("Ada King", after!.Name);
-        // Round-tripped through the cache's serializer, including the PhoneNumber value object
-        Assert.Equal(before.PhoneNumber, after.PhoneNumber);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var stillThere = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .GetAsync($"/users/{target.Id}");
+        Assert.Equal(HttpStatusCode.OK, stillThere.StatusCode);
     }
 
     [Fact]
-    public async Task GetBeforeCreate_DoesNotServeACachedNotFoundAfterCreation()
+    public async Task Delete_WithUsersDelete_RemovesTheUser()
     {
-        // Ids are max+1 and tests in a class run sequentially, so the next id is predictable
-        var existing = await CreateUserAsync("Ada Lovelace");
-        var nextId = existing.Id + 1;
+        var target = await ProvisionAsync(NewSubject());
 
-        // Misses aren't cached, so this 404 can't outlive the user's creation
-        var missing = await _client.GetAsync($"/users/{nextId}");
-        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersDelete)
+            .DeleteAsync($"/users/{target.Id}");
 
-        var created = await CreateUserAsync("Grace Hopper");
-        Assert.Equal(nextId, created.Id);
-
-        var found = await _client.GetAsync($"/users/{nextId}");
-        Assert.Equal(HttpStatusCode.OK, found.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
-    private async Task<CreateUserResponse> CreateUserAsync(string name, string? phoneNumber = null)
+    // --- Resource-based: update own profile vs. anyone's -------------------------------------
+
+    [Fact]
+    public async Task Update_OwnProfile_IsAllowedWithoutPermissions()
     {
-        var response = await _client.PostAsJsonAsync(
-            "/users",
-            new CreateUserRequest
-            {
-                Name = name,
-                Email = $"user-{Guid.NewGuid():N}@example.com",
-                Password = "Passw0rd!",
-                PhoneNumber = phoneNumber,
-            }
-        );
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        return (await response.Content.ReadFromJsonAsync<CreateUserResponse>())!;
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync($"/users/{me.Id}", new { id = me.Id, name = "Renamed Myself" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WithPhoneNumber_EchoesItBack()
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync(
+                $"/users/{me.Id}",
+                new
+                {
+                    name = "Ada Lovelace",
+                    phoneNumber = "11 98765 4321",
+                    phoneCountryCode = "+55",
+                }
+            );
+        var body = await response.Content.ReadFromJsonAsync<UpdateUserResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("+55 11 98765 4321", body!.User.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Update_WithPhoneNumberButNoCountryCode_IsRejected()
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync(
+                $"/users/{me.Id}",
+                new { name = "Ada Lovelace", phoneNumber = "11 98765 4321" }
+            );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("11 98765 4321", "55", null)] // country code without '+'
+    [InlineData("11 98765 4321", "+5555", null)] // country code too long
+    [InlineData("call me", "+55", null)] // not a phone number
+    [InlineData("11 98765 4321", "+55", "ext12")] // extension isn't digits
+    public async Task Update_WithInvalidPhoneParts_IsRejected(
+        string phoneNumber,
+        string phoneCountryCode,
+        string? phoneExtension
+    )
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync(
+                $"/users/{me.Id}",
+                new
+                {
+                    name = "Ada Lovelace",
+                    phoneNumber,
+                    phoneCountryCode,
+                    phoneExtension,
+                }
+            );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_UsesTheRouteId_EvenIfTheBodyNamesAnotherUser()
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+        var other = await ProvisionAsync(NewSubject());
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync($"/users/{me.Id}", new { id = other.Id, name = "Renamed Myself" });
+        var body = await response.Content.ReadFromJsonAsync<UpdateUserResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(me.Id, body!.User.Id);
+    }
+
+    [Fact]
+    public async Task Update_SomeoneElse_WithoutUsersWrite_IsForbidden()
+    {
+        var target = await ProvisionAsync(NewSubject());
+
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .PutAsJsonAsync($"/users/{target.Id}", new { id = target.Id, name = "Hijacked" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_SomeoneElse_WithUsersWrite_IsAllowed()
+    {
+        var target = await ProvisionAsync(NewSubject());
+
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersWrite)
+            .PutAsJsonAsync(
+                $"/users/{target.Id}",
+                new { id = target.Id, name = "Renamed By Admin" }
+            );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }

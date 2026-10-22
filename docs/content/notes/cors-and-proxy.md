@@ -1,13 +1,10 @@
 ---
-title: "CORS & the Angular proxy"
+title: "CORS & the single origin"
 weight: 50
 ---
 
-# CORS & the Angular proxy
+# CORS & the single origin
 
-The Angular dev server proxies API requests to the backend (`frontend/src/proxy.conf.ts`) instead of calling the API's origin directly. That sidesteps CORS entirely in development, since the browser only ever talks to the Angular dev server's own origin.
+The browser only ever talks to one origin: `AppTemplate.BackendForFrontend` (`https://localhost:7100` in development). That host proxies `/api/**` to the Web API, handles the `/backend-for-frontend/**` session endpoints itself, and in development proxies everything else to the Angular dev server. Nothing is cross-origin, so no CORS configuration is needed. This also keeps the session cookie, the OpenID Connect redirect URIs and `SameSite=Strict` all on the same origin. See [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}}).
 
-Further reading:
-
-- [CORS in Aspire projects, and in general](https://medium.com/@gioboa/angulars-proxyconfig-unlock-a-senior-level-technique-used-by-only-10-of-developers-0c6730c5e1fd)
-- [Angular's `proxyConfig` and how it relates to CORS](https://medium.com/@gioboa/angulars-proxyconfig-unlock-a-senior-level-technique-used-by-only-10-of-developers-0c6730c5e1fd)
+The Angular dev server no longer has a `proxy.conf.ts`: open the app through the backend for frontend, not the dev server's own port.

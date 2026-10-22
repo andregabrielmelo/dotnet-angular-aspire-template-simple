@@ -3,22 +3,64 @@ name: Frontend Build
 on:
   push:
     branches:
-      - '**'
+      - main
+      - develop
     paths:
       - 'frontend/**'
+      - 'backend/openapi/**' # the API contract the frontend's types are generated from
       - '.github/workflows/frontend-build.yml'
-  pull_request:
-    branches:
-      - '**'
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-build.yml'
+  pull_request: # no paths filter: the gate job below must report on every PR (see README)
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }} # superseded PR runs are cancelled; every main/develop run finishes
+
 jobs:
+  # Required status checks can't be path-filtered: a workflow skipped by `paths:` never reports, so
+  # the PR waits on it forever. Instead the workflow always runs, this job decides whether there's
+  # anything to build, and the `gate` job at the bottom is the one stable check the ruleset requires.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.filter.outputs.run }}
+
+    steps:
+      - name: Check changed files
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT" # push (already path-filtered) or manual dispatch
+            exit 0
+          fi
+          # Assign first so an API error fails the job instead of reading as "nothing changed".
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          if grep -Eq '^(frontend/|backend/openapi/|\.github/workflows/frontend-build\.yml$)' <<< "$files"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No frontend changes in this PR - skipping the build."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build & Test (Node ${{ matrix.node-version }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
       matrix:
@@ -30,10 +72,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -42,8 +86,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The API types are generated from backend/openapi/v1.json; fail if they weren't
+      # regenerated after the contract changed.
+      - name: Check the generated API types are current
+        run: |
+          npm run api:generate
+          git diff --exit-code -- src/app/core/api/api-types.ts || {
+            echo "::error::src/app/core/api/api-types.ts is stale. Run npm run api:generate in frontend/ and commit it."
+            exit 1
+          }
+
       - name: Check formatting (prettier)
-        run: npx prettier --check "src/**/*.{ts,html,css}"
+        run: npm run format:check
 
       - name: Lint (eslint)
         run: npm run lint
@@ -53,3 +107,29 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # The backend for frontend's CSP blocks inline scripts and event handlers.
+      - name: Check the built index.html is CSP-compatible
+        run: npm run csp:check
+
+  # The only check the ruleset requires for this workflow. A skipped matrix job reports its
+  # unexpanded name (`... ${{ matrix.x }}`), so the matrix jobs themselves can't be required.
+  gate:
+    name: Frontend CI
+    needs: [changes, build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check build result
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          echo "changes: $CHANGES_RESULT, build: $BUILD_RESULT"
+          [ "$CHANGES_RESULT" = "success" ] || exit 1
+          case "$BUILD_RESULT" in
+            success|skipped) ;;
+            *) exit 1 ;;
+          esac

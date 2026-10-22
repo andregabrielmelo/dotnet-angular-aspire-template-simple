@@ -1,4 +1,5 @@
-﻿global using AppTemplate.Core.ValueObjects;
+global using AppTemplate.Core.Interfaces;
+global using AppTemplate.Core.ValueObjects;
 global using AppTemplate.SharedKernel;
 global using AppTemplate.UseCases;
 global using Microsoft.EntityFrameworkCore;

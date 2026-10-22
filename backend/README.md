@@ -18,4 +18,4 @@ dotnet ef migrations add YourMigrationName \
   -o Data/Migrations
 ```
 
-See the [docs site](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/) for the architecture, design decisions, and ADRs - start with [Getting Started](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/getting-started/).
+See the [docs site](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/) for the architecture, design decisions, and ADRs - start with [Getting Started](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/getting-started/).

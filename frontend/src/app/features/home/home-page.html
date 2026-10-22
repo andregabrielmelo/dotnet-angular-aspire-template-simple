@@ -1,12 +1,31 @@
 <div class="mx-auto max-w-sm p-6">
-  <h1 class="mb-4 text-2xl font-semibold">Welcome{{ userName ? ', ' + userName : '' }}!</h1>
-  <p class="mb-6 text-sm text-gray-600">You're logged in.</p>
+  <h1 class="mb-4 text-2xl font-semibold">Welcome{{ user()?.name ? ', ' + user()?.name : '' }}!</h1>
+  <p class="mb-2 text-sm text-gray-600">You're logged in.</p>
+  @if (profile(); as profile) {
+    <p class="mb-6 text-sm text-gray-600">Profile #{{ profile.id }} · {{ profile.email }}</p>
+  }
 
-  <button
-    type="button"
-    (click)="logout()"
-    class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium"
-  >
-    Log out
-  </button>
+  <div class="flex items-center gap-3">
+    <a
+      routerLink="/profile"
+      class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium"
+    >
+      Edit profile
+    </a>
+    @if (canManageUsers()) {
+      <a
+        routerLink="/users"
+        class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white"
+      >
+        Manage users
+      </a>
+    }
+    <button
+      type="button"
+      (click)="logout()"
+      class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium"
+    >
+      Log out
+    </button>
+  </div>
 </div>

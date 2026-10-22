@@ -5,24 +5,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>d2dcc3a3-5da1-4dfc-a6bf-2950502663fb</UserSecretsId>
+    <!-- The Aspire SDK pulls OS-specific packages (Aspire.Dashboard.Sdk.<rid>, Aspire.Hosting.Orchestration.<rid>), so a lock file generated on one OS fails locked-mode restore on the others. -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
     <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.Keycloak" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
-    <PackageReference Include="Aspire.Hosting.Redis" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.NodeJS.Extensions" />
-    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
-    <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AppTemplate.BackendForFrontend\AppTemplate.BackendForFrontend.csproj" />
     <ProjectReference Include="..\AppTemplate.Web\AppTemplate.Web.csproj" />
   </ItemGroup>
 </Project>

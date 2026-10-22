@@ -5,6 +5,8 @@ const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
 
 module.exports = defineConfig([
+  // Generated from the OpenAPI document by `npm run api:generate`; never edited by hand.
+  { ignores: ['src/app/core/api/api-types.ts'] },
   {
     files: ['**/*.ts'],
     extends: [
@@ -29,6 +31,21 @@ module.exports = defineConfig([
           type: 'element',
           prefix: 'app',
           style: 'kebab-case',
+        },
+      ],
+    },
+  },
+  {
+    // API calls belong in a feature's service, never in a component, guard or interceptor.
+    files: ['src/**/*.ts'],
+    ignores: ['src/**/*service.ts', 'src/**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.name='inject'] > Identifier[name='HttpClient']",
+          message:
+            'Inject HttpClient only in a feature service (*.service.ts) and call that service instead.',
         },
       ],
     },

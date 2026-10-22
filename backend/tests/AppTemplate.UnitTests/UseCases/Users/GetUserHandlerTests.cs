@@ -1,6 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.SharedKernel;
-using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Get;
 using Ardalis.Result;
 using NSubstitute;
@@ -10,61 +9,45 @@ namespace AppTemplate.UnitTests.UseCases.Users;
 public class GetUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
-    private readonly FakeCache _cache = new();
 
-    private GetUserHandler CreateHandler() => new(_repository, _cache);
+    private static readonly GetUserQuery Query = new(UserId.From(1));
 
-    [Fact]
-    public async Task Handle_OnCacheMiss_LoadsFromRepositoryAndCachesIt()
+    private static User CreateUser()
     {
         var user = User.Create(
+            "sub-1",
             UserName.From("Ada Lovelace"),
-            new EmailAddress("ada@example.com"),
-            "hash"
+            new EmailAddress("ada@example.com")
         );
-        user.Id = UserId.From(1);
+        user.UpdatePhoneNumber(new PhoneNumber("+44", "5551234", "7"));
+        user.Id = UserId.From(1); // as if loaded from the database
+        return user;
+    }
+
+    private void RepositoryReturns(User? user) =>
         _repository
             .FirstOrDefaultAsync(Arg.Any<UserByIdSpecification>(), Arg.Any<CancellationToken>())
             .Returns(user);
 
-        var result = await CreateHandler()
-            .Handle(new GetUserQuery(UserId.From(1)), CancellationToken.None);
+    [Fact]
+    public async Task Handle_ExistingUser_ReturnsIt()
+    {
+        RepositoryReturns(CreateUser());
+
+        var result = await new GetUserHandler(_repository).Handle(Query, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("Ada Lovelace", result.Value.Name.Value);
-        Assert.True(_cache.Contains(UserCacheKeys.ById(UserId.From(1))));
-        await _repository
-            .Received(1)
-            .FirstOrDefaultAsync(Arg.Any<UserByIdSpecification>(), Arg.Any<CancellationToken>());
+        Assert.Equal(UserName.From("Ada Lovelace"), result.Value.Name);
+        Assert.Equal("+44 5551234 x7", result.Value.PhoneNumber!.ToString());
     }
 
     [Fact]
-    public async Task Handle_OnCacheHit_DoesNotQueryRepository()
+    public async Task Handle_MissingUser_IsNotFound()
     {
-        var cached = new UserDto(UserId.From(1), UserName.From("Ada Lovelace"), null);
-        _cache.Seed<UserDto?>(UserCacheKeys.ById(UserId.From(1)), cached);
+        RepositoryReturns(null);
 
-        var result = await CreateHandler()
-            .Handle(new GetUserQuery(UserId.From(1)), CancellationToken.None);
-
-        Assert.True(result.IsSuccess);
-        Assert.Same(cached, result.Value);
-        await _repository
-            .DidNotReceive()
-            .FirstOrDefaultAsync(Arg.Any<UserByIdSpecification>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task Handle_WhenUserDoesNotExist_ReturnsNotFoundWithoutCachingTheMiss()
-    {
-        _repository
-            .FirstOrDefaultAsync(Arg.Any<UserByIdSpecification>(), Arg.Any<CancellationToken>())
-            .Returns((User?)null);
-
-        var result = await CreateHandler()
-            .Handle(new GetUserQuery(UserId.From(1)), CancellationToken.None);
+        var result = await new GetUserHandler(_repository).Handle(Query, CancellationToken.None);
 
         Assert.Equal(ResultStatus.NotFound, result.Status);
-        Assert.False(_cache.Contains(UserCacheKeys.ById(UserId.From(1))));
     }
 }

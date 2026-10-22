@@ -7,18 +7,18 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/AppTemplate.AppHost/AppTemplate.AppHost.csproj" />
+    <Project Path="src/AppTemplate.BackendForFrontend/AppTemplate.BackendForFrontend.csproj" />
     <Project Path="src/AppTemplate.Core/AppTemplate.Core.csproj" />
     <Project Path="src/AppTemplate.Infrastructure/AppTemplate.Infrastructure.csproj" />
     <Project Path="src/AppTemplate.ServiceDefaults/AppTemplate.ServiceDefaults.csproj" />
     <Project Path="src/AppTemplate.SharedKernel/AppTemplate.SharedKernel.csproj" />
-    <Project
-      Path="src/AppTemplate.UseCases/AppTemplate.UseCases.csproj"
-      Id="efbcb6d6-b5ec-4266-9bef-cd026e9a8f12"
-    />
+    <Project Path="src/AppTemplate.UseCases/AppTemplate.UseCases.csproj" />
     <Project Path="src/AppTemplate.Web/AppTemplate.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/AppTemplate.UnitTests/AppTemplate.UnitTests.csproj" />
+    <Project Path="tests/AppTemplate.ArchitectureTests/AppTemplate.ArchitectureTests.csproj" />
+    <Project Path="tests/AppTemplate.BackendForFrontend.Tests/AppTemplate.BackendForFrontend.Tests.csproj" />
     <Project Path="tests/AppTemplate.FunctionalTests/AppTemplate.FunctionalTests.csproj" />
+    <Project Path="tests/AppTemplate.UnitTests/AppTemplate.UnitTests.csproj" />
   </Folder>
 </Solution>

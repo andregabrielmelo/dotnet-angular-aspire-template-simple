@@ -4,20 +4,48 @@ public class UserTests
 {
     private static User CreateUser() =>
         User.Create(
+            "keycloak-sub-1",
             UserName.From("Ada Lovelace"),
-            new EmailAddress("ada@example.com"),
-            "hashed-password"
+            new EmailAddress("ada@example.com")
         );
 
     [Fact]
-    public void Create_SetsNameEmailAndPassword()
+    public void Create_SetsExternalIdNameAndEmail()
     {
         var user = CreateUser();
 
+        Assert.Equal("keycloak-sub-1", user.ExternalId);
         Assert.Equal("Ada Lovelace", user.Name.Value);
         Assert.Equal("ada@example.com", user.Email.Value);
-        Assert.Equal("hashed-password", user.Password);
         Assert.Null(user.PhoneNumber);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Create_WithEmptyExternalId_Throws(string externalId)
+    {
+        Assert.Throws<ArgumentException>(() =>
+            User.Create(
+                externalId,
+                UserName.From("Ada Lovelace"),
+                new EmailAddress("ada@example.com")
+            )
+        );
+    }
+
+    [Fact]
+    public void Create_WithTooLongExternalId_Throws()
+    {
+        var externalId = new string('x', User.ExternalIdMaxLength + 1);
+
+        Assert.Throws<ArgumentException>(() =>
+            User.Create(
+                externalId,
+                UserName.From("Ada Lovelace"),
+                new EmailAddress("ada@example.com")
+            )
+        );
     }
 
     [Fact]
@@ -50,15 +78,5 @@ public class UserTests
         user.UpdatePhoneNumber(phoneNumber);
 
         Assert.Equal(phoneNumber, user.PhoneNumber);
-    }
-
-    [Fact]
-    public void UpdatePassword_ChangesPassword()
-    {
-        var user = CreateUser();
-
-        user.UpdatePassword("new-hashed-password");
-
-        Assert.Equal("new-hashed-password", user.Password);
     }
 }

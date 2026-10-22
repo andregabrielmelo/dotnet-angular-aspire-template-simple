@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat Services/DisabledBackgroundJobScheduler.cs Services/DisabledJobManagementService.cs Extensions/ServiceCollectionExtensions.cs Services/JobManagementService.cs Services/RecurringJobRegistrar.cs Models/PausedJob.cs)",
+      "Bash(grep -rn \"IBackgroundJobScheduler\\\\|IJobManagementService\" ../../ --include=*.cs -l)"
+    ]
+  }
+}

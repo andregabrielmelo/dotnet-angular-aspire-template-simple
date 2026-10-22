@@ -1,0 +1,133 @@
+{
+  "realm": "apptemplate",
+  "displayName": "AppTemplate",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 28800,
+  "clients": [
+    {
+      "clientId": "apptemplate-backend-for-frontend",
+      "name": "AppTemplate backend for frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "apptemplate-dev-secret-change-me",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "https://localhost:7100/signin-oidc",
+        "https://localhost:7100/auth"
+      ],
+      "webOrigins": [
+        "https://localhost:7100"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://localhost:7100/signout-callback-oidc"
+      },
+      "protocolMappers": [
+        {
+          "name": "apptemplate-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "apptemplate-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ],
+      "baseUrl": "https://localhost:7100/"
+    },
+    {
+      "clientId": "apptemplate-api",
+      "name": "AppTemplate API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "bearerOnly": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@apptemplate.local",
+    "fromDisplayName": "AppTemplate",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@apptemplate.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Dev",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "default-roles-apptemplate",
+        "admin"
+      ]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Full administration of users (all apptemplate-api permissions)",
+        "composite": true,
+        "composites": {
+          "client": {
+            "apptemplate-api": [
+              "users:read",
+              "users:write",
+              "users:delete"
+            ]
+          }
+        }
+      }
+    ],
+    "client": {
+      "apptemplate-api": [
+        {
+          "name": "users:read",
+          "description": "List users and read any user's profile"
+        },
+        {
+          "name": "users:write",
+          "description": "Update any user's profile"
+        },
+        {
+          "name": "users:delete",
+          "description": "Delete users"
+        }
+      ]
+    }
+  }
+}

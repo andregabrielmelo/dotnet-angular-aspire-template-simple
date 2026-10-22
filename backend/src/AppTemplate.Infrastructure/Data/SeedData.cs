@@ -1,6 +1,5 @@
-using AppTemplate.Core.Aggregates.UserAggregate;
+﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
-using Microsoft.AspNetCore.Identity;
 
 namespace AppTemplate.Infrastructure.Data;
 
@@ -24,15 +23,16 @@ public class SeedData
             names.Add($"User {i}");
         }
 
-        // Seed users are fixtures for pagination demos, not real accounts - a single shared
-        // placeholder password hash is enough (not meant to be logged into meaningfully).
-        var password = new PasswordHasher<User>().HashPassword(null!, "Seeded123!");
-
-        var users = names.Select(name => new User(
-            UserName.From(name),
-            new EmailAddress($"{name.ToLowerInvariant().Replace(" ", "")}@example.com"),
-            password
-        ));
+        // Seed users are fixtures for pagination demos, not accounts anyone can log into - their
+        // ExternalIds don't match any identity in Keycloak.
+        var users = names.Select(
+            (name, index) =>
+                User.Create(
+                    $"seed-{index + 1}",
+                    UserName.From(name),
+                    new EmailAddress($"{name.ToLowerInvariant().Replace(" ", "")}@example.com")
+                )
+        );
         dbContext.Users.AddRange(users);
         await dbContext.SaveChangesAsync();
     }

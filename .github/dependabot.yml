@@ -2,18 +2,34 @@ version: 2
 updates:
   - package-ecosystem: nuget
     directory: "/backend"
+    target-branch: develop # gitflow: dependency bumps land in develop and ship with the next release
     schedule:
       interval: weekly
+    commit-message: # Conventional Commits: build(deps): ... / build(deps-dev): ...
+      prefix: build
+      include: scope
     open-pull-requests-limit: 10
 
   - package-ecosystem: npm
     directory: "/frontend"
+    target-branch: develop # gitflow: dependency bumps land in develop and ship with the next release
     schedule:
       interval: weekly
+    commit-message: # Conventional Commits: build(deps): ... / build(deps-dev): ...
+      prefix: build
+      include: scope
     open-pull-requests-limit: 10
 
   - package-ecosystem: github-actions
     directory: "/"
+    target-branch: develop # gitflow: dependency bumps land in develop and ship with the next release
     schedule:
       interval: weekly
+    commit-message: # Conventional Commits: build(deps): ... / build(deps-dev): ...
+      prefix: build
+      include: scope
     open-pull-requests-limit: 10
+    groups:
+      actions: # one PR bumps every pinned action SHA together
+        patterns:
+          - "*"

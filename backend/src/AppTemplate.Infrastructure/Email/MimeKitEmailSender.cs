@@ -1,42 +1,46 @@
 ﻿using AppTemplate.Core.Interfaces;
 using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
 namespace AppTemplate.Infrastructure.Email;
 
-public class MimeKitEmailSender(
+public sealed partial class MimeKitEmailSender(
     ILogger<MimeKitEmailSender> logger,
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender
 {
-    private readonly ILogger<MimeKitEmailSender> _logger = logger;
-    private readonly MailserverConfiguration _mailserverConfiguration = mailserverOptions.Value!;
+    private readonly MailserverConfiguration _mailserver = mailserverOptions.Value;
 
-    public async Task SendEmailAsync(string to, string from, string subject, string body)
+    public async Task SendEmailAsync(
+        string to,
+        string from,
+        string subject,
+        string body,
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogWarning(
-            "Sending email to {to} from {from} with subject {subject} using {type}.",
-            to,
-            from,
-            subject,
-            this.ToString()
-        );
-
-        using var client = new SmtpClient();
-        await client.ConnectAsync(
-            _mailserverConfiguration.Hostname,
-            _mailserverConfiguration.Port,
-            false
-        );
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(from, from));
-        message.To.Add(new MailboxAddress(to, to));
+        message.From.Add(MailboxAddress.Parse(from));
+        message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
         message.Body = new TextPart("plain") { Text = body };
 
-        await client.SendAsync(message);
+        using var client = new SmtpClient();
+        await client.ConnectAsync(
+            _mailserver.Hostname,
+            _mailserver.Port,
+            SecureSocketOptions.Auto,
+            cancellationToken
+        );
+        await client.SendAsync(message, cancellationToken);
+        await client.DisconnectAsync(quit: true, cancellationToken);
 
-        await client.DisconnectAsync(true, new CancellationToken(canceled: true));
+        // Addresses are personal data - log the subject, not who it went to.
+        LogEmailSent(logger, subject, _mailserver.Hostname);
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Sent email '{Subject}' via {Host}")]
+    private static partial void LogEmailSent(ILogger logger, string subject, string host);
 }

@@ -1,11 +1,10 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Get;
 
-public class GetUserHandler(IRepository<User> _repository, ICache _cache)
+public class GetUserHandler(IRepository<User> _repository)
     : IQueryHandler<GetUserQuery, Result<UserDto>>
 {
     public async ValueTask<Result<UserDto>> Handle(
@@ -13,26 +12,13 @@ public class GetUserHandler(IRepository<User> _repository, ICache _cache)
         CancellationToken cancellationToken
     )
     {
-        // Cache-aside; a miss (null) isn't cached, so a newly created user is found right away
-        var dto = await _cache.GetOrCreateAsync<UserDto?>(
-            UserCacheKeys.ById(request.UserId),
-            async ct =>
-            {
-                var specification = new UserByIdSpecification(request.UserId);
-                var entity = await _repository.FirstOrDefaultAsync(specification, ct);
-                return entity == null
-                    ? null
-                    : new UserDto(
-                        entity.Id,
-                        entity.Name,
-                        entity.PhoneNumber ?? PhoneNumber.Unknown
-                    );
-            },
+        var user = await _repository.FirstOrDefaultAsync(
+            new UserByIdSpecification(request.UserId),
             cancellationToken
         );
-        if (dto == null)
-            return Result.NotFound();
 
-        return dto;
+        return user is null
+            ? Result.NotFound()
+            : new UserDto(user.Id, user.Name, user.PhoneNumber ?? PhoneNumber.Unknown);
     }
 }

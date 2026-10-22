@@ -1,38 +1,40 @@
 # For more info on HTTP files go to https://aka.ms/vs/httpfile
 @host=https://localhost
 @port=7243
+# Every endpoint needs a Keycloak access token. In the running app the backend for frontend
+# attaches it; to call the API directly, paste a Keycloak token for the apptemplate-api audience.
+@token=paste-an-access-token-here
 
 // List all users
 GET {{host}}:{{port}}/users
+Authorization: Bearer {{token}}
 
 ###
 
 // Get a specific user
 @id_to_get=1
 GET {{host}}:{{port}}/users/{{id_to_get}}
+Authorization: Bearer {{token}}
 
 ###
 
-// Add a new user
-POST {{host}}:{{port}}/users
-Content-Type: application/json
-
-{
-  "name": "John Doe 3",
-  "email": "test@test.com",
-  "phoneNumber": "1234567890"
-}
+// Get (and on first call, create) the current user from the token's claims
+GET {{host}}:{{port}}/users/me
+Authorization: Bearer {{token}}
 
 ###
 
 // Update a user
 @id_to_update=3
 PUT {{host}}:{{port}}/users/{{id_to_update}}
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "id": {{id_to_update}},
-  "name": "ardalis2"
+  "name": "ardalis2",
+  "phoneNumber": "555 0100",
+  "phoneCountryCode": "+1"
 }
 
 ###
@@ -40,3 +42,4 @@ Content-Type: application/json
 // Delete a user
 @id_to_delete=1
 DELETE {{host}}:{{port}}/users/{{id_to_delete}}
+Authorization: Bearer {{token}}

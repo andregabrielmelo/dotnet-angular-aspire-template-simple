@@ -1,45 +1,63 @@
-import { Observable, tap } from 'rxjs';
-import { RegisterResponse } from './models/register-response.model';
-import { RegisterRequest } from './models/register-request.model';
-import { LoginResponse } from './models/login-response.model';
-import { LoginRequest } from './models/login-request.model';
-import { inject, Injectable } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable, catchError, map, of, tap } from 'rxjs';
+import { BROWSER_REDIRECT } from '../../core/auth/browser-redirect';
+import { BackendForFrontendUser } from './models/backend-for-frontend-user.model';
 
-// No backend token is issued yet (no /login endpoint, and register doesn't return one either),
-// so this is a local-only "am I in a session" marker, not real authentication. Swap this out
-// once the backend issues a real token to check/store instead.
-const SESSION_KEY = 'apptemplate_session_user';
+export const BACKEND_FOR_FRONTEND_PATH = 'backend-for-frontend';
 
+/**
+ * Session state backed by the backend for frontend. Login, registration and logout are full-page
+ * redirects through Keycloak; the resulting session is an HTTP-only cookie, so this service never
+ * sees or stores a token - it only asks the backend for frontend who the current user is.
+ */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly redirect = inject(BROWSER_REDIRECT);
 
-  register(request: RegisterRequest): Observable<RegisterResponse> {
-    return this.http
-      .post<RegisterResponse>('api/users', request)
-      .pipe(tap((response) => this.markSessionActive(response.name)));
+  private readonly userSignal = signal<BackendForFrontendUser | null>(null);
+  private loaded = false;
+
+  readonly user = this.userSignal.asReadonly();
+  readonly isAuthenticated = computed(() => this.userSignal() !== null);
+
+  /** Asks the backend for frontend for the current session once, then serves it from memory. */
+  loadUser(): Observable<BackendForFrontendUser | null> {
+    if (this.loaded) {
+      return of(this.userSignal());
+    }
+
+    return this.http.get<BackendForFrontendUser>(`${BACKEND_FOR_FRONTEND_PATH}/user`).pipe(
+      map((user): BackendForFrontendUser | null => user),
+      catchError(() => of(null)),
+      tap((user) => {
+        this.userSignal.set(user);
+        this.loaded = true;
+      }),
+    );
   }
 
-  login(request: LoginRequest): Observable<LoginResponse> {
-    return this.http
-      .post<LoginResponse>('api/login', request)
-      .pipe(tap((response) => this.markSessionActive(response.name)));
+  /** Forgets the cached session, e.g. after the API reports it has expired. */
+  clearUser(): void {
+    this.userSignal.set(null);
+    this.loaded = false;
   }
 
+  login(returnUrl = '/home'): void {
+    this.redirect(`/${BACKEND_FOR_FRONTEND_PATH}/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+  }
+
+  register(returnUrl = '/home'): void {
+    this.redirect(
+      `/${BACKEND_FOR_FRONTEND_PATH}/register?returnUrl=${encodeURIComponent(returnUrl)}`,
+    );
+  }
+
+  /** Ends both the local session and the Keycloak session, then returns to the app's root. */
   logout(): void {
-    localStorage.removeItem(SESSION_KEY);
-  }
-
-  isAuthenticated(): boolean {
-    return localStorage.getItem(SESSION_KEY) !== null;
-  }
-
-  currentUserName(): string | null {
-    return localStorage.getItem(SESSION_KEY);
-  }
-
-  private markSessionActive(userName: string): void {
-    localStorage.setItem(SESSION_KEY, userName);
+    const logoutUrl = this.userSignal()?.logoutUrl;
+    this.clearUser();
+    this.redirect(logoutUrl ?? '/');
   }
 }

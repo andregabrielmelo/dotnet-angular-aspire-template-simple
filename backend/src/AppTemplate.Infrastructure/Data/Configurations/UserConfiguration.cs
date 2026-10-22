@@ -1,4 +1,4 @@
-using AppTemplate.Core.Aggregates.UserAggregate;
+﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 
 namespace AppTemplate.Infrastructure.Data.Configurations;
@@ -27,7 +27,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(entity => entity.Email).IsUnique();
 
-        builder.Property(entity => entity.Password).IsRequired();
+        builder
+            .Property(entity => entity.ExternalId)
+            .HasMaxLength(User.ExternalIdMaxLength)
+            .IsRequired();
+
+        builder.HasIndex(entity => entity.ExternalId).IsUnique();
+
+        // Set by Postgres on insert (EF leaves the column out while the value is unset); the
+        // migration that added it backfilled existing rows with the migration time.
+        builder.Property(entity => entity.CreatedAtUtc).HasDefaultValueSql("now()");
 
         builder.OwnsOne(builder => builder.PhoneNumber);
     }

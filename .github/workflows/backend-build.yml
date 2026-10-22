@@ -3,25 +3,65 @@ name: Backend Build
 on:
   push:
     branches:
-      - '**'
+      - main
+      - develop
     paths:
       - 'backend/**'
+      - 'scripts/export-openapi.sh'
       - '.github/workflows/backend-build.yml'
-  pull_request:
-    branches:
-      - '**'
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-build.yml'
+  pull_request: # no paths filter: the gate job below must report on every PR (see README)
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }} # superseded PR runs are cancelled; every main/develop run finishes
+
 jobs:
+  # Required status checks can't be path-filtered: a workflow skipped by `paths:` never reports, so
+  # the PR waits on it forever. Instead the workflow always runs, this job decides whether there's
+  # anything to build, and the `gate` job at the bottom is the one stable check the ruleset requires.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.filter.outputs.run }}
+
+    steps:
+      - name: Check changed files
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT" # push (already path-filtered) or manual dispatch
+            exit 0
+          fi
+          # Assign first so an API error fails the job instead of reading as "nothing changed".
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          if grep -Eq '^(backend/|scripts/export-openapi\.sh$|\.github/workflows/backend-build\.yml$)' <<< "$files"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No backend changes in this PR - skipping the build."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build (.NET 10, ${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25 # the Linux job also pulls Postgres for Testcontainers
 
-    env:
-      HUSKY: 0 # skip Directory.Build.targets' git-hooks auto-install - pointless in CI, never commits
 
     strategy:
       matrix:
@@ -30,16 +70,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: backend/**/packages.lock.json
 
       - name: Restore dependencies
         working-directory: backend
-        run: dotnet restore AppTemplate.slnx
+        run: dotnet restore AppTemplate.slnx --locked-mode
 
       - name: Check formatting (csharpier)
         working-directory: backend
@@ -51,6 +95,49 @@ jobs:
         working-directory: backend
         run: dotnet build AppTemplate.slnx --configuration Release --no-restore
 
+      # Functional tests run against a real Postgres via Testcontainers, which needs a Docker
+      # daemon that runs Linux containers - only the Linux runners have one. Windows and macOS
+      # run everything else (unit tests, and functional tests that don't touch the database).
       - name: Test
+        if: runner.os == 'Linux'
         working-directory: backend
         run: dotnet test AppTemplate.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+
+      - name: Test (without Docker)
+        if: runner.os != 'Linux'
+        working-directory: backend
+        run: dotnet test AppTemplate.slnx --configuration Release --no-build --filter "Category!=RequiresDocker" --logger "console;verbosity=normal"
+
+      # backend/openapi/v1.json is the committed API contract the Angular types are generated
+      # from. Regenerate it and fail if it differs: an endpoint or DTO changed without
+      # running scripts/export-openapi.sh.
+      - name: Check the OpenAPI document is current
+        if: runner.os == 'Linux'
+        run: |
+          scripts/export-openapi.sh --no-build
+          git diff --exit-code -- backend/openapi/ || {
+            echo "::error::backend/openapi/v1.json is stale. Run scripts/export-openapi.sh, then npm run api:generate in frontend/, and commit both."
+            exit 1
+          }
+
+  # The only check the ruleset requires for this workflow. A skipped matrix job reports its
+  # unexpanded name (`... ${{ matrix.x }}`), so the matrix jobs themselves can't be required.
+  gate:
+    name: Backend CI
+    needs: [changes, build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check build result
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          echo "changes: $CHANGES_RESULT, build: $BUILD_RESULT"
+          [ "$CHANGES_RESULT" = "success" ] || exit 1
+          case "$BUILD_RESULT" in
+            success|skipped) ;;
+            *) exit 1 ;;
+          esac

@@ -6,5 +6,9 @@
 /// </summary>
 public interface IListUsersQueryService
 {
-    Task<PagedResult<UserDto>> ListAsync(int page, int perPage);
+    Task<PagedResult<UserDto>> ListAsync(
+        int page,
+        int perPage,
+        CancellationToken cancellationToken
+    );
 }

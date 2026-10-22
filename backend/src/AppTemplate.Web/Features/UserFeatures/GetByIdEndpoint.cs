@@ -1,4 +1,5 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Get;
 using AppTemplate.Web.Extensions;
@@ -11,16 +12,12 @@ public sealed class GetUserByIdRequest
 }
 
 public class GetByIdEndpoint(IMediator mediator)
-    : Endpoint<
-        GetUserByIdRequest,
-        Results<Ok<UserRecord>, NotFound, ProblemHttpResult>,
-        GetUserByIdMapper
-    >
+    : Endpoint<GetUserByIdRequest, Results<Ok<UserRecord>, ProblemHttpResult>, GetUserByIdMapper>
 {
     public override void Configure()
     {
         Get("/users/{id}");
-        AllowAnonymous();
+        Policies(Permission.UsersRead);
 
         Summary(s =>
         {
@@ -30,6 +27,7 @@ public class GetByIdEndpoint(IMediator mediator)
             s.ResponseExamples[200] = new UserRecord(1, "Sample User", null);
 
             s.Responses[200] = "User obtained successfully";
+            s.Responses[403] = $"Requires the {Permission.UsersRead} permission";
             s.Responses[400] = "Invalid request data";
             s.Responses[404] = "User not found";
         });
@@ -45,7 +43,7 @@ public class GetByIdEndpoint(IMediator mediator)
         );
     }
 
-    public override async Task<Results<Ok<UserRecord>, NotFound, ProblemHttpResult>> ExecuteAsync(
+    public override async Task<Results<Ok<UserRecord>, ProblemHttpResult>> ExecuteAsync(
         GetUserByIdRequest request,
         CancellationToken cancellationToken
     )
@@ -54,7 +52,7 @@ public class GetByIdEndpoint(IMediator mediator)
             new GetUserQuery(UserId.From(request.Id)),
             cancellationToken
         );
-        return result.ToGetByIdResult(Map.FromEntity);
+        return result.ToOkResult(Map.FromEntity);
     }
 }
 
@@ -69,5 +67,5 @@ public sealed class GetByIdUserValidator : Validator<GetUserByIdRequest>
 public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, UserDto>
 {
     public override UserRecord FromEntity(UserDto e) =>
-        new(e.Id.Value, e.Name.Value, e.PhoneNumber.ToString());
+        new(e.Id.Value, e.Name.Value, e.PhoneNumber?.ToString());
 }

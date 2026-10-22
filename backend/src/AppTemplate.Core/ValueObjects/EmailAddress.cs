@@ -3,6 +3,7 @@
 namespace AppTemplate.Core.ValueObjects;
 
 // https://www.w3.org/Protocols/rfc822/#z8
+[PersonalData]
 public class EmailAddress : ValueObject
 {
     private static readonly Regex EmailRegex = new(

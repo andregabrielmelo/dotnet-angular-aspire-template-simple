@@ -5,9 +5,13 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "csp:check": "node scripts/check-csp.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "format": "prettier --write \"src/**/*.{ts,html,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,html,css}\"",
+    "api:generate": "openapi-typescript ../backend/openapi/v1.json --output src/app/core/api/api-types.ts && prettier --write src/app/core/api/api-types.ts"
   },
   "private": true,
   "packageManager": "npm@12.0.1",
@@ -31,11 +35,17 @@
     "angular-eslint": "22.5.0",
     "eslint": "^10.9.1",
     "jsdom": "^28.0.0",
+    "openapi-typescript": "7.13.0",
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",
     "tailwindcss": "^4.1.12",
     "typescript": "~6.0.2",
     "typescript-eslint": "8.69.0",
     "vitest": "^4.0.8"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
   }
 }

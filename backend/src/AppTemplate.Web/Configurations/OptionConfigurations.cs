@@ -1,4 +1,4 @@
-﻿using AppTemplate.Infrastructure.Email;
+using AppTemplate.Infrastructure.Email;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -12,13 +12,21 @@ public static class OptionConfigurations
     )
     {
         services
-            .Configure<MailserverConfiguration>(configuration.GetSection("Mailserver"))
-            // Configure Web Behavior
-            .Configure<CookiePolicyOptions>(options =>
-            {
-                options.CheckConsentNeeded = context => true;
-                options.MinimumSameSitePolicy = SameSiteMode.None;
-            });
+            .AddOptions<MailserverConfiguration>()
+            .Bind(configuration.GetSection(MailserverConfiguration.SectionName))
+            .Validate(
+                mail => !string.IsNullOrWhiteSpace(mail.Hostname) && mail.Port is > 0 and <= 65535,
+                "Mailserver needs a Hostname and a Port between 1 and 65535."
+            )
+            .ValidateOnStart();
+
+        services
+        // Configure Web Behavior
+        .Configure<CookiePolicyOptions>(options =>
+        {
+            options.CheckConsentNeeded = context => true;
+            options.MinimumSameSitePolicy = SameSiteMode.None;
+        });
 
         logger.LogInformation("{Project} were configured", "Options");
 

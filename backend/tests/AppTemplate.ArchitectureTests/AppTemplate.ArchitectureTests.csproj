@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The layers under test; the rules inspect their compiled assemblies. -->
+    <ProjectReference Include="..\..\src\AppTemplate.SharedKernel\AppTemplate.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\AppTemplate.Core\AppTemplate.Core.csproj" />
+    <ProjectReference Include="..\..\src\AppTemplate.UseCases\AppTemplate.UseCases.csproj" />
+    <ProjectReference Include="..\..\src\AppTemplate.Infrastructure\AppTemplate.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\AppTemplate.Web\AppTemplate.Web.csproj" />
+  </ItemGroup>
+</Project>

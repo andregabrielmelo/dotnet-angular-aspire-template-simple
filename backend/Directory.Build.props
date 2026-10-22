@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Commit a packages.lock.json per project so CI can restore with locked-mode and cache NuGet packages by lock-file hash, https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+</Project>

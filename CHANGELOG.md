@@ -6,28 +6,6 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
-- Clean Architecture .NET 10 backend (`Core` / `UseCases` / `Infrastructure` / `Web`), based on [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture), with a `User` feature as an end-to-end reference vertical slice.
-- Angular frontend (standalone components, `core`/`shared`/`features` structure), talking to the API via a dev-time proxy instead of CORS.
-- .NET Aspire `AppHost` orchestrating Postgres, the Web API, and the Angular frontend for local development.
-- `scripts/rename-template.sh` to rename the `AppTemplate` placeholder to a real project name.
-- xUnit test projects: `AppTemplate.UnitTests` (Core/UseCases, NSubstitute) and `AppTemplate.FunctionalTests` (full HTTP pipeline via `WebApplicationFactory`, EF Core InMemory).
-- Hugo documentation site (`docs/`) with getting-started, design-decisions, and architecture decision records, deployed to GitHub Pages. Light/dark theme toggle, defaulting to dark.
-- GitHub Actions CI: cross-platform backend build/format/test, frontend build/format/lint/test, monthly CodeQL scan, docs deploy.
-- Dependabot for NuGet, npm, and GitHub Actions dependencies.
-- ESLint (`@angular-eslint`) and Prettier for the frontend; csharpier for the backend, enforced in CI and applied automatically to staged files by a git pre-commit hook (Husky.Net, auto-installed on first build after cloning).
-- `USAGE.md`, `CONTRIBUTING.md` (in `.github/`), and this changelog.
-- Caching: `HybridCache` over Redis (provisioned by the AppHost as `cache`), behind a minimal UseCases-owned `ICache`. The `User` get-by-id query is cached (cache-aside) and invalidated by the update/delete handlers. Misses (not found) aren't cached, invalidation failures are logged instead of failing the write, expirations are configurable (`Cache:Expiration`, `Cache:LocalExpiration`), and Redis is covered by a health check. Redis is required unless `Cache:AllowLocalOnly` is set (Development and functional tests). See ADR 007.
+- Derived from [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template) at commit 84209d9, keeping the features most projects use. The removed features (background jobs, outbox and inbox, auditing, caching, file storage, ETags, API versioning, third-party sign-in, the custom password reset endpoint, business metrics and the end-to-end tests) remain in that repository.
 
-### Fixed
-
-- `PUT /users/{id}` and `DELETE /users/{UserId}` always returned 500: they required authorization, but the API has no authentication configured. They are now anonymous, like the other `User` endpoints.
-- A stale Angular test asserting markup that no longer existed.
-- Dead `[Required]` Data Annotations on FastEndpoints request DTOs (FastEndpoints validates via FluentValidation, not Data Annotations - these had no effect).
-- Missing `.AsNoTracking()` on read-only EF Core specifications.
-- A cross-platform line-ending mismatch (`.editorconfig` required CRLF while committed blobs were LF) that passed CI on Windows but failed csharpier's format check on Linux/macOS.
-
-### Changed
-
-- Template license set to MIT (the source project it was based on used AGPL-3.0, which is unsuitable for a reusable starting point).
-
-[Unreleased]: https://github.com/andregabrielmelo/dotnet-angular-aspire-template/commits/main
+[Unreleased]: https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/commits/main

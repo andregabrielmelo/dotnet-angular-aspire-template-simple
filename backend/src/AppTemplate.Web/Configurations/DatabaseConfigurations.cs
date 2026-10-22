@@ -7,7 +7,8 @@ public static class DatabaseConfigurations
 {
     public static async Task<IApplicationBuilder> StartDatabase(this WebApplication app)
     {
-        // Run migrations and seed in Developme nt or when explicitly requested via environment variable
+        // Migrate in Development, or anywhere Database:ApplyMigrationsOnStartup is set. Seed data
+        // is demo fixtures, so it's only ever added in Development.
         var shouldMigrate =
             app.Environment.IsDevelopment()
             || app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
@@ -15,6 +16,10 @@ public static class DatabaseConfigurations
         if (shouldMigrate)
         {
             await MigrateDatabaseAsync(app);
+        }
+
+        if (app.Environment.IsDevelopment())
+        {
             await SeedDatabaseAsync(app);
         }
 

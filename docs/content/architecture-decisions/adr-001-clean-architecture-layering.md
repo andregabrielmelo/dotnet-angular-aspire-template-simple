@@ -14,9 +14,9 @@ A new full-stack project needs a backend structure that keeps the domain model f
 ## Decision
 Use a four-project Clean Architecture layout, based on [Ardalis' Clean Architecture template](https://github.com/ardalis/CleanArchitecture):
 
-- **Core** - domain model (aggregates, value objects, specifications, domain events), depends on almost nothing.
-- **UseCases** - CQRS commands/queries, depends on Core only.
-- **Infrastructure** - EF Core, email, and other outward-facing implementations of interfaces defined in Core/UseCases.
+- **Core** - domain model (aggregates, value objects, specifications, domain events) and the ports to external resources (`Core/Interfaces`, such as the email sender), depends on almost nothing.
+- **UseCases** - CQRS commands/queries, plus the list query-service interfaces (they return use-case DTOs) and `ICurrentUser` (request context, implemented in Web); depends on Core only.
+- **Infrastructure** - EF Core, email, and other outward-facing implementations: of the ports in Core, and of the query services in UseCases.
 - **Web** - FastEndpoints HTTP API, the composition root.
 
 A shared `SharedKernel` folder holds base types (`EntityBase`, domain event dispatch) used across layers.
