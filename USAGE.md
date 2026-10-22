@@ -1,6 +1,6 @@
 # Usage
 
-Quick reference for working in a project started from this template. For the full picture (architecture, design decisions, ADRs), see the [docs site](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/).
+Quick reference for working in a project started from this template. For the full picture (architecture, design decisions, ADRs), see the [docs site](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/).
 
 ## First time setup
 

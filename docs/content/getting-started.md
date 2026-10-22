@@ -7,7 +7,7 @@ weight: 10
 
 ## 1. Create your repo from this template
 
-Click **Use this template** on GitHub (or `gh repo create your-project --template andregabrielmelo/dotnet-angular-aspire-template --clone --public`), then clone it locally.
+Click **Use this template** on GitHub (or `gh repo create your-project --template andregabrielmelo/dotnet-angular-aspire-template-simple --clone --public`), then clone it locally.
 
 ## 2. Rename `AppTemplate`
 
@@ -33,7 +33,7 @@ cd backend
 dotnet run --project src/YourProjectName.AppHost
 ```
 
-The Aspire dashboard opens and starts three resources: Postgres (in a container, with a persistent data volume), the Web API, and the Angular frontend (via `npm ci` + `npm start`, proxied to the API - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)).
+The Aspire dashboard opens and starts three resources: Postgres (in a container, with a persistent data volume), the Web API, and the Angular frontend (via `npm ci` + `npm start`, proxied to the API - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)).
 
 ## 5. Add your own feature
 
