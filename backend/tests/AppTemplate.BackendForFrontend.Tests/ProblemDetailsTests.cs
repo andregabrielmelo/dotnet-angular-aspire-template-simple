@@ -8,7 +8,7 @@ namespace AppTemplate.BackendForFrontend.Tests;
 
 /// <summary>
 /// The backend for frontend's own error responses follow the same problem details contract as
-/// the Web API (ADR 014), and never reveal anything about the identity provider.
+/// the Web API (ADR 009), and never reveal anything about the identity provider.
 /// </summary>
 public class ProblemDetailsTests(BackendForFrontendFactory factory)
     : IClassFixture<BackendForFrontendFactory>

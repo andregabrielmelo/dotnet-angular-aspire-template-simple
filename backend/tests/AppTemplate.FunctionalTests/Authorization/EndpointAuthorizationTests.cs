@@ -7,7 +7,7 @@ using Xunit;
 namespace AppTemplate.FunctionalTests.Authorization;
 
 /// <summary>
-/// Every route requires a signed-in user unless it is deliberately anonymous (ADR 010).
+/// Every route requires a signed-in user unless it is deliberately anonymous (ADR 008).
 /// Anonymous routes are listed here, so making an endpoint public is a reviewed change to this
 /// test. Routes that declare nothing fall back to requiring authentication.
 /// </summary>

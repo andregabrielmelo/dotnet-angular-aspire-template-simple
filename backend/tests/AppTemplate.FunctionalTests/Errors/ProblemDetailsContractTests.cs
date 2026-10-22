@@ -18,7 +18,7 @@ namespace AppTemplate.FunctionalTests.Errors;
 
 /// <summary>
 /// Every failure, whatever produces it, is an RFC 9457 problem details response with a
-/// <c>traceId</c> (ADR 014): FastEndpoints validation, use case results, authentication and
+/// <c>traceId</c> (ADR 009): FastEndpoints validation, use case results, authentication and
 /// authorization, unmatched routes and unhandled exceptions.
 /// </summary>
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]

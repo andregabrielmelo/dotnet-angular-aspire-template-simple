@@ -1,9 +1,9 @@
 ---
-title: "ADR 010: Permission-based authorization with Keycloak client roles"
-weight: 100
+title: "ADR 008: Permission-based authorization with Keycloak client roles"
+weight: 80
 ---
 
-# ADR 010: Permission-based authorization with Keycloak client roles
+# ADR 008: Permission-based authorization with Keycloak client roles
 
 ## Status
 Accepted
@@ -32,7 +32,7 @@ Until now any authenticated user could call every `/users` endpoint, including d
 ## Consequences
 - Adding a protected operation means adding a constant to `Permission`, a client role in the realm, adding it to the relevant composite roles, and calling `Policies(...)` on the endpoint or checking `ICurrentUser` in the use case.
 - Permissions live in the access token, so a role change takes effect when the token is next refreshed (within the access-token lifespan, 5 minutes by default), not instantly.
-- An authorization **fallback policy** requires an authenticated user on any route that declares neither `RequireAuthorization` nor `AllowAnonymous`. FastEndpoints 8.2 and 8.3 map `GET /_test_url_cache_` unconditionally and without metadata; it lists every route and endpoint type name, and was public until this policy. Operational routes that must stay open (health checks, the development-only Scalar page and Hangfire dashboard) call `AllowAnonymous()` explicitly.
+- An authorization **fallback policy** requires an authenticated user on any route that declares neither `RequireAuthorization` nor `AllowAnonymous`. FastEndpoints 8.2 and 8.3 map `GET /_test_url_cache_` unconditionally and without metadata; it lists every route and endpoint type name, and was public until this policy. Operational routes that must stay open (health checks and the development-only Scalar page) call `AllowAnonymous()` explicitly.
 - `EndpointAuthorizationTests` lists every anonymous route. Making an endpoint public means updating that list, which makes it a reviewed decision.
 - Resource-based rules belong in use cases, where the resource is loaded and unit-testable. Don't put them in endpoints.
 - The realm (roles, the admin user) is imported only while Keycloak's data volume is empty. Existing volumes need the roles added in the admin console, or the volume deleted.

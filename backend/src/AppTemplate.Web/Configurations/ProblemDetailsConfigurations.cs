@@ -9,7 +9,7 @@ namespace AppTemplate.Web.Configurations;
 /// (<c>application/problem+json</c>) carrying a <c>traceId</c>, whether the failure comes from
 /// request validation, a use case result, authentication, an unmatched route or an unhandled
 /// exception. Validation failures always use ASP.NET Core's shape, an <c>errors</c> object of
-/// camelCase field name to messages, so clients parse one format. See ADR 014.
+/// camelCase field name to messages, so clients parse one format. See ADR 009.
 /// </summary>
 public static class ProblemDetailsConfigurations
 {

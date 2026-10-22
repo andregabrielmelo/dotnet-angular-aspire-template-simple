@@ -32,22 +32,26 @@ Delete the `User` feature once you no longer need it as a reference.
 | Task | Command |
 |---|---|
 | Run everything | `dotnet run --project backend/src/AppTemplate.AppHost` |
-| Backend tests | `dotnet test backend/AppTemplate.slnx` |
+| Backend tests | `dotnet test backend/AppTemplate.slnx` (functional tests need Docker or Podman) |
 | Backend format check | `dotnet csharpier check .` (from `backend/`) |
 | New migration | see [backend/README.md](backend/README.md) |
 | Frontend dev server | `npm start` (from `frontend/`) |
 | Frontend tests | `npm run test` (from `frontend/`) |
 | Frontend lint | `npm run lint` (from `frontend/`) |
 
-Formatting and linting run automatically: a git pre-commit hook reformats staged C# files with csharpier (see `.husky/`), and CI enforces both csharpier and prettier/eslint on every push.
+There is no pre-commit hook: run `dotnet csharpier format .` (from `backend/`) and `npm run format` (from `frontend/`) before committing. CI enforces csharpier, prettier and eslint on every push.
 
 ## Where things live
 
 - `backend/` - .NET solution (Clean Architecture: Core/UseCases/Infrastructure/Web + tests)
 - `frontend/` - Angular app
 - `docs/` - Hugo docs site (architecture, ADRs, guides) - deployed to GitHub Pages
-- `.github/workflows/` - CI (build/test/lint per stack, CodeQL, docs deploy) - see `.github/workflows/README.md`
-- `scripts/` - repo tooling (currently just the rename script)
+- `.github/workflows/` - CI (build/test/lint per stack, PR conventions, secret scan, docs deploy) - see `.github/workflows/README.md`
+- `scripts/` - repo tooling (the rename script and the OpenAPI export)
+
+## Need more than this?
+
+This is the simple variant. Background jobs, a transactional outbox, auditing, caching, file storage, ETags and API versioning are built, tested and documented in the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template). Copy what you need from there, together with its ADR.
 
 ## Getting help with this template itself
 

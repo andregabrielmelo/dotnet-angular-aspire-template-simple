@@ -22,7 +22,6 @@ public class GetByIdEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users/{id}");
-        Version(ApiVersions.V1);                  // served at /v1/users/{id}; required (ADR 015)
         Policies(Permission.UsersRead);           // or AllowAnonymous(), always explicit
         Summary(s => { /* summary, examples, one line per status code */ });
         Tags("Users");
@@ -42,10 +41,10 @@ public sealed class GetByIdUserValidator : Validator<GetUserByIdRequest> { /* re
 public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, UserDto> { /* DTO mapping */ }
 ```
 
-- **Return types:** an endpoint returns `Results<Success, ProblemHttpResult>`, where the success type is `Ok<T>`, `Created<T>`, `NoContent` or `Accepted`. Every failure is a problem details response ([ADR 014](../../docs/content/architecture-decisions/adr-014-problem-details-error-contract.md)), so declare the possible ones with `ProducesProblem(status)` in `Description(...)`.
+- **Return types:** an endpoint returns `Results<Success, ProblemHttpResult>`, where the success type is `Ok<T>`, `Created<T>`, `NoContent` or `Accepted`. Every failure is a problem details response ([ADR 009](../../docs/content/architecture-decisions/adr-009-problem-details-error-contract.md)), so declare the possible ones with `ProducesProblem(status)` in `Description(...)`.
 - **Validators** check request shape: required fields, lengths, formats and cross-field rules. Business invariants belong in Core value objects and aggregates, not in validators.
 - **Mapping:** `Ardalis.Result` maps to HTTP only through `Web/Extensions/ResultExtensions.cs`. If a new mapping is needed, add it there.
-- **Rate limiting:** a global limiter covers every endpoint. Sensitive or expensive endpoints add a named policy from `RateLimitPolicies` with `Options(x => x.RequireRateLimiting(...))`. Limits key on the validated `sub`, or on the client address (trusted only from `ForwardedHeaders:KnownProxies`). Never use FastEndpoints' `Throttle(...)`.
+- **Rate limiting:** a global limiter covers every endpoint. Sensitive or expensive endpoints add a named policy in `RateLimitingConfigurations` and apply it with `Options(x => x.RequireRateLimiting(...))`. Limits key on the validated `sub`, or on the client address (trusted only from `ForwardedHeaders:KnownProxies`). Never use FastEndpoints' `Throttle(...)`.
 
 ## Use case shape
 
@@ -55,7 +54,7 @@ UseCases/<Feature>/<UseCase>/
   <UseCase>Handler.cs   // ICommandHandler / IQueryHandler, one Handle method
 ```
 
-- **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, `HybridCache`, `ICacheInvalidator`, and `ICurrentUser`. They never take infrastructure types. Work that must follow a change is an integration event raised by the entity (ADR 016), not a job enqueued by the handler.
+- **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types.
 - **Unit tests:** put them in `tests/AppTemplate.UnitTests/UseCases/<Feature>/<UseCase>HandlerTests.cs`.
 
 ## Adding a persistent type
@@ -73,4 +72,4 @@ UseCases/<Feature>/<UseCase>/
   - Add `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
   - Create clients with `factory.CreateAuthenticatedClient(sub, Permission.X)`.
 - **What to test:** for each endpoint, cover the success path, invalid input (400), no permission (403), a missing resource (404) and any conflict (409). Errors are problem details, so assert the status code and, where it matters, `errors`/`detail` (see `ProblemDetailsContractTests`).
-- **Replacing services:** use `factory.WithWebHostBuilder(b => b.ConfigureTestServices(...))`, as `CachingTests` and `CacheOutageTests` do.
+- **Replacing services:** use `factory.WithWebHostBuilder(b => b.ConfigureTestServices(...))`, as `DomainEventDispatchTests` and `RequestTimeoutTests` do.

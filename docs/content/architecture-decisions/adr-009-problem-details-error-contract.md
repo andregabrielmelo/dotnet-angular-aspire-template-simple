@@ -1,9 +1,9 @@
 ---
-title: "ADR 014: One problem details contract for every error"
-weight: 140
+title: "ADR 009: One problem details contract for every error"
+weight: 90
 ---
 
-# ADR 014: One problem details contract for every error
+# ADR 009: One problem details contract for every error
 
 ## Status
 Accepted.
@@ -19,7 +19,7 @@ Error responses came from five places, and each made its own choice:
 | Authentication and authorization | Empty 401 and 403 bodies, from both the API and the backend for frontend |
 | Unmatched routes and unhandled exceptions | An empty 404; FastEndpoints' own exception JSON |
 
-`MeEndpoint`, `ForgotPasswordEndpoint` and `RestoreJobsEndpoint` each had their own `switch`. A client (the Angular app, or a generated one) couldn't parse errors in one way, and the wrong status codes hid what had happened.
+Several endpoints, `MeEndpoint` among them, each had their own `switch`. A client (the Angular app, or a generated one) couldn't parse errors in one way, and the wrong status codes hid what had happened.
 
 ## Decision
 Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details response (`application/problem+json`) with `type`, `title`, `status`, optional `detail`, and a `traceId` extension. The `traceId` is the W3C trace id, which finds the request's logs and trace in the Aspire dashboard.
@@ -48,7 +48,7 @@ Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem det
 | `Unavailable` | 503 | generic |
 | `Error`, `CriticalError`, anything else | 500 | generic, never `result.Errors` |
 
-Messages from `Invalid`, `NotFound` and `Conflict` are written by use cases *for the caller*. The others may describe internals, so a use case logs those itself before returning them. 412 is reserved for a failed `If-Match` precondition.
+Messages from `Invalid`, `NotFound` and `Conflict` are written by use cases *for the caller*. The others may describe internals, so a use case logs those itself before returning them.
 
 **Backend for frontend.** It calls `AddProblemDetails()`, `UseExceptionHandler()` and `UseStatusCodePages()` too, so its own 401s (missing `X-CSRF`, no session) and 403s use the same contract. Proxied responses already have a body, so they pass through unchanged.
 

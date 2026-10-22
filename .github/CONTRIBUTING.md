@@ -33,7 +33,7 @@ This repo follows [Gitflow](https://www.atlassian.com/git/tutorials/comparing-wo
 
 ## Commits: Conventional Commits
 
-Every commit message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[(scope)][!]: <description>`, for example `feat(frontend): add password reset form` or `ci: pin actions to commit SHAs`.
+Every commit message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[(scope)][!]: <description>`, for example `feat(frontend): add a settings page` or `ci: pin actions to commit SHAs`.
 
 - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
 - The scope is optional and names the area touched: `backend`, `frontend`, `auth`, `apphost`, `ci`, and so on.

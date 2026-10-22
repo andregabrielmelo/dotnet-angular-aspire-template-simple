@@ -10,19 +10,15 @@ Where to look when the ADRs don't settle a design question. These are the source
 ## Templates this project builds on
 
 - [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture): the Core / UseCases / Infrastructure / Web layout ([ADR 001]({{< relref "architecture-decisions/adr-001-clean-architecture-layering" >}})), ports in `Core/Interfaces`, query services in UseCases, `Ardalis.Result`, `Ardalis.Specification` and REPR endpoints with FastEndpoints. Its [MailserverConfiguration](https://github.com/ardalis/CleanArchitecture/blob/main/src/Clean.Architecture.Infrastructure/Email/MailserverConfiguration.cs) is the shape of this template's typed settings.
-- [jasontaylordev/CleanArchitecture](https://github.com/jasontaylordev/CleanArchitecture): application pipeline behaviors (its [PerformanceBehaviour](https://github.com/jasontaylordev/CleanArchitecture/blob/main/src/Application/Common/Behaviours/PerformanceBehaviour.cs) is the model for `UseCases/Behaviors`) and domain enums (`Core/Enums`).
+- [jasontaylordev/CleanArchitecture](https://github.com/jasontaylordev/CleanArchitecture): application pipeline behaviors (its [PerformanceBehaviour](https://github.com/jasontaylordev/CleanArchitecture/blob/main/src/Application/Common/Behaviours/PerformanceBehaviour.cs) is the model for `UseCases/Behaviors`).
 
 ## Articles behind specific decisions
 
 By Milan Jovanović:
 
 - [Clean Architecture](https://milanjovanovic.tech/articles/clean-architecture): the layering as a whole.
-- [The Infrastructure layer in Clean Architecture](https://milanjovanovic.tech/blog/infrastructure-layer-clean-architecture): one folder per external concern in Infrastructure (Caching, Files, Images, Identity, Jobs, Outbox, Inbox, Auditing).
-- [Scaling the Outbox pattern](https://milanjovanovic.tech/blog/scaling-the-outbox-pattern): the relay, batching and `FOR UPDATE SKIP LOCKED` claims ([ADR 016]({{< relref "architecture-decisions/adr-016-transactional-outbox" >}})).
-- [Implementing the Inbox pattern for reliable message consumption](https://milanjovanovic.tech/blog/implementing-the-inbox-pattern-for-reliable-message-consumption): the idempotent consumer in `Infrastructure/Inbox`.
-- [Background jobs in Clean Architecture](https://milanjovanovic.tech/blog/background-jobs-clean-architecture): jobs as Infrastructure adapters around use cases ([ADR 012]({{< relref "architecture-decisions/adr-012-background-jobs-hangfire" >}}), [ADR 013]({{< relref "architecture-decisions/adr-013-recurring-job-definitions-and-job-management" >}})).
-- [Audit logging with EF Core](https://milanjovanovic.tech/blog/audit-logging-ef-core): the `SaveChanges` interceptor behind entity auditing ([ADR 017]({{< relref "architecture-decisions/adr-017-audit-log" >}})).
-- [Caching in Clean Architecture](https://milanjovanovic.tech/blog/caching-clean-architecture): application caching in Infrastructure behind a port ([ADR 011]({{< relref "architecture-decisions/adr-011-caching" >}})).
+- [The Infrastructure layer in Clean Architecture](https://milanjovanovic.tech/blog/infrastructure-layer-clean-architecture): one folder per external concern in Infrastructure (Data, Email).
+- The full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template), lists the articles behind its outbox, inbox, background jobs, audit log and caching, for when a project adds them.
 
 ## Blogs worth checking when in doubt
 
