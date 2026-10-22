@@ -29,70 +29,25 @@ public class GetUserHandlerTests
             .FirstOrDefaultAsync(Arg.Any<UserByIdSpecification>(), Arg.Any<CancellationToken>())
             .Returns(user);
 
-    private Task RepositoryWasQueried(int times) =>
-        _repository
-            .Received(times)
-            .FirstOrDefaultAsync(Arg.Any<UserByIdSpecification>(), Arg.Any<CancellationToken>());
-
     [Fact]
-    public async Task Handle_SecondRead_IsServedFromTheCache()
+    public async Task Handle_ExistingUser_ReturnsIt()
     {
         RepositoryReturns(CreateUser());
-        var handler = new GetUserHandler(_repository, TestCaches.Create());
 
-        var first = await handler.Handle(Query, CancellationToken.None);
-        var second = await handler.Handle(Query, CancellationToken.None);
-
-        Assert.True(first.IsSuccess);
-        Assert.Equal(first.Value, second.Value);
-        await RepositoryWasQueried(1);
-    }
-
-    [Fact]
-    public async Task Handle_MissingUser_IsNotFoundAndNotCached()
-    {
-        RepositoryReturns(null);
-        var handler = new GetUserHandler(_repository, TestCaches.Create());
-
-        var first = await handler.Handle(Query, CancellationToken.None);
-        var second = await handler.Handle(Query, CancellationToken.None);
-
-        Assert.Equal(ResultStatus.NotFound, first.Status);
-        Assert.Equal(ResultStatus.NotFound, second.Status);
-        await RepositoryWasQueried(2);
-    }
-
-    [Fact]
-    public async Task Handle_UserCreatedAfterAMiss_IsFoundRightAway()
-    {
-        RepositoryReturns(null);
-        var handler = new GetUserHandler(_repository, TestCaches.Create());
-        await handler.Handle(Query, CancellationToken.None);
-
-        RepositoryReturns(CreateUser());
-        var result = await handler.Handle(Query, CancellationToken.None);
+        var result = await new GetUserHandler(_repository).Handle(Query, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(UserName.From("Ada Lovelace"), result.Value.Name);
+        Assert.Equal("+44 5551234 x7", result.Value.PhoneNumber!.ToString());
     }
 
     [Fact]
-    public async Task Handle_OnAnotherInstance_ReadsTheSerializedEntryFromTheDistributedCache()
+    public async Task Handle_MissingUser_IsNotFound()
     {
-        RepositoryReturns(CreateUser());
-        var sharedL2 = TestCaches.CreateSharedDistributedCache();
+        RepositoryReturns(null);
 
-        var fromDatabase = await new GetUserHandler(
-            _repository,
-            TestCaches.Create(sharedL2)
-        ).Handle(Query, CancellationToken.None);
-        var fromL2 = await new GetUserHandler(_repository, TestCaches.Create(sharedL2)).Handle(
-            Query,
-            CancellationToken.None
-        );
+        var result = await new GetUserHandler(_repository).Handle(Query, CancellationToken.None);
 
-        await RepositoryWasQueried(1);
-        Assert.Equal(fromDatabase.Value.Name, fromL2.Value.Name);
-        Assert.Equal(fromDatabase.Value.PhoneNumber, fromL2.Value.PhoneNumber);
-        Assert.Equal("+44 5551234 x7", fromL2.Value.PhoneNumber!.ToString());
+        Assert.Equal(ResultStatus.NotFound, result.Status);
     }
 }

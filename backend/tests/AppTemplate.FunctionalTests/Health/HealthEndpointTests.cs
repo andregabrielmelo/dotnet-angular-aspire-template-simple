@@ -5,7 +5,7 @@ using Xunit;
 namespace AppTemplate.FunctionalTests.Health;
 
 /// <summary>
-/// The three probes exist in a non-Development host (these tests run as "Testing"), and
+/// The two probes exist in a non-Development host (these tests run as "Testing"), and
 /// readiness follows Postgres while liveness doesn't.
 /// </summary>
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
@@ -15,7 +15,6 @@ public class HealthEndpointTests(AppTemplateWebApplicationFactory factory)
     [Theory]
     [InlineData("/alive")]
     [InlineData("/health")]
-    [InlineData("/health/dependencies")]
     public async Task NonDevelopmentHost_ExposesEveryProbeAnonymously(string path)
     {
         var response = await factory.CreateClient().GetAsync(path);

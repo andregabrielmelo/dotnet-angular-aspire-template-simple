@@ -6,7 +6,7 @@
 # Usage: scripts/export-openapi.sh [--no-build]
 #
 # The API starts briefly on a loopback port to build the document (see OpenApiExport.cs). It
-# never connects to Postgres, Redis or Keycloak, so the values below only satisfy startup
+# never connects to Postgres or Keycloak, so the values below only satisfy startup
 # validation and must never be real credentials.
 set -euo pipefail
 

@@ -1,9 +1,8 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Delete;
 
-public class DeleteUserHandler(IRepository<User> _repository, ICacheInvalidator _cacheInvalidator)
+public class DeleteUserHandler(IRepository<User> _repository)
     : Mediator.ICommandHandler<DeleteUserCommand, Result>
 {
     public async ValueTask<Result> Handle(
@@ -16,7 +15,6 @@ public class DeleteUserHandler(IRepository<User> _repository, ICacheInvalidator 
             return Result.NotFound();
 
         await _repository.DeleteAsync(user, cancellationToken);
-        await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
         return Result.Success();
     }
 }

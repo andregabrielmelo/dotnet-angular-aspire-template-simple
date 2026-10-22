@@ -6,7 +6,7 @@ namespace AppTemplate.FunctionalTests.Security;
 
 /// <summary>
 /// The API's minimal header set: <c>nosniff</c> on every response, and <c>no-store</c> on
-/// responses for a signed-in caller, including errors and output-cached responses.
+/// responses for a signed-in caller, including errors.
 /// </summary>
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class ApiSecurityHeadersTests(AppTemplateWebApplicationFactory factory)
@@ -36,23 +36,6 @@ public class ApiSecurityHeadersTests(AppTemplateWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         AssertNosniff(response);
         Assert.True(response.Headers.CacheControl?.NoStore);
-    }
-
-    [Fact]
-    public async Task OutputCachedResponse_IsStillNoStoreForTheBrowser()
-    {
-        var client = factory.CreateAuthenticatedClient(NewSubject(), Permission.UsersRead);
-
-        await client.GetAsync("/v1/users"); // stores it in the output cache
-        var cached = await client.GetAsync("/v1/users");
-
-        Assert.Equal(HttpStatusCode.OK, cached.StatusCode);
-        Assert.True(
-            cached.Headers.Age is not null,
-            "expected the second response from the output cache"
-        );
-        AssertNosniff(cached);
-        Assert.True(cached.Headers.CacheControl?.NoStore);
     }
 
     [Fact]

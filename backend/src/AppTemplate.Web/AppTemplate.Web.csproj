@@ -7,8 +7,6 @@
   <ItemGroup>
     <PackageReference Include="Ardalis.Result" />
     <PackageReference Include="Aspire.Keycloak.Authentication" />
-    <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" />
-    <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="FastEndpoints" />
     <PackageReference Include="FastEndpoints.Swagger" />
@@ -17,7 +15,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
     <!-- Web is the startup project for `dotnet ef` (see CLAUDE.md), which needs the design-time
          package here. The Npgsql provider comes transitively from Infrastructure. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">

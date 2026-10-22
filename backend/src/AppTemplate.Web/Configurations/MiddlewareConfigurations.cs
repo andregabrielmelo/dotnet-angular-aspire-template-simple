@@ -39,9 +39,6 @@ public static class MiddlewareConfigurations
         app.UseAuthorization();
         // Inside the status code pages middleware, so a timeout's 504 gets a problem body.
         app.UseRequestTimeouts();
-        // After authorization: a cached response is only served to callers who passed the
-        // endpoint's policies (see AuthorizedSharedResponsePolicy).
-        app.UseOutputCache();
 
         app.UseFastEndpoints(config =>
         {

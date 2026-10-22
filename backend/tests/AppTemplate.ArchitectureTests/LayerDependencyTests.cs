@@ -41,8 +41,7 @@ public class LayerDependencyTests
             "Microsoft.EntityFrameworkCore",
             "Npgsql",
             "Microsoft.AspNetCore",
-            "MailKit",
-            "StackExchange.Redis"
+            "MailKit"
         );
 
     [Fact]

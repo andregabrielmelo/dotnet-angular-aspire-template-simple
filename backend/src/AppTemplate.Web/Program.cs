@@ -14,7 +14,6 @@ builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger, b
 builder.Services.AddServiceConfigurations(startupLogger, builder);
 builder.Services.AddAuthenticationConfigurations(startupLogger, builder);
 builder.Services.AddAuthorizationConfigurations(startupLogger, builder);
-builder.Services.AddCachingConfigurations(startupLogger, builder);
 builder.Services.AddProblemDetailsConfigurations(startupLogger);
 builder.Services.AddForwardedHeadersConfigurations(builder.Configuration);
 builder.Services.AddRateLimitingConfigurations(builder.Configuration);

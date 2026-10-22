@@ -21,7 +21,6 @@ public class EndpointAuthorizationTests(AppTemplateWebApplicationFactory factory
         // credentials, and they answer with only a status word.
         "ANY /alive",
         "ANY /health",
-        "ANY /health/dependencies",
     ];
 
     private IEnumerable<RouteEndpoint> RouteEndpoints() =>

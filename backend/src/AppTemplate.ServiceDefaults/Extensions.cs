@@ -19,7 +19,6 @@ public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
-    private const string DependenciesEndpointPath = "/health/dependencies";
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
@@ -83,8 +82,7 @@ public static class Extensions
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation()
-                    // A span per SQL command; Npgsql emits them itself. (Redis spans come from
-                    // Aspire's Redis client integration.)
+                    // A span per SQL command; Npgsql emits them itself.
                     .AddSource("Npgsql");
             });
 
@@ -128,16 +126,13 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Three probes, mapped in every environment. They are anonymous, excluded from rate
+    /// Two probes, mapped in every environment. They are anonymous, excluded from rate
     /// limiting and tracing, and answer with only the status word, so they reveal nothing about
     /// the dependencies themselves:
     /// <list type="bullet">
     /// <item><c>/alive</c> (liveness): the process is up. Failing means "restart me".</item>
     /// <item><c>/health</c> (readiness): every required dependency (<see cref="HealthCheckTags.Ready"/>,
     /// such as Postgres) is reachable. Failing (503) means "send no traffic here".</item>
-    /// <item><c>/health/dependencies</c>: optional dependencies (<see cref="HealthCheckTags.Dependency"/>,
-    /// such as Redis). Always 200, reporting Degraded when one is down, so an orchestrator
-    /// never pulls an instance that can still serve without them.</item>
     /// </list>
     /// </summary>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
@@ -154,21 +149,6 @@ public static class Extensions
             )
             .AllowAnonymous();
 
-        app.MapHealthChecks(
-                DependenciesEndpointPath,
-                new HealthCheckOptions
-                {
-                    Predicate = r => r.Tags.Contains(HealthCheckTags.Dependency),
-                    ResultStatusCodes =
-                    {
-                        [HealthStatus.Healthy] = StatusCodes.Status200OK,
-                        [HealthStatus.Degraded] = StatusCodes.Status200OK,
-                        [HealthStatus.Unhealthy] = StatusCodes.Status200OK,
-                    },
-                }
-            )
-            .AllowAnonymous();
-
         return app;
     }
 }
@@ -181,7 +161,4 @@ public static class HealthCheckTags
 
     /// <summary>Readiness: a required dependency. Unhealthy takes the instance out of rotation.</summary>
     public const string Ready = "ready";
-
-    /// <summary>An optional dependency: reported by /health/dependencies, never gates readiness.</summary>
-    public const string Dependency = "dependency";
 }
