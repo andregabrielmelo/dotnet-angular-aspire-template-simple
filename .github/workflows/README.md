@@ -8,16 +8,6 @@ Restores (`--locked-mode`, against the committed `packages.lock.json` files), fo
 
 Installs, regenerates the API types from `backend/openapi/v1.json` and fails if `src/app/core/api/api-types.ts` is stale (so it also runs when only `backend/openapi/` changed), format-checks (`npm run format:check`, prettier), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), builds the Angular app, and checks the built `index.html` has no inline script or event handler the backend for frontend's Content-Security-Policy would block (`npm run csp:check`). Triggers on pushes to `main`/`develop` that touch `frontend/**` and on every PR. On a PR, the build only runs if it touches `frontend/**`, but the `Frontend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)).
 
-## `e2e.yml`
-
-Starts the whole AppHost with [`Aspire.Hosting.Testing`](https://learn.microsoft.com/dotnet/aspire/testing/overview) (Postgres, Redis, Keycloak and Mailpit containers, the API, the backend for frontend and the Angular dev server) and drives a few critical browser flows with [Playwright](https://playwright.dev/dotnet/): registering and signing in through Keycloak, editing the profile, and signing out (`backend/tests/AppTemplate.EndToEndTests`). Linux only, since it needs Docker.
-- Containers get no data volumes and no persistent lifetime here, so every run starts from an empty database and a freshly imported realm.
-- The ASP.NET Core development certificate is created and trusted (`dotnet dev-certs https --trust` plus `SSL_CERT_DIR`), because the backend for frontend calls the API over HTTPS.
-- On failure, the Playwright traces (screenshots, DOM snapshots, network) are uploaded as the `playwright-traces` artifact. Open one with `npx playwright show-trace <file>.zip`.
-- `backend-build.yml` filters these tests out (`Category!=RequiresFullStack`).
-
-Same trigger and gate pattern as the build workflows: it runs on pushes to `main`/`develop` that touch `backend/**` or `frontend/**`, and on every PR, but only does work when the PR touches either. The `End-to-end CI` gate check always reports.
-
 ## `pr-conventions.yml`
 
 Runs on every PR and enforces the [Git workflow rules](../CONTRIBUTING.md#branching-gitflow) in plain shell (no third-party actions):
@@ -33,10 +23,6 @@ Runs [gitleaks](https://github.com/gitleaks/gitleaks) over the **whole git histo
 - Run it locally with `gitleaks git .` ([install](https://github.com/gitleaks/gitleaks#installing)).
 
 The job is named `Secret scan` and has no path filter, so it always reports and is safe to require. It is not yet in the `main`/`develop` ruleset; add it there to block merges on findings.
-
-## `codeql-analysis.yml`
-
-Monthly (and on-demand) security scan of both the C# backend and the TypeScript/Angular frontend using CodeQL's `security-and-quality` query suite. Not run on every push - it's slow and isn't meant to gate PRs.
 
 ## `hugo-docs.yml`
 
