@@ -14,7 +14,7 @@ using Yarp.ReverseProxy.Forwarder;
 namespace AppTemplate.BackendForFrontend.Tests;
 
 /// <summary>
-/// What the browser calls (<c>/api/v1/...</c>) is what reaches the Web API (<c>/v1/...</c>):
+/// What the browser calls (<c>/api/...</c>) is what reaches the Web API (<c>/...</c>):
 /// YARP strips <c>/api</c>, adds the session's access token on the authenticated route, and
 /// never forwards the cookie. The Web API is replaced by a handler that records each request.
 /// </summary>
@@ -37,16 +37,16 @@ public class ProxyRoutingTests : IClassFixture<ProxyRoutingTests.ProxyFactory>
         };
 
     [Fact]
-    public async Task SignedInCall_ReachesTheVersionedApiRouteWithTheAccessToken()
+    public async Task SignedInCall_ReachesTheApiRouteWithTheAccessToken()
     {
         var client = _factory.CreateBrowserClient();
         await client.PostAsync(ProxyFactory.SignInPath, null);
 
-        var response = await client.SendAsync(ApiRequest(HttpMethod.Get, "/api/v1/users/me"));
+        var response = await client.SendAsync(ApiRequest(HttpMethod.Get, "/api/users/me"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var forwarded = Assert.Single(_factory.Api.Requests);
-        Assert.Equal("/v1/users/me", forwarded.Path);
+        Assert.Equal("/users/me", forwarded.Path);
         Assert.Equal($"Bearer {AccessToken}", forwarded.Authorization);
         Assert.False(forwarded.HadCookie);
     }
@@ -56,7 +56,7 @@ public class ProxyRoutingTests : IClassFixture<ProxyRoutingTests.ProxyFactory>
     {
         var response = await _factory
             .CreateBrowserClient()
-            .SendAsync(ApiRequest(HttpMethod.Get, "/api/v1/users/me"));
+            .SendAsync(ApiRequest(HttpMethod.Get, "/api/users/me"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Empty(_factory.Api.Requests);

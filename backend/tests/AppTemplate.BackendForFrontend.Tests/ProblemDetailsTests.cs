@@ -29,7 +29,7 @@ public class ProblemDetailsTests(BackendForFrontendFactory factory)
 
     [Fact]
     public async Task MissingCsrfHeader_IsA401Problem() =>
-        await AssertUnauthorizedProblemAsync(await _client.GetAsync("/api/v1/users/me"));
+        await AssertUnauthorizedProblemAsync(await _client.GetAsync("/api/users/me"));
 
     [Fact]
     public async Task SessionEndpointWithoutSession_IsA401Problem()

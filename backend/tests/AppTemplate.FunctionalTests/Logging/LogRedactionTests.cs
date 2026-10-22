@@ -149,9 +149,9 @@ public class LogRedactionTests(LogRedactionTests.CapturingFactory factory)
         var subject = $"sub-{Guid.NewGuid():N}";
         var me = await factory
             .CreateAuthenticatedClient(subject)
-            .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
+            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
         var client = factory.CreateAuthenticatedClient(subject, Permission.UsersWrite);
-        var request = new HttpRequestMessage(HttpMethod.Put, $"/v1/users/{me!.Id}")
+        var request = new HttpRequestMessage(HttpMethod.Put, $"/users/{me!.Id}")
         {
             Content = JsonContent.Create(
                 new
@@ -168,12 +168,12 @@ public class LogRedactionTests(LogRedactionTests.CapturingFactory factory)
         request.Headers.TryAddWithoutValidation("Cookie", "session=cookie-value-3e8f");
 
         var response = await client.SendAsync(request);
-        await factory.Logs.WaitForAsync($"/v1/users/{me.Id}");
+        await factory.Logs.WaitForAsync($"/users/{me.Id}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var requestLine = factory
             .Logs.Console.Split('\n')
-            .Single(line => line.Contains($"HTTP PUT /v1/users/{me.Id} responded 200"));
+            .Single(line => line.Contains($"HTTP PUT /users/{me.Id} responded 200"));
         Assert.Contains(subject, requestLine);
         Assert.Contains("EndpointName", requestLine);
         Assert.Matches("[0-9a-f]{32} [0-9a-f]{16}", requestLine); // trace and span ids

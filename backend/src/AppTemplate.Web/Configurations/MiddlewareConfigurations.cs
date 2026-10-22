@@ -42,11 +42,6 @@ public static class MiddlewareConfigurations
 
         app.UseFastEndpoints(config =>
         {
-            // Routes become /v{n}/..., from each endpoint's explicit Version(n). There is no
-            // default version, so an endpoint that forgets Version() stays unversioned and
-            // ApiVersioningTests fails (ADR 015).
-            config.Versioning.Prefix = ApiVersions.Prefix;
-            config.Versioning.PrependToRoute = true;
             config.Errors.ResponseBuilder =
                 ProblemDetailsConfigurations.FastEndpointsValidationProblem;
             config.Errors.ProducesMetadataType = typeof(HttpValidationProblemDetails);

@@ -2,7 +2,6 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Update;
-using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 using AppTemplate.Web.Validation;
 
@@ -36,7 +35,6 @@ public class UpdateEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Put("/users/{id}");
-        Version(ApiVersions.V1);
 
         Summary(s =>
         {

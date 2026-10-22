@@ -43,7 +43,7 @@ public class DomainEventDispatchTests(AppTemplateWebApplicationFactory factory)
         var meClient = app.CreateClient();
         meClient.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, subject);
 
-        var response = await meClient.GetAsync("/v1/users/me"); // provisions: an INSERT
+        var response = await meClient.GetAsync("/users/me"); // provisions: an INSERT
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(dispatcher.Calls > 0);

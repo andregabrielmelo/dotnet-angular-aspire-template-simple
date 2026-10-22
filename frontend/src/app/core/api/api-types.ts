@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-  '/v1/users/{userId}': {
+  '/users/{userId}': {
     parameters: {
       query?: never;
       header?: never;
@@ -24,7 +24,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/v1/users/{id}': {
+  '/users/{id}': {
     parameters: {
       query?: never;
       header?: never;
@@ -48,7 +48,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/v1/users': {
+  '/users': {
     parameters: {
       query?: never;
       header?: never;
@@ -68,7 +68,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/v1/users/me': {
+  '/users/me': {
     parameters: {
       query?: never;
       header?: never;

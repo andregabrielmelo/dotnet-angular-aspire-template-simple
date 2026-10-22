@@ -20,7 +20,7 @@ describe('CurrentUserService', () => {
 
   it('loads the profile once and answers permission checks from it', () => {
     service.load().subscribe();
-    httpMock.expectOne('api/v1/users/me').flush({
+    httpMock.expectOne('api/users/me').flush({
       id: 1,
       name: 'Ada',
       email: 'ada@example.com',
@@ -28,7 +28,7 @@ describe('CurrentUserService', () => {
     });
 
     service.load().subscribe();
-    httpMock.expectNone('api/v1/users/me');
+    httpMock.expectNone('api/users/me');
 
     expect(service.profile()?.name).toBe('Ada');
     expect(service.hasPermission(Permission.UsersRead)).toBe(true);
@@ -37,11 +37,11 @@ describe('CurrentUserService', () => {
 
   it('has no permissions when the profile cannot be loaded, and retries later', () => {
     service.load().subscribe();
-    httpMock.expectOne('api/v1/users/me').flush(null, { status: 500, statusText: 'Error' });
+    httpMock.expectOne('api/users/me').flush(null, { status: 500, statusText: 'Error' });
 
     expect(service.hasPermission(Permission.UsersRead)).toBe(false);
 
     service.load().subscribe();
-    httpMock.expectOne('api/v1/users/me').flush(null, { status: 500, statusText: 'Error' });
+    httpMock.expectOne('api/users/me').flush(null, { status: 500, statusText: 'Error' });
   });
 });

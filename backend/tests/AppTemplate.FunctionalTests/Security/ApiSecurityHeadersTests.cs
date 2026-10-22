@@ -17,9 +17,7 @@ public class ApiSecurityHeadersTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task AuthenticatedResponse_IsNosniffAndNoStore()
     {
-        var response = await factory
-            .CreateAuthenticatedClient(NewSubject())
-            .GetAsync("/v1/users/me");
+        var response = await factory.CreateAuthenticatedClient(NewSubject()).GetAsync("/users/me");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         AssertNosniff(response);
@@ -31,7 +29,7 @@ public class ApiSecurityHeadersTests(AppTemplateWebApplicationFactory factory)
     {
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync("/v1/users/0"); // fails validation
+            .GetAsync("/users/0"); // fails validation
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         AssertNosniff(response);
@@ -41,7 +39,7 @@ public class ApiSecurityHeadersTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task AnonymousResponse_IsNosniffWithoutCacheControl()
     {
-        var response = await factory.CreateClient().GetAsync("/v1/users/me");
+        var response = await factory.CreateClient().GetAsync("/users/me");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         AssertNosniff(response);

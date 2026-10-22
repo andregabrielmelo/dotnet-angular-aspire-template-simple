@@ -1,7 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users.Delete;
-using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.UserFeatures;
@@ -17,7 +16,6 @@ public class DeleteEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Delete("/users/{UserId}");
-        Version(ApiVersions.V1);
         Policies(Permission.UsersDelete);
 
         Summary(s =>

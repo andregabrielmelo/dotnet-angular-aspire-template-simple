@@ -2,7 +2,6 @@
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Get;
-using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.UserFeatures;
@@ -18,7 +17,6 @@ public class GetByIdEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users/{id}");
-        Version(ApiVersions.V1);
         Policies(Permission.UsersRead);
 
         Summary(s =>

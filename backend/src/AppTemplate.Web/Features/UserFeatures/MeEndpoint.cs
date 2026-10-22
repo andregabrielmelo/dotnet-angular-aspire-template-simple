@@ -2,7 +2,6 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users.GetOrCreateCurrent;
-using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.UserFeatures;
@@ -25,7 +24,6 @@ public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
     public override void Configure()
     {
         Get("/users/me");
-        Version(ApiVersions.V1);
 
         Summary(s =>
         {

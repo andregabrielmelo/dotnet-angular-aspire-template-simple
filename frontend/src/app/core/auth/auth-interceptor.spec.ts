@@ -28,10 +28,10 @@ describe('authInterceptor', () => {
   afterEach(() => httpMock.verify());
 
   it('adds the CSRF header to API and backend-for-frontend requests', () => {
-    http.get('api/v1/users/me').subscribe();
+    http.get('api/users/me').subscribe();
     http.get('backend-for-frontend/user').subscribe();
 
-    expect(httpMock.expectOne('api/v1/users/me').request.headers.get(CSRF_HEADER)).toBe('1');
+    expect(httpMock.expectOne('api/users/me').request.headers.get(CSRF_HEADER)).toBe('1');
     expect(httpMock.expectOne('backend-for-frontend/user').request.headers.get(CSRF_HEADER)).toBe(
       '1',
     );
@@ -44,9 +44,9 @@ describe('authInterceptor', () => {
   });
 
   it('sends the user back through login when the API answers 401', () => {
-    http.get('api/v1/users/me').subscribe({ error: () => undefined });
+    http.get('api/users/me').subscribe({ error: () => undefined });
 
-    httpMock.expectOne('api/v1/users/me').flush(null, { status: 401, statusText: 'Unauthorized' });
+    httpMock.expectOne('api/users/me').flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(authService.clearUser).toHaveBeenCalled();
     expect(authService.login).toHaveBeenCalledWith('/home');

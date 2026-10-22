@@ -7,7 +7,7 @@
     "version": "v1"
   },
   "paths": {
-    "/v1/users/{userId}": {
+    "/users/{userId}": {
       "delete": {
         "tags": [
           "Users"
@@ -72,7 +72,7 @@
         ]
       }
     },
-    "/v1/users/{id}": {
+    "/users/{id}": {
       "get": {
         "tags": [
           "Users"
@@ -232,7 +232,7 @@
         ]
       }
     },
-    "/v1/users": {
+    "/users": {
       "get": {
         "tags": [
           "Users"
@@ -316,7 +316,7 @@
         ]
       }
     },
-    "/v1/users/me": {
+    "/users/me": {
       "get": {
         "tags": [
           "Users"

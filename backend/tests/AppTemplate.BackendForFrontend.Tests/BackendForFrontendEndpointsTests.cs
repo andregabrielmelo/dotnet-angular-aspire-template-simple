@@ -51,7 +51,7 @@ public class BackendForFrontendEndpointsTests(BackendForFrontendFactory factory)
     }
 
     [Theory]
-    [InlineData("/api/v1/users/me")]
+    [InlineData("/api/users/me")]
     [InlineData("/backend-for-frontend/user")]
     public async Task CallsWithoutCsrfHeader_AreRejected(string path)
     {

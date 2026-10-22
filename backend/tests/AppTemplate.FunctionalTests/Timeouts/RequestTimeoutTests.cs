@@ -62,7 +62,7 @@ public class RequestTimeoutTests(RequestTimeoutTests.ShortTimeoutFactory factory
         var query = new SlowDatabaseQuery();
         var stopwatch = Stopwatch.StartNew();
 
-        var response = await ClientWith(query).GetAsync("/v1/users");
+        var response = await ClientWith(query).GetAsync("/users");
 
         await AssertTimeoutProblemAsync(response);
         Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(10), $"took {stopwatch.Elapsed}");
@@ -75,7 +75,7 @@ public class RequestTimeoutTests(RequestTimeoutTests.ShortTimeoutFactory factory
     {
         var call = new SlowHttpCall();
 
-        var response = await ClientWith(call).GetAsync("/v1/users");
+        var response = await ClientWith(call).GetAsync("/users");
 
         await AssertTimeoutProblemAsync(response);
         Assert.True(await call.Handler.Cancelled.Task.WaitAsync(TimeSpan.FromSeconds(10)));
