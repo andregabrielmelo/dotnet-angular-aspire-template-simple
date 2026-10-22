@@ -6,27 +6,27 @@
 @token=paste-an-access-token-here
 
 // List all users
-GET {{host}}:{{port}}/v1/users
+GET {{host}}:{{port}}/users
 Authorization: Bearer {{token}}
 
 ###
 
 // Get a specific user
 @id_to_get=1
-GET {{host}}:{{port}}/v1/users/{{id_to_get}}
+GET {{host}}:{{port}}/users/{{id_to_get}}
 Authorization: Bearer {{token}}
 
 ###
 
 // Get (and on first call, create) the current user from the token's claims
-GET {{host}}:{{port}}/v1/users/me
+GET {{host}}:{{port}}/users/me
 Authorization: Bearer {{token}}
 
 ###
 
 // Update a user
 @id_to_update=3
-PUT {{host}}:{{port}}/v1/users/{{id_to_update}}
+PUT {{host}}:{{port}}/users/{{id_to_update}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
@@ -41,5 +41,5 @@ Content-Type: application/json
 
 // Delete a user
 @id_to_delete=1
-DELETE {{host}}:{{port}}/v1/users/{{id_to_delete}}
+DELETE {{host}}:{{port}}/users/{{id_to_delete}}
 Authorization: Bearer {{token}}

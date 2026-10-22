@@ -17,7 +17,7 @@ namespace AppTemplate.FunctionalTests.Events;
 /// <summary>
 /// In-process domain events are dispatched by <c>EventDispatchInterceptor</c> right after
 /// <c>SaveChanges</c> succeeds. These tests pin down what that means (see
-/// docs/content/reliability-semantics.md): a failing handler can't undo the write, so it must
+/// docs/content/design-decisions.md): a failing handler can't undo the write, so it must
 /// not fail the request either; and inside an explicit transaction, dispatch happens before
 /// the transaction commits.
 /// </summary>
@@ -84,7 +84,7 @@ public class DomainEventDispatchTests(AppTemplateWebApplicationFactory factory)
         }
 
         // Dispatched, although the change it reports was rolled back: anything that must not
-        // happen on rollback belongs in the outbox, not in a domain event handler.
+        // happen on rollback doesn't belong in a domain event handler.
         Assert.Equal(1, dispatcher.Calls);
         Assert.False(await context.Users.AnyAsync(user => user.ExternalId == externalId));
     }

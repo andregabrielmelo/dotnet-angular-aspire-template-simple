@@ -6,9 +6,9 @@ namespace AppTemplate.Infrastructure.Data;
 /// Dispatches in-process domain events once <c>SaveChanges</c> has succeeded. The changes are
 /// already saved at that point, so a failing handler can't undo them, and it must not fail the
 /// request either: a 500 for a write that happened invites the client to repeat it. The
-/// failure is logged and the request carries on. Domain events are therefore best-effort; work
-/// that must happen reliably goes through the transactional outbox (integration events). See
-/// docs/content/reliability-semantics.md.
+/// failure is logged and the request carries on. Domain events are therefore best-effort: work
+/// that must happen reliably needs a transactional outbox, which this template leaves out. See
+/// docs/content/design-decisions.md.
 /// </summary>
 internal sealed partial class EventDispatchInterceptor(
     IDomainEventDispatcher domainEventDispatcher,
