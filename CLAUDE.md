@@ -12,6 +12,8 @@ It is the **simple** variant of [dotnet-angular-aspire-template](https://github.
 
 Every project, namespace, folder, the Postgres database name, and the Keycloak realm/client names are currently named `AppTemplate` / `apptemplate`. When someone actually uses this template for a new project, they run `scripts/rename-template.sh YourProjectName` (a plain find-and-replace, not a `dotnet new` template engine) as their first step - keep that in mind if a task looks like it wants a "real" project name; the placeholder is intentional.
 
+Step-by-step guides live in `docs/content/guides/`: `project-map.md` (layout, a request's path, vocabulary), `adding-a-feature.md` (a complete, tested `Project` example through every layer, including the frontend and tests) and `cookbook.md` (permissions, public endpoints, email, domain events, settings, external services, schema changes). Follow them when building something.
+
 Full documentation (architecture, design decisions, ADRs) lives in `docs/` (a Hugo site) and is authoritative for *why* things are built this way - read it before making architectural changes: `docs/content/design-decisions.md` and `docs/content/architecture-decisions/adr-*.md`. The template builds on ardalis/CleanArchitecture and jasontaylordev/CleanArchitecture; when the ADRs don't settle a structural question, `docs/content/further-reading.md` lists the sources to check.
 
 ## Commands

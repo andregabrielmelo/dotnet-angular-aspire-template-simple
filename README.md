@@ -35,6 +35,7 @@ See [Getting Started](https://andregabrielmelo.github.io/dotnet-angular-aspire-t
 ## Docs
 
 - [Getting Started](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/getting-started/)
+- [Guides](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/guides/): how the project fits together, adding a feature step by step, and common tasks
 - [Goals & Design Decisions](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/design-decisions/)
 - [Architecture Decisions (ADRs)](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/architecture-decisions/)
 - [Further reading](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/further-reading/)

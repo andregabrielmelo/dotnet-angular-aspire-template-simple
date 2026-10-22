@@ -39,6 +39,8 @@ The Aspire dashboard opens and starts Postgres (in a container, with a persisten
 
 The `User` aggregate/feature (`Core/Aggregates/UserAggregate`, `UseCases/Users`, `Web/Features/UserFeatures`) is the reference example - a full vertical slice from domain entity to HTTP endpoint. Copy its shape for your first real feature, then delete `User` once you no longer need it as a reference.
 
+[Adding a feature, step by step]({{< relref "guides/adding-a-feature" >}}) walks through exactly that, with a complete `Project` example. Start with [How the project fits together]({{< relref "guides/project-map" >}}) for a map of the code.
+
 ## 6. Migrations
 
 From the `backend` directory:
@@ -54,6 +56,7 @@ Migrations are applied automatically on startup in Development (see `DatabaseCon
 
 ## Further reading
 
+- [Guides]({{< relref "guides" >}}) - how the project fits together, adding a feature, common tasks
 - [Goals & Design Decisions]({{< relref "design-decisions" >}}) - why the stack looks the way it does
 - [Architecture Decisions]({{< relref "architecture-decisions" >}}) - specific decisions and their trade-offs
 - [Best Practices]({{< relref "best-practices" >}}) - explicit conventions to follow as the project grows

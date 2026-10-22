@@ -4,7 +4,7 @@ applyTo: "backend/**"
 
 # Backend instructions
 
-These extend [`AGENTS.md`](../../AGENTS.md); read it first. This file covers only the details of writing backend code.
+These extend [`AGENTS.md`](../../AGENTS.md); read it first. This file covers only the details of writing backend code. For a complete worked example of every backend layer, see [Adding a feature, step by step](../../docs/content/guides/adding-a-feature.md) (steps 2 to 7 and 9).
 
 ## Endpoint shape
 
