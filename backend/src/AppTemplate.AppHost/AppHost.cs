@@ -51,7 +51,7 @@ var api = builder
     .WithReference(cache)
     .WaitFor(cache)
     .WithEnvironment("Keycloak__Admin__ClientSecret", userAdminSecret)
-    // Background jobs (welcome emails) send through Mailpit too.
+    // The API's own emails (IEmailSender) go to Mailpit too.
     .WithEnvironment(
         "Mailserver__Hostname",
         mailpit.GetEndpoint("smtp").Property(EndpointProperty.Host)
@@ -63,12 +63,7 @@ var api = builder
     .WaitFor(mailpit)
     .WithHttpEndpoint(name: "api-http")
     // Readiness (Postgres reachable): resources that WaitFor(api) start only once it's ready.
-    .WithHttpHealthCheck("/health")
-    // Hangfire dashboard (Development only, local requests only).
-    .WithUrlForEndpoint(
-        "http",
-        _ => new ResourceUrlAnnotation { Url = "/hangfire", DisplayText = "Jobs dashboard" }
-    );
+    .WithHttpHealthCheck("/health");
 
 // Angular dev server - only reached through the backend for frontend, never directly.
 var frontend = builder

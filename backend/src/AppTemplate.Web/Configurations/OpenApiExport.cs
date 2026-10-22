@@ -7,7 +7,7 @@ namespace AppTemplate.Web.Configurations;
 /// (<c>backend/openapi/v1.json</c>) that the Angular types are generated from:
 /// <code>dotnet run --project src/AppTemplate.Web --no-launch-profile -- --OpenApi:ExportPath=../../openapi/v1.json</code>
 /// The path is relative to the Web project. Runs right after the endpoints are mapped and before
-/// anything touches Postgres, Redis, Keycloak or Hangfire, so it needs no running services.
+/// anything touches Postgres, Redis or Keycloak, so it needs no running services.
 /// </summary>
 public static class OpenApiExport
 {

@@ -5,5 +5,7 @@ namespace AppTemplate.Core.Aggregates.UserAggregate.Events;
 /// Keycloak <c>sub</c> rather than the row id: it identifies the user just as well, and it's
 /// known when the event is raised, before the row is saved.
 /// </summary>
-[IntegrationEvent("user.provisioned", 1)]
-public sealed record UserProvisioned(string ExternalId) : IIntegrationEvent;
+public sealed class UserProvisioned(string externalId) : DomainEventBase
+{
+    public string ExternalId { get; } = externalId;
+}

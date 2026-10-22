@@ -1,9 +1,5 @@
-using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
-using AppTemplate.Infrastructure.Jobs.Options;
-using AppTemplate.Infrastructure.Outbox;
-using AppTemplate.UseCases.Users.SendWelcomeEmail;
 using AppTemplate.Web.Authorization;
 using AppTemplate.Web.Configurations;
 using Microsoft.AspNetCore.Hosting;
@@ -24,13 +20,9 @@ public class OptionsRegistrationTests(AppTemplateWebApplicationFactory factory)
 {
     public static TheoryData<Type> WebOptions() =>
         [
-            typeof(JobSchedulingOptions),
-            typeof(AuditOptions),
-            typeof(OutboxOptions),
             typeof(KeycloakAdminOptions),
             typeof(KeycloakAuthorizationOptions),
             typeof(MailserverConfiguration),
-            typeof(WelcomeEmailOptions),
             typeof(ForwardedHeadersSettings),
             typeof(RateLimitingSettings),
             typeof(RequestTimeoutSettings),

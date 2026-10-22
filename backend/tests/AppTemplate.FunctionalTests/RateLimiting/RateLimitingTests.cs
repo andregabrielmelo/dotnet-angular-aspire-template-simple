@@ -148,12 +148,6 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
             );
 
         Assert.Equal(RateLimitPolicies.PasswordReset, policies["POST v1/password-reset"]);
-        var jobMutations = policies.Where(p =>
-            p.Key.Contains("v1/admin/jobs", StringComparison.Ordinal)
-            && !p.Key.StartsWith("GET ", StringComparison.Ordinal)
-        );
-        Assert.NotEmpty(jobMutations);
-        Assert.All(jobMutations, p => Assert.Equal(RateLimitPolicies.JobMutations, p.Value));
     }
 
     [Theory]

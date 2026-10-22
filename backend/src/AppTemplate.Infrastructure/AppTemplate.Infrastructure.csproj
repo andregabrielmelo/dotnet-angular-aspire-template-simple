@@ -11,9 +11,6 @@
     <PackageReference Include="Ardalis.Specification.EntityFrameworkCore" />
     <PackageReference Include="Duende.AccessTokenManagement" />
     <PackageReference Include="EFCore.NamingConventions" />
-    <PackageReference Include="Hangfire.Core" />
-    <PackageReference Include="Hangfire.AspNetCore" />
-    <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
@@ -22,14 +19,8 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
-    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="StackExchange.Redis" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- UseJobSchedulingAsync maps the Hangfire dashboard on the web application. -->
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>

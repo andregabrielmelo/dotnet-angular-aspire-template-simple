@@ -1,8 +1,5 @@
 using System.Reflection;
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Infrastructure.Auditing;
-using AppTemplate.Infrastructure.Inbox;
-using AppTemplate.Infrastructure.Outbox;
 
 namespace AppTemplate.Infrastructure.Data;
 
@@ -10,12 +7,6 @@ public class ApplicationDatabaseContext(DbContextOptions<ApplicationDatabaseCont
     : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
-
-    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
-
-    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
-
-    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     // Override OnModelCreating to apply class configurations from the assembly
     protected override void OnModelCreating(ModelBuilder modelBuilder)

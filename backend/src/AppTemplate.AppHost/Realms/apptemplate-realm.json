@@ -177,17 +177,14 @@
     "realm": [
       {
         "name": "admin",
-        "description": "Full administration: users, background jobs and the audit log (all apptemplate-api permissions)",
+        "description": "Full administration of users (all apptemplate-api permissions)",
         "composite": true,
         "composites": {
           "client": {
             "apptemplate-api": [
               "users:read",
               "users:write",
-              "users:delete",
-              "jobs:read",
-              "jobs:manage",
-              "audit:read"
+              "users:delete"
             ]
           }
         }
@@ -206,18 +203,6 @@
         {
           "name": "users:delete",
           "description": "Delete users"
-        },
-        {
-          "name": "jobs:read",
-          "description": "List recurring background jobs and their recent runs"
-        },
-        {
-          "name": "jobs:manage",
-          "description": "Trigger, pause, resume, remove and restore recurring background jobs"
-        },
-        {
-          "name": "audit:read",
-          "description": "Read the audit log"
         }
       ]
     }

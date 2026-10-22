@@ -29,8 +29,7 @@ public class LayerDependencyTests
             Layers.InfrastructureNamespace,
             Layers.WebNamespace,
             "Microsoft.EntityFrameworkCore",
-            "Microsoft.AspNetCore",
-            "Hangfire"
+            "Microsoft.AspNetCore"
         );
 
     [Fact]
@@ -42,7 +41,6 @@ public class LayerDependencyTests
             "Microsoft.EntityFrameworkCore",
             "Npgsql",
             "Microsoft.AspNetCore",
-            "Hangfire",
             "MailKit",
             "StackExchange.Redis"
         );

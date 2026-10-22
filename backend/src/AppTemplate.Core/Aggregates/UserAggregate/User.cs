@@ -9,8 +9,7 @@ namespace AppTemplate.Core.Aggregates.UserAggregate;
 /// </summary>
 public class User(string externalId, UserName name, EmailAddress email)
     : EntityBase<User, UserId>,
-        IAggregateRoot,
-        IAuditable
+        IAggregateRoot
 {
     public const int ExternalIdMaxLength = 64;
 
@@ -18,12 +17,6 @@ public class User(string externalId, UserName name, EmailAddress email)
     public UserName Name { get; private set; } = name;
     public EmailAddress Email { get; private set; } = email;
     public PhoneNumber? PhoneNumber { get; private set; }
-
-    /// <summary>
-    /// When the welcome email went out. Background jobs can run more than once (retries), so
-    /// the sender checks this first to keep the email from being sent twice.
-    /// </summary>
-    public DateTimeOffset? WelcomeEmailSentAtUtc { get; private set; }
 
     /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
@@ -40,9 +33,8 @@ public class User(string externalId, UserName name, EmailAddress email)
             );
 
         var user = new User(externalId, name, email);
-        // Saved to the outbox with the user, so the welcome email can't be lost (see
-        // SendWelcomeEmailWhenUserProvisioned).
-        user.RaiseIntegrationEvent(new UserProvisioned(externalId));
+        // Dispatched in-process once the user is saved; handle it to react to new users.
+        user.RegisterDomainEvent(new UserProvisioned(externalId));
         return user;
     }
 
@@ -61,12 +53,6 @@ public class User(string externalId, UserName name, EmailAddress email)
     public User UpdateEmail(EmailAddress newEmail)
     {
         Email = newEmail;
-        return this;
-    }
-
-    public User MarkWelcomeEmailSent(DateTimeOffset sentAtUtc)
-    {
-        WelcomeEmailSentAtUtc ??= sentAtUtc.ToUniversalTime();
         return this;
     }
 

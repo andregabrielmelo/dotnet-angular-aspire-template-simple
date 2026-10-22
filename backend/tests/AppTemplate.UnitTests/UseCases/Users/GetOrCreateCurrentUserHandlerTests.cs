@@ -137,12 +137,12 @@ public class GetOrCreateCurrentUserHandlerTests
         await _cacheInvalidator
             .Received(1)
             .InvalidateAsync(CacheTags.Users, Arg.Any<CancellationToken>());
-        // The welcome email is saved to the outbox with the user, not enqueued separately.
+        // Raised for whatever should happen to new users, dispatched once the user is saved.
         await _repository
             .Received(1)
             .AddAsync(
                 Arg.Is<User>(user =>
-                    user.IntegrationEvents.OfType<UserProvisioned>().Single().ExternalId
+                    user.DomainEvents.OfType<UserProvisioned>().Single().ExternalId
                     == Command.ExternalId
                 ),
                 Arg.Any<CancellationToken>()

@@ -72,7 +72,6 @@ public static class LoggingExtensions
                     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
                     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
                     .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Hangfire", LogEventLevel.Warning)
                     .MinimumLevel.Override("Yarp", LogEventLevel.Warning)
                     .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
                     // The "Serilog" section can still change levels per environment.

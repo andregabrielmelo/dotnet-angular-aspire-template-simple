@@ -69,9 +69,6 @@ public class GetOrCreateCurrentUserHandler(
         // User lists cached before this user existed are now stale.
         await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
 
-        // The welcome email goes out from the outbox: User.Create raised UserProvisioned, and
-        // AddAsync saved it in the same transaction as the user, so it can't be lost.
-
         return ToDto(createdUser);
     }
 

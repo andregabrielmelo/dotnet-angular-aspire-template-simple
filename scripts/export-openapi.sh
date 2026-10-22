@@ -16,5 +16,4 @@ dotnet run --project src/AppTemplate.Web --configuration Release --no-launch-pro
   --OpenApi:ExportPath=../../openapi/v1.json \
   --urls=http://127.0.0.1:0 \
   "--ConnectionStrings:apptemplate=Host=openapi-export-unused" \
-  --JobScheduling:RunServer=false \
   --Keycloak:Admin:ClientSecret=openapi-export-unused

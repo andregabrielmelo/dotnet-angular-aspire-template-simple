@@ -28,14 +28,4 @@ export const routes: Routes = [
     canActivate: [authGuard, permissionGuard(Permission.UsersRead)],
     loadComponent: () => import('./features/users/users-page').then((m) => m.UsersPage),
   },
-  {
-    path: 'jobs',
-    canActivate: [authGuard, permissionGuard(Permission.JobsRead)],
-    loadComponent: () => import('./features/jobs/jobs-page').then((m) => m.JobsPage),
-  },
-  {
-    path: 'jobs/:jobId',
-    canActivate: [authGuard, permissionGuard(Permission.JobsRead)],
-    loadComponent: () => import('./features/jobs/job-detail-page').then((m) => m.JobDetailPage),
-  },
 ];

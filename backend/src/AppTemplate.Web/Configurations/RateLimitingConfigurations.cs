@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Threading.RateLimiting;
 using AppTemplate.Web.Features.AuthenticationFeatures;
-using AppTemplate.Web.Features.JobFeatures;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
@@ -29,9 +28,6 @@ public static class RateLimitPolicies
 {
     /// <summary>Limits password reset email flooding: <see cref="ForgotPasswordEndpoint.RequestsPerWindow"/> per minute.</summary>
     public const string PasswordReset = "password-reset";
-
-    /// <summary>Job management mutations: <see cref="JobEndpoints.MutationsPerMinute"/> per minute.</summary>
-    public const string JobMutations = "job-mutations";
 }
 
 /// <summary>
@@ -94,15 +90,6 @@ public static class RateLimitingConfigurations
                                 ClientPartition.Of(context),
                                 ForgotPasswordEndpoint.RequestsPerWindow,
                                 TimeSpan.FromSeconds(ForgotPasswordEndpoint.WindowSeconds)
-                            )
-                    );
-                    options.AddPolicy(
-                        RateLimitPolicies.JobMutations,
-                        context =>
-                            FixedWindow(
-                                ClientPartition.Of(context),
-                                JobEndpoints.MutationsPerMinute,
-                                TimeSpan.FromMinutes(1)
                             )
                     );
 

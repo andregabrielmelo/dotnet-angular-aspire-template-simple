@@ -1,5 +1,4 @@
-﻿using AppTemplate.Infrastructure.Jobs.Extensions;
-using AppTemplate.ServiceDefaults;
+﻿using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,8 +48,6 @@ if (await app.TryExportOpenApiAsync())
     return;
 }
 await app.StartDatabase(); // decides for itself: Development, or Database:ApplyMigrationsOnStartup
-
-await app.UseJobSchedulingAsync();
 
 app.MapDefaultEndpoints(); // Aspire health checks and metrics
 
