@@ -57,12 +57,6 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<DateTimeOffset?>("WelcomeEmailSentAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("welcome_email_sent_at_utc");
@@ -146,7 +140,7 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                     b.ToTable("audit_entries", (string)null);
                 });
 
-            modelBuilder.Entity("AppTemplate.Infrastructure.Outbox.InboxMessage", b =>
+            modelBuilder.Entity("AppTemplate.Infrastructure.Inbox.InboxMessage", b =>
                 {
                     b.Property<Guid>("MessageId")
                         .HasColumnType("uuid")

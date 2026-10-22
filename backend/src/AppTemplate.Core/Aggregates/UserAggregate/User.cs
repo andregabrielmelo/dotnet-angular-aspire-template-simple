@@ -32,13 +32,6 @@ public class User(string externalId, UserName name, EmailAddress email)
     /// </summary>
     public string? AvatarKey { get; private set; }
 
-    /// <summary>
-    /// The row's version, maintained by the database (Postgres <c>xmin</c>): it changes on
-    /// every update of the user row. Saving a user that someone else changed since it was
-    /// loaded fails, and the API exposes it as the ETag.
-    /// </summary>
-    public uint Version { get; private set; }
-
     /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
 

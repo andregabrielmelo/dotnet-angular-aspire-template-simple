@@ -4,7 +4,6 @@ using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Get;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
-using AppTemplate.Web.Http;
 
 namespace AppTemplate.Web.Features.UserFeatures;
 
@@ -25,11 +24,7 @@ public class GetByIdEndpoint(IMediator mediator)
         Summary(s =>
         {
             s.Summary = "Get a user by Id";
-            s.Description =
-                "Get a user with the specified Id. The ETag header is the user row's version: send it "
-                + "back in If-Match on PUT to update only if nobody changed the user meanwhile. It covers "
-                + "only the user row (UserRecord holds nothing else); a representation that included "
-                + "related data would need a composite version.";
+            s.Description = "Get a user with the specified Id.";
             s.ExampleRequest = new GetUserByIdRequest { Id = 1 };
             s.ResponseExamples[200] = new UserRecord(1, "Sample User", null);
 
@@ -59,10 +54,6 @@ public class GetByIdEndpoint(IMediator mediator)
             new GetUserQuery(UserId.From(request.Id)),
             cancellationToken
         );
-        if (result.IsSuccess)
-        {
-            HttpContext.Response.Headers.ETag = EntityTagHeader.Format(result.Value.Version);
-        }
         return result.ToOkResult(Map.FromEntity);
     }
 }

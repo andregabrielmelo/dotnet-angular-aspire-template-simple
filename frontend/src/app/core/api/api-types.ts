@@ -33,12 +33,12 @@ export interface paths {
     };
     /**
      * Get a user by Id
-     * @description Get a user with the specified Id. The ETag header is the user row's version: send it back in If-Match on PUT to update only if nobody changed the user meanwhile. It covers only the user row (UserRecord holds nothing else); a representation that included related data would need a composite version.
+     * @description Get a user with the specified Id.
      */
     get: operations['AppTemplateWebFeaturesUserFeaturesGetByIdEndpoint'];
     /**
      * Update a user
-     * @description Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission. Send the ETag from GET in If-Match to update only if the user is unchanged since: a stale or weak tag gets 412, * matches any existing user. Without If-Match, a change that races another write gets 409. The response's ETag is the new version.
+     * @description Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.
      */
     put: operations['AppTemplateWebFeaturesUserFeaturesUpdateEndpoint'];
     post?: never;
@@ -645,24 +645,6 @@ export interface operations {
       };
       /** @description User not found */
       404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Changed by someone else while saving (no If-Match sent) */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description If-Match doesn't match the current version */
-      412: {
         headers: {
           [name: string]: unknown;
         };

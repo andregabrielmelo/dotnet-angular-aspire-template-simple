@@ -29,9 +29,6 @@ public static class ProblemDetailsConfigurations
                 context.ProblemDetails.Extensions[TraceIdExtension] = TraceIdOf(context.HttpContext)
         );
 
-        // Runs before the generic 500 for unhandled exceptions (UseExceptionHandler).
-        services.AddExceptionHandler<AppTemplate.Web.Http.ConcurrencyConflictExceptionHandler>();
-
         logger.LogInformation("{Project} were configured", "Problem details");
 
         return services;
