@@ -49,13 +49,6 @@ public class User(string externalId, UserName name, EmailAddress email)
         return this;
     }
 
-    /// <summary>Keeps the profile in step with the identity provider, where users change it.</summary>
-    public User UpdateEmail(EmailAddress newEmail)
-    {
-        Email = newEmail;
-        return this;
-    }
-
     public User UpdatePhoneNumber(PhoneNumber newPhoneNumber)
     {
         PhoneNumber = newPhoneNumber;

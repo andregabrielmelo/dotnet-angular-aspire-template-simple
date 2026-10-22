@@ -79,14 +79,4 @@ public class UserTests
 
         Assert.Equal(phoneNumber, user.PhoneNumber);
     }
-
-    [Fact]
-    public void UpdateEmail_ChangesEmail()
-    {
-        var user = CreateUser();
-
-        user.UpdateEmail(new EmailAddress("ada.lovelace@example.com"));
-
-        Assert.Equal("ada.lovelace@example.com", user.Email.Value);
-    }
 }
