@@ -17,7 +17,6 @@ public class EndpointAuthorizationTests(AppTemplateWebApplicationFactory factory
 {
     private static readonly string[] ExpectedAnonymousRoutes =
     [
-        "POST /v1/password-reset",
         // Health probes (ServiceDefaults.MapDefaultEndpoints): orchestrators call them without
         // credentials, and they answer with only a status word.
         "ANY /alive",

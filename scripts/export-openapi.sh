@@ -15,5 +15,4 @@ cd "$(dirname "$0")/../backend"
 dotnet run --project src/AppTemplate.Web --configuration Release --no-launch-profile "$@" -- \
   --OpenApi:ExportPath=../../openapi/v1.json \
   --urls=http://127.0.0.1:0 \
-  "--ConnectionStrings:apptemplate=Host=openapi-export-unused" \
-  --Keycloak:Admin:ClientSecret=openapi-export-unused
+  "--ConnectionStrings:apptemplate=Host=openapi-export-unused"

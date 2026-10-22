@@ -52,30 +52,6 @@ public class ProxyRoutingTests : IClassFixture<ProxyRoutingTests.ProxyFactory>
     }
 
     [Fact]
-    public async Task PasswordReset_IsForwardedWithoutASession()
-    {
-        var response = await _factory
-            .CreateBrowserClient()
-            .SendAsync(ApiRequest(HttpMethod.Post, "/api/v1/password-reset"));
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var forwarded = Assert.Single(_factory.Api.Requests);
-        Assert.Equal("/v1/password-reset", forwarded.Path);
-        Assert.Null(forwarded.Authorization);
-    }
-
-    [Fact]
-    public async Task UnversionedPasswordReset_IsNoLongerAnonymous()
-    {
-        var response = await _factory
-            .CreateBrowserClient()
-            .SendAsync(ApiRequest(HttpMethod.Post, "/api/password-reset"));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Empty(_factory.Api.Requests);
-    }
-
-    [Fact]
     public async Task SignedOutApiCall_IsRejectedWithoutReachingTheApi()
     {
         var response = await _factory

@@ -17,9 +17,6 @@ var backendForFrontendSecret = builder.AddParameter(
     secret: true
 );
 
-// Service account the Web API uses for Keycloak's Admin API (password reset emails).
-var userAdminSecret = builder.AddParameter("keycloak-user-admin-secret", secret: true);
-
 // Development SMTP catcher: Keycloak sends its emails (e.g. password reset links) here, and
 // they can be read in Mailpit's web UI (the "mailpit" resource's http endpoint). The registry is
 // explicit because Podman, unlike Docker, does not assume docker.io for unqualified image names.
@@ -50,7 +47,6 @@ var api = builder
     .WaitFor(keycloak)
     .WithReference(cache)
     .WaitFor(cache)
-    .WithEnvironment("Keycloak__Admin__ClientSecret", userAdminSecret)
     // The API's own emails (IEmailSender) go to Mailpit too.
     .WithEnvironment(
         "Mailserver__Hostname",

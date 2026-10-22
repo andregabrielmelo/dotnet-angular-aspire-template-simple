@@ -81,24 +81,6 @@ public class RequestTimeoutTests(RequestTimeoutTests.ShortTimeoutFactory factory
         Assert.True(await call.Handler.Cancelled.Task.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
-    [Fact]
-    public void PasswordReset_UsesTheLongerExternalCallPolicy()
-    {
-        var endpoint = factory
-            .Services.GetRequiredService<EndpointDataSource>()
-            .Endpoints.OfType<RouteEndpoint>()
-            .Single(e =>
-                e.RoutePattern.RawText?.TrimStart('/') == "v1/password-reset"
-                && e.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains("POST")
-                    == true
-            );
-
-        Assert.Equal(
-            RequestTimeoutPolicies.ExternalCall,
-            endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>()?.PolicyName
-        );
-    }
-
     public abstract class SlowQueryService : IListUsersQueryService
     {
         public IServiceProvider Services { get; set; } = default!;

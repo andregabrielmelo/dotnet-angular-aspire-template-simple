@@ -15,7 +15,6 @@
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.4.6" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.NodeJS.Extensions" Version="9.9.0" />
-    <PackageVersion Include="Duende.AccessTokenManagement" Version="4.2.0" />
     <PackageVersion Include="Duende.AccessTokenManagement.OpenIdConnect" Version="4.2.0" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="FastEndpoints" Version="8.2.0" />

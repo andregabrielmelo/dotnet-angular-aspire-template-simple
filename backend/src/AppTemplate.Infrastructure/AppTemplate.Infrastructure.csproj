@@ -9,7 +9,6 @@
   <ItemGroup>
     <PackageReference Include="Ardalis.Specification" />
     <PackageReference Include="Ardalis.Specification.EntityFrameworkCore" />
-    <PackageReference Include="Duende.AccessTokenManagement" />
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />

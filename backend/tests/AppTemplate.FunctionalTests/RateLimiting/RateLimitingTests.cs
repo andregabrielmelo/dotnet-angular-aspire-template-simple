@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AppTemplate.Web.Configurations;
-using AppTemplate.Web.Features.AuthenticationFeatures;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
@@ -116,38 +115,6 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
         var rejected = await ExhaustAsync(SendWithNewSpoofedAddress);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
-    }
-
-    [Fact]
-    public async Task RejectedRequest_NeverReachesTheEndpoint()
-    {
-        var client = AnonymousClient(NewAddress());
-        var before = factory.PasswordResetService.RequestedEmails.Count;
-
-        await ExhaustAsync(() => client.GetAsync("/v1/users/me"));
-        var rejected = await client.PostAsJsonAsync(
-            "/v1/password-reset",
-            new ForgotPasswordRequest { Email = "ada@example.com" }
-        );
-
-        Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
-        Assert.Equal(before, factory.PasswordResetService.RequestedEmails.Count);
-    }
-
-    [Fact]
-    public void SensitiveEndpoints_RequireTheirNamedPolicy()
-    {
-        var policies = factory
-            .Services.GetRequiredService<EndpointDataSource>()
-            .Endpoints.OfType<RouteEndpoint>()
-            .Where(e => e.RoutePattern.RawText is not null)
-            .ToDictionary(
-                e =>
-                    $"{e.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.FirstOrDefault()} {e.RoutePattern.RawText!.TrimStart('/')}",
-                e => e.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName
-            );
-
-        Assert.Equal(RateLimitPolicies.PasswordReset, policies["POST v1/password-reset"]);
     }
 
     [Theory]

@@ -380,64 +380,6 @@
           }
         ]
       }
-    },
-    "/v1/password-reset": {
-      "post": {
-        "tags": [
-          "Password-Reset"
-        ],
-        "summary": "Request a password reset email",
-        "description": "If an account uses the given email, Keycloak sends it a link to set a new password. The response is the same whether or not the account exists.",
-        "operationId": "AppTemplateWebFeaturesAuthenticationFeaturesForgotPasswordEndpoint",
-        "requestBody": {
-          "x-name": "ForgotPasswordRequest",
-          "description": "",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ForgotPasswordRequest"
-              }
-            }
-          },
-          "required": true,
-          "x-position": 1
-        },
-        "responses": {
-          "202": {
-            "description": "Request accepted; an email is sent if the account exists"
-          },
-          "400": {
-            "description": "Invalid email",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "The identity provider is unavailable",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -624,26 +566,6 @@
             "type": "string",
             "nullable": true,
             "example": null
-          }
-        }
-      },
-      "ForgotPasswordRequest": {
-        "type": "object",
-        "example": {
-          "email": "sample.user@example.com"
-        },
-        "additionalProperties": false,
-        "required": [
-          "email"
-        ],
-        "properties": {
-          "email": {
-            "type": "string",
-            "maxLength": 320,
-            "minLength": 0,
-            "pattern": "^\\s*[^@\\s]+@[^@\\s]+\\.[^@\\s]+\\s*$",
-            "nullable": false,
-            "example": "sample.user@example.com"
           }
         }
       }

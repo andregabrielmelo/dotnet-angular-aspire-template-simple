@@ -1,7 +1,6 @@
 ﻿using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Email;
-using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Telemetry;
 
 namespace AppTemplate.Web.Configurations;
@@ -20,8 +19,6 @@ public static class ServiceConfigurations
 
         services.AddScoped<IEmailSender, MimeKitEmailSender>();
         services.AddSingleton<ApplicationMetrics>();
-
-        services.AddKeycloakAdministration();
 
         logger.LogInformation(
             "{Project} services registered",

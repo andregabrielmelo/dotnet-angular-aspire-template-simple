@@ -64,19 +64,6 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false
-    },
-    {
-      "clientId": "apptemplate-user-admin",
-      "name": "AppTemplate user administration (Web API service account)",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "apptemplate-user-admin-dev-secret-change-me",
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
     }
   ],
   "smtpServer": {
@@ -89,17 +76,6 @@
     "starttls": "false"
   },
   "users": [
-    {
-      "username": "service-account-apptemplate-user-admin",
-      "enabled": true,
-      "serviceAccountClientId": "apptemplate-user-admin",
-      "clientRoles": {
-        "realm-management": [
-          "view-users",
-          "manage-users"
-        ]
-      }
-    },
     {
       "username": "admin",
       "email": "admin@apptemplate.local",

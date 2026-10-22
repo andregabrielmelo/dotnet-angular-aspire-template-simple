@@ -145,11 +145,6 @@
         "resolved": "2.6.2",
         "contentHash": "7oWOcvnntmMKNzDLsdxAYqApt+AjpRpP2CShjMfIa3umZ42UQMvH0tl1qAliYPNYO6vTdcGMqnRrCPmsfzTI1w=="
       },
-      "Duende.IdentityModel": {
-        "type": "Transitive",
-        "resolved": "8.1.0",
-        "contentHash": "ncmC2ISg0efTqY74xI6gaLKlv4mErT5ruYK262dkSnAv07g9qYC2++q7AWWs1FyP2c0YZ6LvUtcoJmxZqYyVrA=="
-      },
       "FastEndpoints.Attributes": {
         "type": "Transitive",
         "resolved": "8.2.0",
@@ -731,7 +726,6 @@
           "AppTemplate.UseCases": "[1.0.0, )",
           "Ardalis.Specification": "[9.3.1, )",
           "Ardalis.Specification.EntityFrameworkCore": "[9.3.1, )",
-          "Duende.AccessTokenManagement": "[4.2.0, )",
           "EFCore.NamingConventions": "[10.0.1, )",
           "MailKit": "[4.17.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.10, )",
@@ -787,19 +781,6 @@
           "Ardalis.Specification": "9.3.1",
           "Microsoft.EntityFrameworkCore": "9.0.8",
           "Microsoft.EntityFrameworkCore.Relational": "9.0.8"
-        }
-      },
-      "Duende.AccessTokenManagement": {
-        "type": "CentralTransitive",
-        "requested": "[4.2.0, )",
-        "resolved": "4.2.0",
-        "contentHash": "m40Zn23ex+HTIN2eACfej8zLSJUUt7Vh9xKsvOIouBhhoAzQzV+hgXaVn9Pvzq8P2guhet7eRmpqqaCpI0lQFg==",
-        "dependencies": {
-          "Duende.IdentityModel": "8.1.0",
-          "Microsoft.Extensions.Caching.Hybrid": "10.0.0",
-          "Microsoft.Extensions.Http.Resilience": "10.0.0",
-          "Microsoft.Extensions.Telemetry.Abstractions": "10.0.0",
-          "System.IdentityModel.Tokens.Jwt": "[8.0.1, 9.0.0)"
         }
       },
       "EFCore.NamingConventions": {

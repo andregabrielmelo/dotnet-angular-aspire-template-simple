@@ -1,5 +1,4 @@
 using AppTemplate.Infrastructure.Email;
-using AppTemplate.Infrastructure.Identity;
 using AppTemplate.Web.Authorization;
 using AppTemplate.Web.Configurations;
 using Microsoft.AspNetCore.Hosting;
@@ -20,7 +19,6 @@ public class OptionsRegistrationTests(AppTemplateWebApplicationFactory factory)
 {
     public static TheoryData<Type> WebOptions() =>
         [
-            typeof(KeycloakAdminOptions),
             typeof(KeycloakAuthorizationOptions),
             typeof(MailserverConfiguration),
             typeof(ForwardedHeadersSettings),

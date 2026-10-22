@@ -88,26 +88,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/v1/password-reset': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Request a password reset email
-     * @description If an account uses the given email, Keycloak sends it a link to set a new password. The response is the same whether or not the account exists.
-     */
-    post: operations['AppTemplateWebFeaturesAuthenticationFeaturesForgotPasswordEndpoint'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -170,15 +150,6 @@ export interface components {
       phoneCountryCode?: string | null;
       /** @example null */
       phoneExtension?: string | null;
-    };
-    /**
-     * @example {
-     *       "email": "sample.user@example.com"
-     *     }
-     */
-    ForgotPasswordRequest: {
-      /** @example sample.user@example.com */
-      email: string;
     };
   };
   responses: never;
@@ -495,55 +466,6 @@ export interface operations {
       };
       /** @description The token's email is already linked to another user */
       409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  AppTemplateWebFeaturesAuthenticationFeaturesForgotPasswordEndpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ForgotPasswordRequest'];
-      };
-    };
-    responses: {
-      /** @description Request accepted; an email is sent if the account exists */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Invalid email */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Too many requests */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description The identity provider is unavailable */
-      503: {
         headers: {
           [name: string]: unknown;
         };

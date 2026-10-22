@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthService } from '../auth-service';
 
 /**
@@ -9,7 +9,6 @@ import { AuthService } from '../auth-service';
  */
 @Component({
   selector: 'app-auth-page',
-  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './auth-page.html',
 })

@@ -28,9 +28,6 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, 
     /// <summary>The app's Postgres connection string, set by <see cref="InitializeAsync"/>.</summary>
     protected string? ConnectionString { get; set; }
 
-    /// <summary>Replaces the Keycloak Admin API client; inspect or reconfigure it per test.</summary>
-    public FakePasswordResetService PasswordResetService { get; } = new();
-
     /// <summary>Records emails instead of sending them over SMTP.</summary>
     public FakeEmailSender EmailSender { get; } = new();
 
@@ -45,8 +42,6 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, 
                     "The factory is used before InitializeAsync - use it as an xUnit fixture."
                 )
         );
-        // KeycloakAdminOptions is validated on start; the real client is replaced below.
-        builder.UseSetting("Keycloak:Admin:ClientSecret", "functional-tests");
         builder.UseSetting("Keycloak:Authority", "https://keycloak.test/realms/apptemplate");
         // Every request arrives from a simulated backend for frontend on loopback (see
         // TestPeerAddress), the one trusted proxy, so each client's X-Forwarded-For is honored.
@@ -58,9 +53,6 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, 
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<IStartupFilter, TestPeerAddress>();
-
-            services.RemoveAll<IPasswordResetService>();
-            services.AddSingleton<IPasswordResetService>(PasswordResetService);
 
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(EmailSender);
