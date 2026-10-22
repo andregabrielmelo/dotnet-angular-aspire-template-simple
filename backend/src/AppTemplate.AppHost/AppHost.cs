@@ -1,6 +1,4 @@
-﻿using AppTemplate.AppHost.Garage;
-
-var builder = DistributedApplication.CreateBuilder(args);
+﻿var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Postgre SQL Server container
 var postgres = builder
@@ -38,26 +36,6 @@ var keycloak = builder
     .WithLifetime(ContainerLifetime.Persistent)
     .WaitFor(mailpit);
 
-// Garage: S3-compatible object storage for uploaded files (avatars). It's an optional
-// dependency: the API starts and serves without it, and only file endpoints answer 503. The
-// default key and bucket are created on first start; there's no admin API (see garage.toml).
-var garageRpcSecret = builder.AddParameter("garage-rpc-secret", secret: true);
-var garageAccessKey = builder.AddParameter("garage-access-key", secret: true);
-var garageSecretKey = builder.AddParameter("garage-secret-key", secret: true);
-var garage = builder
-    .AddContainer("garage", GarageDefaults.Image, GarageDefaults.Tag)
-    .WithImageRegistry(GarageDefaults.Registry)
-    .WithEntrypoint(GarageDefaults.Entrypoint)
-    .WithArgs(GarageDefaults.ServerArguments)
-    .WithBindMount("./Garage/garage.toml", GarageDefaults.ConfigPath, isReadOnly: true)
-    .WithVolume("apptemplate-garage-data", GarageDefaults.DataPath)
-    .WithLifetime(ContainerLifetime.Persistent)
-    .WithEnvironment("GARAGE_RPC_SECRET", garageRpcSecret)
-    .WithEnvironment("GARAGE_DEFAULT_ACCESS_KEY", garageAccessKey)
-    .WithEnvironment("GARAGE_DEFAULT_SECRET_KEY", garageSecretKey)
-    .WithEnvironment("GARAGE_DEFAULT_BUCKET", GarageDefaults.Bucket)
-    .WithHttpEndpoint(targetPort: GarageDefaults.S3Port, name: "s3");
-
 // Redis: HybridCache's distributed (L2) cache and the output cache store, shared by every
 // API instance so cache invalidations reach all of them.
 var cache = builder.AddRedis("cache");
@@ -83,12 +61,6 @@ var api = builder
         mailpit.GetEndpoint("smtp").Property(EndpointProperty.Port)
     )
     .WaitFor(mailpit)
-    // File storage: only the S3 endpoint, key and bucket - never Garage's RPC secret.
-    .WithEnvironment("FileStorage__ServiceUrl", garage.GetEndpoint("s3"))
-    .WithEnvironment("FileStorage__AccessKey", garageAccessKey)
-    .WithEnvironment("FileStorage__SecretKey", garageSecretKey)
-    .WithEnvironment("FileStorage__Bucket", GarageDefaults.Bucket)
-    .WithEnvironment("FileStorage__Region", GarageDefaults.Region)
     .WithHttpEndpoint(name: "api-http")
     // Readiness (Postgres reachable): resources that WaitFor(api) start only once it's ready.
     .WithHttpHealthCheck("/health")

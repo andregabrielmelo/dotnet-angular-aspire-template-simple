@@ -44,8 +44,7 @@ public class LayerDependencyTests
             "Microsoft.AspNetCore",
             "Hangfire",
             "MailKit",
-            "StackExchange.Redis",
-            "Amazon"
+            "StackExchange.Redis"
         );
 
     [Fact]

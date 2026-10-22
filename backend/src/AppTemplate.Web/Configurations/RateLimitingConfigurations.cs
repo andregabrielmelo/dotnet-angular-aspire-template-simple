@@ -32,11 +32,6 @@ public static class RateLimitPolicies
 
     /// <summary>Job management mutations: <see cref="JobEndpoints.MutationsPerMinute"/> per minute.</summary>
     public const string JobMutations = "job-mutations";
-
-    /// <summary>Avatar uploads, which decode images: <see cref="AvatarUploadsPerMinute"/> per minute.</summary>
-    public const string AvatarUploads = "avatar-uploads";
-
-    public const int AvatarUploadsPerMinute = 10;
 }
 
 /// <summary>
@@ -107,16 +102,6 @@ public static class RateLimitingConfigurations
                             FixedWindow(
                                 ClientPartition.Of(context),
                                 JobEndpoints.MutationsPerMinute,
-                                TimeSpan.FromMinutes(1)
-                            )
-                    );
-
-                    options.AddPolicy(
-                        RateLimitPolicies.AvatarUploads,
-                        context =>
-                            FixedWindow(
-                                ClientPartition.Of(context),
-                                RateLimitPolicies.AvatarUploadsPerMinute,
                                 TimeSpan.FromMinutes(1)
                             )
                     );

@@ -25,19 +25,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The AppHost's Garage image, bootstrap and config, so the storage tests run what dev runs. -->
-    <Compile
-      Include="..\..\src\AppTemplate.AppHost\Garage\GarageDefaults.cs"
-      Link="Garage\GarageDefaults.cs"
-    />
-    <None
-      Include="..\..\src\AppTemplate.AppHost\Garage\garage.toml"
-      Link="Garage\garage.toml"
-      CopyToOutputDirectory="PreserveNewest"
-    />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\src\AppTemplate.Web\AppTemplate.Web.csproj" />
     <ProjectReference Include="..\..\src\AppTemplate.Infrastructure\AppTemplate.Infrastructure.csproj" />
   </ItemGroup>

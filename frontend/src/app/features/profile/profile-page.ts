@@ -4,14 +4,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { UsersService } from '../users/users.service';
-import { AvatarEditor } from './avatar-editor';
 
 type Status = 'idle' | 'saving' | 'saved';
 
 /** The signed-in user's own profile. The API lets anyone update their own record. */
 @Component({
   selector: 'app-profile-page',
-  imports: [ReactiveFormsModule, RouterLink, AvatarEditor],
+  imports: [ReactiveFormsModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './profile-page.html',
 })

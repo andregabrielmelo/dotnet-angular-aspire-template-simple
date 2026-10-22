@@ -381,158 +381,6 @@
         ]
       }
     },
-    "/v1/users/{id}/avatar": {
-      "put": {
-        "tags": [
-          "Users"
-        ],
-        "summary": "Upload your avatar",
-        "description": "Multipart upload of a JPEG, PNG or WebP image (field 'file', at most 2 MB and 4096x4096). It's re-encoded as WebP, at most 512x512, without metadata.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesAvatarUploadAvatarEndpoint",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "x-name": "UploadAvatarRequest",
-          "description": "",
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/UploadAvatarRequest"
-              }
-            }
-          },
-          "required": true,
-          "x-position": 1
-        },
-        "responses": {
-          "204": {
-            "description": "Avatar replaced"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "400": {
-            "description": "Not an acceptable image",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "Users"
-        ],
-        "summary": "Remove your avatar",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesAvatarDeleteAvatarEndpoint",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Avatar removed (or there was none)"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
-      },
-      "get": {
-        "tags": [
-          "Users"
-        ],
-        "summary": "Get a user's avatar",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesAvatarGetAvatarEndpoint",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The image"
-          },
-          "304": {
-            "description": "Not modified since the ETag in If-None-Match"
-          },
-          "403": {
-            "description": "Requires users:read for someone else's avatar",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No such user, or no avatar",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "File storage is unavailable",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
-      }
-    },
     "/v1/admin/outbox/dead-letters/requeue": {
       "post": {
         "tags": [
@@ -1252,51 +1100,6 @@
           }
         }
       },
-      "HttpValidationProblemDetails": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ProblemDetails"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {
-              "nullable": true
-            },
-            "required": [
-              "errors"
-            ],
-            "properties": {
-              "errors": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        ]
-      },
-      "UploadAvatarRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "file"
-        ],
-        "properties": {
-          "file": {
-            "type": "string",
-            "format": "binary",
-            "nullable": false
-          }
-        }
-      },
-      "AvatarRequest": {
-        "type": "object",
-        "additionalProperties": false
-      },
       "RequeueDeadLetteredMessagesResponse": {
         "type": "object",
         "additionalProperties": false,
@@ -1397,6 +1200,33 @@
             "nullable": true
           }
         }
+      },
+      "HttpValidationProblemDetails": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {
+              "nullable": true
+            },
+            "required": [
+              "errors"
+            ],
+            "properties": {
+              "errors": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ]
       },
       "JobIdRequest": {
         "type": "object",

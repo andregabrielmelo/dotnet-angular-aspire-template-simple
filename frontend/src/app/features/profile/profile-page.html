@@ -6,7 +6,6 @@
 
   @if (profile(); as profile) {
     <p class="mb-6 text-sm text-gray-600">{{ profile.email }}</p>
-    <app-avatar-editor [userId]="profile.id" />
   }
 
   <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">

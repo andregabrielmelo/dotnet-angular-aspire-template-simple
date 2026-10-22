@@ -150,11 +150,6 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                         type: "timestamp with time zone",
                         nullable: true
                     ),
-                    avatar_key = table.Column<string>(
-                        type: "character varying(64)",
-                        maxLength: 64,
-                        nullable: true
-                    ),
                     created_at_utc = table.Column<DateTimeOffset>(
                         type: "timestamp with time zone",
                         nullable: false,

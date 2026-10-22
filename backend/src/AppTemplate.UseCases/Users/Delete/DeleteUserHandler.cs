@@ -15,8 +15,6 @@ public class DeleteUserHandler(IRepository<User> _repository, ICacheInvalidator 
         if (user == null)
             return Result.NotFound();
 
-        // Its stored files are deleted through the outbox, committed with this delete.
-        user.ReleaseFiles();
         await _repository.DeleteAsync(user, cancellationToken);
         await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
         return Result.Success();

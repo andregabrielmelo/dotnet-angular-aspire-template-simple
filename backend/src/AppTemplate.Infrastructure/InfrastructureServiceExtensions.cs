@@ -1,11 +1,8 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
-using AppTemplate.Core.Events;
 using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
-using AppTemplate.Infrastructure.Files;
-using AppTemplate.Infrastructure.Images;
 using AppTemplate.Infrastructure.Inbox;
 using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.Infrastructure.Outbox;
@@ -86,13 +83,7 @@ public static class InfrastructureServiceExtensions
 
         // Every integration event type an entity may raise must be registered here.
         services.AddInbox();
-        services.AddOutbox(
-            config,
-            outbox => outbox.AddEvent<UserProvisioned>().AddEvent<StoredFileOrphaned>()
-        );
-
-        services.AddFileStorage(config);
-        services.AddImageProcessing();
+        services.AddOutbox(config, outbox => outbox.AddEvent<UserProvisioned>());
 
         // Every IAuditable entity lists exactly the properties its audit entries may contain.
         services.AddAuditing(

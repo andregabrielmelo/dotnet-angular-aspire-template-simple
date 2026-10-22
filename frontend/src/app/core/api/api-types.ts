@@ -88,28 +88,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/v1/users/{id}/avatar': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get a user's avatar */
-    get: operations['AppTemplateWebFeaturesUserFeaturesAvatarGetAvatarEndpoint'];
-    /**
-     * Upload your avatar
-     * @description Multipart upload of a JPEG, PNG or WebP image (field 'file', at most 2 MB and 4096x4096). It's re-encoded as WebP, at most 512x512, without metadata.
-     */
-    put: operations['AppTemplateWebFeaturesUserFeaturesAvatarUploadAvatarEndpoint'];
-    post?: never;
-    /** Remove your avatar */
-    delete: operations['AppTemplateWebFeaturesUserFeaturesAvatarDeleteAvatarEndpoint'];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/v1/admin/outbox/dead-letters/requeue': {
     parameters: {
       query?: never;
@@ -373,19 +351,6 @@ export interface components {
       /** @example null */
       phoneExtension?: string | null;
     };
-    HttpValidationProblemDetails: components['schemas']['ProblemDetails'] &
-      ({
-        errors: {
-          [key: string]: string[];
-        };
-      } & {
-        [key: string]: unknown;
-      });
-    UploadAvatarRequest: {
-      /** Format: binary */
-      file: string;
-    };
-    AvatarRequest: Record<string, never>;
     RequeueDeadLetteredMessagesResponse: {
       /** Format: int32 */
       requeued: number;
@@ -415,6 +380,14 @@ export interface components {
       durationMs?: number | null;
       error?: string | null;
     };
+    HttpValidationProblemDetails: components['schemas']['ProblemDetails'] &
+      ({
+        errors: {
+          [key: string]: string[];
+        };
+      } & {
+        [key: string]: unknown;
+      });
     JobIdRequest: Record<string, never>;
     /**
      * @example {
@@ -779,134 +752,6 @@ export interface operations {
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
-      };
-    };
-  };
-  AppTemplateWebFeaturesUserFeaturesAvatarGetAvatarEndpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The image */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not modified since the ETag in If-None-Match */
-      304: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Requires users:read for someone else's avatar */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description No such user, or no avatar */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description File storage is unavailable */
-      503: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  AppTemplateWebFeaturesUserFeaturesAvatarUploadAvatarEndpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'multipart/form-data': components['schemas']['UploadAvatarRequest'];
-      };
-    };
-    responses: {
-      /** @description Avatar replaced */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not an acceptable image */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['HttpValidationProblemDetails'];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AppTemplateWebFeaturesUserFeaturesAvatarDeleteAvatarEndpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Avatar removed (or there was none) */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
       };
     };
   };

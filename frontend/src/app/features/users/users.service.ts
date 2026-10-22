@@ -19,21 +19,6 @@ export class UsersService {
     return this.http.put<UpdateUserResponse>(`${BASE}/${id}`, request);
   }
 
-  /** The avatar image, or a 404 when the user has none. Fetched as a blob: the CSRF header can't ride on an <img>. */
-  getAvatar(id: number): Observable<Blob> {
-    return this.http.get(`${BASE}/${id}/avatar`, { responseType: 'blob' });
-  }
-
-  uploadAvatar(id: number, file: File): Observable<void> {
-    const form = new FormData();
-    form.append('file', file);
-    return this.http.put<void>(`${BASE}/${id}/avatar`, form);
-  }
-
-  deleteAvatar(id: number): Observable<void> {
-    return this.http.delete<void>(`${BASE}/${id}/avatar`);
-  }
-
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${BASE}/${id}`);
   }

@@ -1,5 +1,4 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate.Events;
-using AppTemplate.Core.Events;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate;
 
@@ -25,12 +24,6 @@ public class User(string externalId, UserName name, EmailAddress email)
     /// the sender checks this first to keep the email from being sent twice.
     /// </summary>
     public DateTimeOffset? WelcomeEmailSentAtUtc { get; private set; }
-
-    /// <summary>
-    /// The object storage key of the user's avatar: an opaque GUID, never derived from the
-    /// upload's name, so it reveals nothing and can't collide or be guessed from the user.
-    /// </summary>
-    public string? AvatarKey { get; private set; }
 
     /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
@@ -75,35 +68,6 @@ public class User(string externalId, UserName name, EmailAddress email)
     {
         WelcomeEmailSentAtUtc ??= sentAtUtc.ToUniversalTime();
         return this;
-    }
-
-    /// <summary>
-    /// Points the avatar at a newly stored object. The previous object, if any, is released
-    /// through the outbox, so its deletion is retried until it succeeds.
-    /// </summary>
-    public User SetAvatar(string avatarKey)
-    {
-        ReleaseAvatar();
-        AvatarKey = avatarKey;
-        return this;
-    }
-
-    public User RemoveAvatar()
-    {
-        ReleaseAvatar();
-        return this;
-    }
-
-    /// <summary>Call before deleting the user, so stored files don't outlive it.</summary>
-    public User ReleaseFiles() => RemoveAvatar();
-
-    private void ReleaseAvatar()
-    {
-        if (AvatarKey is not null)
-        {
-            RaiseIntegrationEvent(new StoredFileOrphaned(AvatarKey));
-            AvatarKey = null;
-        }
     }
 
     public User UpdatePhoneNumber(PhoneNumber newPhoneNumber)

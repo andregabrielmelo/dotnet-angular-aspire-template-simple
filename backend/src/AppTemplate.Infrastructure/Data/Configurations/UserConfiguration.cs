@@ -38,8 +38,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // migration that added it backfilled existing rows with the migration time.
         builder.Property(entity => entity.CreatedAtUtc).HasDefaultValueSql("now()");
 
-        builder.Property(entity => entity.AvatarKey).HasMaxLength(64);
-
         builder.OwnsOne(builder => builder.PhoneNumber);
     }
 }
