@@ -17,7 +17,6 @@ builder.Services.AddAuthorizationConfigurations(startupLogger, builder);
 builder.Services.AddProblemDetailsConfigurations(startupLogger);
 builder.Services.AddForwardedHeadersConfigurations(builder.Configuration);
 builder.Services.AddRateLimitingConfigurations(builder.Configuration);
-builder.Services.AddRequestTimeoutConfigurations(builder.Configuration);
 
 builder
     .Services.AddFastEndpoints()

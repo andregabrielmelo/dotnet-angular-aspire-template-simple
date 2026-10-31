@@ -11,9 +11,6 @@ public static class MiddlewareConfigurations
         // X-Forwarded-For, but only for a connection from a configured proxy.
         app.UseForwardedHeaders();
 
-        // Early, so its OnStarting callback also covers error and status-code-page responses.
-        app.UseApiSecurityHeaders();
-
         // Outside the exception handler, so it logs the status the client actually got.
         app.UseDefaultRequestLogging();
 
@@ -37,8 +34,6 @@ public static class MiddlewareConfigurations
         // After authentication: callers are partitioned by validated sub, or by address.
         app.UseRateLimiter();
         app.UseAuthorization();
-        // Inside the status code pages middleware, so a timeout's 504 gets a problem body.
-        app.UseRequestTimeouts();
 
         app.UseFastEndpoints(config =>
         {

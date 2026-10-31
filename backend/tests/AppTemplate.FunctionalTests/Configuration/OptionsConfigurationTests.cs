@@ -23,7 +23,6 @@ public class OptionsRegistrationTests(AppTemplateWebApplicationFactory factory)
             typeof(MailserverConfiguration),
             typeof(ForwardedHeadersSettings),
             typeof(RateLimitingSettings),
-            typeof(RequestTimeoutSettings),
         ];
 
     [Theory]

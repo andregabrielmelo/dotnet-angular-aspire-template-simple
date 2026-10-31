@@ -64,8 +64,6 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
         var body = await rejected.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(429, body.GetProperty("status").GetInt32());
         Assert.False(string.IsNullOrEmpty(body.GetProperty("traceId").GetString()));
-        // The security headers middleware runs before the limiter, so rejections carry them too.
-        Assert.Equal(["nosniff"], rejected.Headers.GetValues("X-Content-Type-Options"));
     }
 
     [Fact]
