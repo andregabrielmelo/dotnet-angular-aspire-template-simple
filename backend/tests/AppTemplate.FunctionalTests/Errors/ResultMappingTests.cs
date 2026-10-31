@@ -1,10 +1,8 @@
 using System.Text.Json;
-using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 using Ardalis.Result;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace AppTemplate.FunctionalTests.Errors;
@@ -21,7 +19,7 @@ public class ResultMappingTests
     {
         var services = new ServiceCollection()
             .AddLogging()
-            .AddProblemDetailsConfigurations(NullLogger.Instance)
+            .AddProblemDetails()
             .BuildServiceProvider();
         var context = new DefaultHttpContext { RequestServices = services };
         context.Response.Body = new MemoryStream();

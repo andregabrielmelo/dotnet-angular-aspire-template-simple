@@ -14,7 +14,9 @@ builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger, b
 builder.Services.AddServiceConfigurations(startupLogger, builder);
 builder.Services.AddAuthenticationConfigurations(startupLogger, builder);
 builder.Services.AddAuthorizationConfigurations(startupLogger, builder);
-builder.Services.AddProblemDetailsConfigurations(startupLogger);
+
+// RFC 9457 problem details (with a traceId) for exceptions, status code pages and TypedResults.Problem.
+builder.Services.AddProblemDetails();
 builder.Services.AddForwardedHeadersConfigurations(builder.Configuration);
 builder.Services.AddRateLimitingConfigurations(builder.Configuration);
 

@@ -1,4 +1,6 @@
-﻿using AppTemplate.ServiceDefaults.Logging;
+﻿using System.Diagnostics;
+using System.Text.Json;
+using AppTemplate.ServiceDefaults.Logging;
 using Scalar.AspNetCore;
 
 namespace AppTemplate.Web.Configurations;
@@ -27,7 +29,7 @@ public static class MiddlewareConfigurations
         }
 
         // Empty error responses (401/403 from authorization, 404 for unmatched routes) get a
-        // problem details body too. See ProblemDetailsConfigurations.
+        // problem details body too (AddProblemDetails in Program.cs).
         app.UseStatusCodePages();
 
         app.UseAuthentication();
@@ -37,8 +39,24 @@ public static class MiddlewareConfigurations
 
         app.UseFastEndpoints(config =>
         {
-            config.Errors.ResponseBuilder =
-                ProblemDetailsConfigurations.FastEndpointsValidationProblem;
+            // Validation failures use the same shape as a use case's Invalid result (ADR 009).
+            config.Errors.ResponseBuilder = (failures, context, statusCode) =>
+                new HttpValidationProblemDetails(
+                    failures
+                        .GroupBy(failure =>
+                            JsonNamingPolicy.CamelCase.ConvertName(failure.PropertyName)
+                        )
+                        .ToDictionary(
+                            group => group.Key,
+                            group =>
+                                group.Select(failure => failure.ErrorMessage).Distinct().ToArray()
+                        )
+                )
+                {
+                    Status = statusCode,
+                    Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+                    Extensions = { ["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier },
+                };
             config.Errors.ProducesMetadataType = typeof(HttpValidationProblemDetails);
         });
 

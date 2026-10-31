@@ -1,11 +1,12 @@
-using AppTemplate.Web.Configurations;
+using System.Text.Json;
 
 namespace AppTemplate.Web.Extensions;
 
 /// <summary>
 /// The only place an <see cref="Ardalis.Result.IResult"/> becomes an HTTP response, so every
 /// endpoint reports the same outcome with the same status code and problem details body
-/// (ADR 009). Endpoints return <c>Results&lt;Success, ProblemHttpResult&gt;</c>.
+/// (ADR 009). The problem details service (<c>AddProblemDetails</c>) adds the <c>traceId</c>.
+/// Endpoints return <c>Results&lt;Success, ProblemHttpResult&gt;</c>.
 /// </summary>
 public static class ResultExtensions
 {
@@ -38,18 +39,21 @@ public static class ResultExtensions
     public static ProblemHttpResult ToProblem(this Ardalis.Result.IResult result) =>
         result.Status switch
         {
+            // Keyed by the camelCase JSON field name, like FastEndpoints' validation failures.
             ResultStatus.Invalid => TypedResults.Problem(
-                ProblemDetailsConfigurations.ValidationProblem(
+                new HttpValidationProblemDetails(
                     result
                         .ValidationErrors.GroupBy(error =>
-                            ProblemDetailsConfigurations.ErrorKey(error.Identifier)
+                            JsonNamingPolicy.CamelCase.ConvertName(error.Identifier ?? string.Empty)
                         )
                         .ToDictionary(
                             group => group.Key,
                             group => group.Select(error => error.ErrorMessage).ToArray()
-                        ),
-                    httpContext: null
+                        )
                 )
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                }
             ),
             ResultStatus.Unauthorized => Problem(StatusCodes.Status401Unauthorized, detail: null),
             ResultStatus.Forbidden => Problem(
