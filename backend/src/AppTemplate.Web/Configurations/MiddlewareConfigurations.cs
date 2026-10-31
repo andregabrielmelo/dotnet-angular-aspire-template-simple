@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
-using AppTemplate.ServiceDefaults.Logging;
 using Scalar.AspNetCore;
 
 namespace AppTemplate.Web.Configurations;
@@ -12,9 +11,6 @@ public static class MiddlewareConfigurations
         // Before anything reads the client address: rewrites RemoteIpAddress from
         // X-Forwarded-For, but only for a connection from a configured proxy.
         app.UseForwardedHeaders();
-
-        // Outside the exception handler, so it logs the status the client actually got.
-        app.UseDefaultRequestLogging();
 
         if (app.Environment.IsDevelopment())
         {

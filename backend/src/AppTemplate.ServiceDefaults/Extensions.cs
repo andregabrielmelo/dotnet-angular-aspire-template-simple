@@ -1,4 +1,3 @@
-using AppTemplate.ServiceDefaults.Logging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
@@ -23,8 +22,6 @@ public static class Extensions
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
-        builder.AddDefaultLogging();
-
         builder.ConfigureOpenTelemetry();
 
         builder.AddDefaultHealthChecks();
@@ -52,8 +49,12 @@ public static class Extensions
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
-        // Logs go through Serilog (AddDefaultLogging), which exports them over OTLP itself
-        // after redaction, so OpenTelemetry's own logging provider isn't added here.
+        builder.Logging.AddOpenTelemetry(logging =>
+        {
+            logging.IncludeFormattedMessage = true;
+            logging.IncludeScopes = true;
+        });
+
         builder
             .Services.AddOpenTelemetry()
             .WithMetrics(metrics =>

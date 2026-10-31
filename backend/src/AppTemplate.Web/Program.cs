@@ -1,12 +1,13 @@
 ﻿using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
+using Serilog.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults(); // OpenTelemetry, health checks, and Serilog logging with redaction
+var serilogLogger = builder.AddLoggerConfigs(); // Serilog to the console
+builder.AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
 
-using var loggerFactory = LoggerFactory.Create(config => config.AddConsole());
-var startupLogger = loggerFactory.CreateLogger<Program>();
+var startupLogger = new SerilogLoggerFactory(serilogLogger).CreateLogger<Program>();
 
 startupLogger.LogInformation("Starting web host");
 

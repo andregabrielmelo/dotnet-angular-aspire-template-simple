@@ -7,7 +7,7 @@ namespace AppTemplate.UseCases.Users.Update;
 public record UpdateUserCommand(
     UserId UserId,
     UserName UserName,
-    [property: PersonalData] string? PhoneNumber,
-    [property: PersonalData] string? PhoneCountryCode,
-    [property: PersonalData] string? PhoneExtension
+    string? PhoneNumber,
+    string? PhoneCountryCode,
+    string? PhoneExtension
 ) : Mediator.ICommand<Result<UserDto>>;

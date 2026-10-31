@@ -26,9 +26,7 @@
       Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"
       Version="10.0.10"
     />
-    <PackageVersion Include="Microsoft.Extensions.Compliance.Redaction" Version="10.8.0" />
     <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.Extensions.Compliance.Abstractions" Version="10.8.0" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.8.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.10" />
@@ -54,7 +52,6 @@
     <PackageVersion Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageVersion Include="Serilog.Settings.Configuration" Version="10.0.1" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
-    <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
     <PackageVersion Include="Vogen" Version="8.0.7" />
   </ItemGroup>
 </Project>
