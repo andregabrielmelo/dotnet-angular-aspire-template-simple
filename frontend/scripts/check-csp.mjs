@@ -1,7 +1,8 @@
-// Fails when the built index.html contains something the backend for frontend's
-// Content-Security-Policy (script-src 'self', no 'unsafe-inline') would block: an inline
-// <script> or an inline event handler such as onload="...". Angular's critical CSS inlining
-// adds exactly such a handler, which is why it's turned off in angular.json.
+// Fails when the built index.html contains something a strict Content-Security-Policy
+// (script-src 'self', no 'unsafe-inline') would block: an inline <script> or an inline event
+// handler such as onload="...". The host that serves the app in production should send that
+// CSP (see docs/content/best-practices.md). Angular's critical CSS inlining adds exactly such
+// a handler, which is why it's turned off in angular.json.
 import { readFileSync } from 'node:fs';
 
 const path = process.argv[2] ?? 'dist/frontend/browser/index.html';

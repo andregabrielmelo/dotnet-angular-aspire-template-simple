@@ -108,7 +108,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      # The backend for frontend's CSP blocks inline scripts and event handlers.
+      # The strict CSP the production host should send blocks inline scripts and handlers.
       - name: Check the built index.html is CSP-compatible
         run: npm run csp:check
 

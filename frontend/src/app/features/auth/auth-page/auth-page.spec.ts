@@ -1,42 +1,102 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthPage } from './auth-page';
 import { AuthService } from '../auth-service';
 
 describe('AuthPage', () => {
-  function setup(user: unknown) {
+  function setup(signedIn = false, returnUrl?: string) {
     const authService = {
-      loadUser: () => of(user),
-      login: vi.fn(),
-      register: vi.fn(),
+      ensureSession: () => of(signedIn),
+      login: vi.fn().mockReturnValue(of(undefined)),
+      register: vi.fn().mockReturnValue(of(undefined)),
     };
-    const navigateByUrl = vi.fn();
     TestBed.configureTestingModule({
       imports: [AuthPage],
       providers: [provideRouter([]), { provide: AuthService, useValue: authService }],
     });
-    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockImplementation(navigateByUrl);
+    const navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const fixture = TestBed.createComponent(AuthPage);
+    if (returnUrl) {
+      fixture.componentRef.setInput('returnUrl', returnUrl);
+    }
     fixture.detectChanges();
-    return { fixture, authService, navigateByUrl };
+    const page = fixture.componentInstance;
+    const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
+    return { fixture, page, authService, navigateByUrl, text };
   }
 
-  it('sends an already signed-in user to /home', () => {
-    const { navigateByUrl } = setup({ name: 'Ada', email: null, logoutUrl: '/x' });
+  it('sends an already signed-in user on to /home', () => {
+    const { navigateByUrl } = setup(true);
 
     expect(navigateByUrl).toHaveBeenCalledWith('/home');
   });
 
-  it('starts login and registration through the auth service', () => {
-    const { fixture, authService, navigateByUrl } = setup(null);
+  it('signs in and goes back to the page the user came from', () => {
+    const { page, authService, navigateByUrl } = setup(false, '/users');
+    page.form.setValue({ name: '', email: 'ada@example.com', password: 'secret' });
 
-    fixture.componentInstance.login();
-    fixture.componentInstance.register();
+    page.submit();
 
-    expect(navigateByUrl).not.toHaveBeenCalled();
-    expect(authService.login).toHaveBeenCalled();
-    expect(authService.register).toHaveBeenCalled();
+    expect(authService.login).toHaveBeenCalledWith('ada@example.com', 'secret');
+    expect(navigateByUrl).toHaveBeenCalledWith('/users');
+  });
+
+  it('never returns to another site', () => {
+    const { page, navigateByUrl } = setup(false, '//evil.example');
+    page.form.setValue({ name: '', email: 'ada@example.com', password: 'secret' });
+
+    page.submit();
+
+    expect(navigateByUrl).toHaveBeenCalledWith('/home');
+  });
+
+  it('registers with a name, requiring 8 characters of password', () => {
+    const { page, authService } = setup();
+    page.switchTo('register');
+    page.form.setValue({ name: 'Ada', email: 'ada@example.com', password: 'short' });
+
+    page.submit();
+    expect(authService.register).not.toHaveBeenCalled();
+
+    page.form.controls.password.setValue('long enough');
+    page.submit();
+    expect(authService.register).toHaveBeenCalledWith('Ada', 'ada@example.com', 'long enough');
+  });
+
+  it.each([
+    [401, 'Wrong email or password.'],
+    [409, 'An account with this email already exists. Sign in instead.'],
+    [429, 'Too many attempts. Wait a minute and try again.'],
+  ])('explains a %s', (status, message) => {
+    const { fixture, page, authService, text } = setup();
+    authService.login.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));
+    page.form.setValue({ name: '', email: 'ada@example.com', password: 'secret' });
+
+    page.submit();
+    fixture.detectChanges();
+
+    expect(text()).toContain(message);
+  });
+
+  it('shows the first validation error from the API', () => {
+    const { fixture, page, authService, text } = setup();
+    authService.login.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 400,
+            error: { errors: { email: ['Email must be a valid email address'] } },
+          }),
+      ),
+    );
+    page.form.setValue({ name: '', email: 'ada@example.com', password: 'secret' });
+
+    page.submit();
+    fixture.detectChanges();
+
+    expect(text()).toContain('Email must be a valid email address');
   });
 });

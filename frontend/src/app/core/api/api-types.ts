@@ -77,11 +77,111 @@ export interface paths {
     };
     /**
      * Get the current user
-     * @description Returns the authenticated caller's profile, creating it from the access token's claims on first call.
+     * @description Returns the authenticated caller's profile and the permissions their access token grants.
      */
     get: operations['AppTemplateWebFeaturesUserFeaturesMeEndpoint'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/antiforgery': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get antiforgery tokens
+     * @description Sets the XSRF-TOKEN cookie, whose value /auth/refresh and /auth/logout expect in the X-XSRF-TOKEN header.
+     */
+    get: operations['AppTemplateWebFeaturesAuthFeaturesAntiforgeryEndpoint'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/login': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Sign in
+     * @description Returns a 15-minute access token, to send as Authorization: Bearer, and sets the refresh token cookie used by /auth/refresh.
+     */
+    post: operations['AppTemplateWebFeaturesAuthFeaturesLoginEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Sign out
+     * @description Revokes the refresh token cookie's session and deletes the cookie. Requires an allowed Origin and the X-XSRF-TOKEN header from GET /auth/antiforgery.
+     */
+    post: operations['AppTemplateWebFeaturesAuthFeaturesLogoutEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/refresh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Refresh the session
+     * @description Rotates the refresh token cookie and returns a new access token. Requires an allowed Origin and the X-XSRF-TOKEN header from GET /auth/antiforgery.
+     */
+    post: operations['AppTemplateWebFeaturesAuthFeaturesRefreshEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Register
+     * @description Creates an account and signs it in: returns an access token and sets the refresh token cookie. A welcome email is sent to the address.
+     */
+    post: operations['AppTemplateWebFeaturesAuthFeaturesRegisterEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -150,6 +250,38 @@ export interface components {
       phoneCountryCode?: string | null;
       /** @example null */
       phoneExtension?: string | null;
+    };
+    AccessTokenResponse: {
+      accessToken: string;
+      /** Format: int32 */
+      expiresIn: number;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com",
+     *       "password": "correct horse battery staple"
+     *     }
+     */
+    LoginRequest: {
+      /** @example ada@example.com */
+      email: string;
+      /** @example correct horse battery staple */
+      password: string;
+    };
+    /**
+     * @example {
+     *       "name": "Ada Lovelace",
+     *       "email": "ada@example.com",
+     *       "password": "correct horse battery staple"
+     *     }
+     */
+    RegisterRequest: {
+      /** @example Ada Lovelace */
+      name: string;
+      /** @example ada@example.com */
+      email: string;
+      /** @example correct horse battery staple */
+      password: string;
     };
   };
   responses: never;
@@ -446,15 +578,6 @@ export interface operations {
           'application/json': components['schemas']['CurrentUserResponse'];
         };
       };
-      /** @description The access token is missing a required claim */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
       /** @description Missing or invalid access token */
       401: {
         headers: {
@@ -464,8 +587,229 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
-      /** @description The token's email is already linked to another user */
+      /** @description The user was deleted */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebFeaturesAuthFeaturesAntiforgeryEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cookies set */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AppTemplateWebFeaturesAuthFeaturesLoginEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['LoginRequest'];
+      };
+    };
+    responses: {
+      /** @description Signed in */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+           *       "expiresIn": 900
+           *     }
+           */
+          'application/json': components['schemas']['AccessTokenResponse'];
+        };
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Wrong email or password */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts; retry after Retry-After */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebFeaturesAuthFeaturesLogoutEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Signed out */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Missing or invalid Origin or antiforgery token */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Refreshed concurrently while signing out; sign out again */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebFeaturesAuthFeaturesRefreshEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Session refreshed */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+           *       "expiresIn": 900
+           *     }
+           */
+          'application/json': components['schemas']['AccessTokenResponse'];
+        };
+      };
+      /** @description No valid refresh token; sign in again */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Missing or invalid Origin or antiforgery token */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Refreshed concurrently by another request; retry */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebFeaturesAuthFeaturesRegisterEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['RegisterRequest'];
+      };
+    };
+    responses: {
+      /** @description Account created and signed in */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+           *       "expiresIn": 900
+           *     }
+           */
+          'application/json': components['schemas']['AccessTokenResponse'];
+        };
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description An account with this email already exists */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts; retry after Retry-After */
+      429: {
         headers: {
           [name: string]: unknown;
         };

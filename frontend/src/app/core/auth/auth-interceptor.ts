@@ -1,43 +1,50 @@
 import { inject } from '@angular/core';
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
-import { AuthService, BACKEND_FOR_FRONTEND_PATH } from '../../features/auth/auth-service';
+import { catchError, switchMap, throwError } from 'rxjs';
+import { API_BASE } from '../api/api-paths';
+import { AUTH_PATH, AuthService } from '../../features/auth/auth-service';
 
-/** Must match AntiforgeryHeaderMiddleware in AppTemplate.BackendForFrontend. */
-export const CSRF_HEADER = 'X-CSRF';
-
-function isBackendRequest(url: string): boolean {
-  const path = url.startsWith('/') ? url.slice(1) : url;
-  return path.startsWith('api/') || path.startsWith(`${BACKEND_FOR_FRONTEND_PATH}/`);
+function relativePath(url: string): string {
+  return url.startsWith('/') ? url.slice(1) : url;
 }
 
 /**
- * Adds the CSRF header the backend for frontend requires on API and session calls (the session
- * cookie itself is attached by the browser). An API 401 means the session is gone - e.g. the
- * refresh token expired - so the user is sent back through login.
+ * Adds the access token to API requests. A 401 means it expired (it lasts 15 minutes): the
+ * interceptor refreshes once and retries; if the session can't be refreshed, it sends the user
+ * to sign in. The auth endpoints themselves are left alone - their errors are the caller's to
+ * handle, and a failing refresh must never trigger another refresh. The X-XSRF-TOKEN header
+ * the auth endpoints need is added by Angular's own XSRF interceptor.
  */
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
-  if (!isBackendRequest(request.url)) {
+  const path = relativePath(request.url);
+  if (!path.startsWith(`${API_BASE}/`) || path.startsWith(`${AUTH_PATH}/`)) {
     return next(request);
   }
 
   const authService = inject(AuthService);
   const router = inject(Router);
+  const withToken = (outgoing: HttpRequest<unknown>) => {
+    const token = authService.accessToken();
+    return token ? outgoing.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : outgoing;
+  };
 
-  return next(request.clone({ setHeaders: { [CSRF_HEADER]: '1' } })).pipe(
+  return next(withToken(request)).pipe(
     catchError((error: unknown) => {
-      const isApiUnauthorized =
-        error instanceof HttpErrorResponse &&
-        error.status === 401 &&
-        !request.url.includes(BACKEND_FOR_FRONTEND_PATH);
-
-      if (isApiUnauthorized) {
-        authService.clearUser();
-        authService.login(router.url);
+      if (!(error instanceof HttpErrorResponse) || error.status !== 401) {
+        return throwError(() => error);
       }
 
-      return throwError(() => error);
+      return authService.refresh().pipe(
+        switchMap((refreshed) => {
+          if (!refreshed) {
+            router.navigate(['/auth'], { queryParams: { returnUrl: router.url } });
+            return throwError(() => error);
+          }
+          // Straight to `next`, so a second 401 is returned as is, never refreshed again.
+          return next(withToken(request));
+        }),
+      );
     }),
   );
 };
