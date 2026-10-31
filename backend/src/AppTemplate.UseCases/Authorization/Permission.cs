@@ -1,10 +1,9 @@
 ﻿namespace AppTemplate.UseCases.Authorization;
 
 /// <summary>
-/// Fine-grained permissions the API enforces. Each is a Keycloak client role on the
-/// <c>apptemplate-api</c> client; realm roles (such as <c>admin</c>) bundle them, so role
-/// changes happen in Keycloak without code changes. The names are also ASP.NET Core policy
-/// names (see the Web project's AuthorizationConfigurations).
+/// Fine-grained permissions the API enforces. Roles grant them (<see cref="RolePermissions"/>),
+/// and they travel in the access token as <c>permission</c> claims. The names are also ASP.NET
+/// Core policy names (see the Web project's AuthorizationConfigurations).
 /// </summary>
 public static class Permission
 {

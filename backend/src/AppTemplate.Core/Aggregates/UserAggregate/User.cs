@@ -1,41 +1,59 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate.Events;
+using AppTemplate.Core.Aggregates.UserAggregate.Events;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate;
 
 /// <summary>
-/// The application's own view of a person. Credentials live in the OpenID Connect provider
-/// (Keycloak), not here - <see cref="ExternalId"/> links this row to that identity via its
-/// <c>sub</c> claim.
+/// The application's own view of a person, including the hash of the password they sign in
+/// with. The domain never sees the password itself or how it's hashed: use cases hash it
+/// through <c>IPasswordHasher</c>.
 /// </summary>
-public class User(string externalId, UserName name, EmailAddress email)
+public class User(UserName name, EmailAddress email, string passwordHash, UserRole role)
     : EntityBase<User, UserId>,
         IAggregateRoot
 {
-    public const int ExternalIdMaxLength = 64;
+    public const int PasswordHashMaxLength = 256;
 
-    public string ExternalId { get; private set; } = externalId;
     public UserName Name { get; private set; } = name;
     public EmailAddress Email { get; private set; } = email;
+    public string PasswordHash { get; private set; } = passwordHash;
+
+    /// <summary>What the user may do; use cases map it to permissions (<c>RolePermissions</c>).</summary>
+    public UserRole Role { get; private set; } = role;
+
     public PhoneNumber? PhoneNumber { get; private set; }
 
     /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
-    public static User Create(string externalId, UserName name, EmailAddress email)
+    public static User Create(
+        UserName name,
+        EmailAddress email,
+        string passwordHash,
+        UserRole role = UserRole.Member
+    )
     {
-        if (string.IsNullOrWhiteSpace(externalId))
-            throw new ArgumentException("External id cannot be empty", nameof(externalId));
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new ArgumentException("Password hash cannot be empty", nameof(passwordHash));
 
-        if (externalId.Length > ExternalIdMaxLength)
+        if (passwordHash.Length > PasswordHashMaxLength)
             throw new ArgumentException(
-                $"External id must not exceed {ExternalIdMaxLength} characters",
-                nameof(externalId)
+                $"Password hash must not exceed {PasswordHashMaxLength} characters",
+                nameof(passwordHash)
             );
 
-        var user = new User(externalId, name, email);
-        // Dispatched in-process once the user is saved; handle it to react to new users.
-        user.RegisterDomainEvent(new UserProvisioned(externalId));
-        return user;
+        return new User(name, email, passwordHash, role);
+    }
+
+    /// <summary>
+    /// Raises <see cref="UserRegisteredDomainEvent"/>. Called once the user is saved: the event
+    /// carries the id, which is only assigned when the row is added.
+    /// </summary>
+    public void MarkRegistered()
+    {
+        if (!Id.IsInitialized())
+            throw new InvalidOperationException("A user is registered once it has been saved.");
+
+        RegisterDomainEvent(new UserRegisteredDomainEvent(Id, Email.Value));
     }
 
     public User UpdateName(UserName newName)
@@ -52,6 +70,13 @@ public class User(string externalId, UserName name, EmailAddress email)
     public User UpdatePhoneNumber(PhoneNumber newPhoneNumber)
     {
         PhoneNumber = newPhoneNumber;
+        return this;
+    }
+
+    /// <summary>Takes effect in the user's next access token (at the latest on the next refresh).</summary>
+    public User ChangeRole(UserRole newRole)
+    {
+        Role = newRole;
         return this;
     }
 }

@@ -16,6 +16,12 @@ public sealed class RateLimitingSettings
     /// <summary>Requests one anonymous client address may make per window.</summary>
     public int AnonymousPermitLimit { get; set; } = 120;
 
+    /// <summary>
+    /// Sign-in and registration attempts one client may make per window
+    /// (<see cref="RateLimitingConfigurations.AuthenticationPolicy"/>), against password guessing.
+    /// </summary>
+    public int AuthenticationPermitLimit { get; set; } = 5;
+
     public TimeSpan Window { get; set; } = TimeSpan.FromMinutes(1);
 }
 
@@ -27,6 +33,9 @@ public sealed class RateLimitingSettings
 /// </summary>
 public static class RateLimitingConfigurations
 {
+    /// <summary>The strict per-client limit on sign-in and registration, on top of the global one.</summary>
+    public const string AuthenticationPolicy = "authentication";
+
     public static IServiceCollection AddRateLimitingConfigurations(
         this IServiceCollection services,
         IConfiguration configuration
@@ -39,6 +48,7 @@ public static class RateLimitingConfigurations
                 settings =>
                     settings.AuthenticatedPermitLimit > 0
                     && settings.AnonymousPermitLimit > 0
+                    && settings.AuthenticationPermitLimit > 0
                     && settings.Window > TimeSpan.Zero,
                 "RateLimiting needs positive permit limits and a positive window."
             )
@@ -70,6 +80,18 @@ public static class RateLimitingConfigurations
 
                             return FixedWindow(partition, permitLimit, settings.Window);
                         }
+                    );
+
+                    // In memory, so per instance: behind several instances an attacker gets this
+                    // many attempts on each. See best-practices.md, Production deployment.
+                    options.AddPolicy(
+                        AuthenticationPolicy,
+                        context =>
+                            FixedWindow(
+                                $"{AuthenticationPolicy}:{ClientPartition.Of(context)}",
+                                settings.AuthenticationPermitLimit,
+                                settings.Window
+                            )
                     );
 
                     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

@@ -1,39 +1,59 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
+using AppTemplate.UseCases.Authentication;
 
 namespace AppTemplate.Infrastructure.Data;
 
+/// <summary>Development-only demo data (see DatabaseConfigurations.StartDatabase).</summary>
 public class SeedData
 {
     public const int NUMBER_OF_SEED_USERS = 25;
 
-    public static async Task InitializeAsync(ApplicationDatabaseContext dbContext)
+    /// <summary>An account with the Admin role, for trying the users pages locally.</summary>
+    public const string AdminEmail = "admin@example.com";
+    public const string AdminPassword = "Admin123!";
+
+    /// <summary>The shared password of the fixture users (user1@example.com, ...).</summary>
+    public const string FixturePassword = "Passw0rd!";
+
+    public static async Task InitializeAsync(
+        ApplicationDatabaseContext dbContext,
+        IPasswordHasher passwordHasher
+    )
     {
         if (await dbContext.Users.AnyAsync())
             return; // DB has been seeded
 
-        await PopulateTestDataAsync(dbContext);
+        await PopulateTestDataAsync(dbContext, passwordHasher);
     }
 
-    public static async Task PopulateTestDataAsync(ApplicationDatabaseContext dbContext)
+    public static async Task PopulateTestDataAsync(
+        ApplicationDatabaseContext dbContext,
+        IPasswordHasher passwordHasher
+    )
     {
-        var names = new List<string>();
+        dbContext.Users.Add(
+            User.Create(
+                UserName.From("Admin"),
+                new EmailAddress(AdminEmail),
+                passwordHasher.Hash(AdminPassword),
+                UserRole.Admin
+            )
+        );
+
+        // Hashing is deliberately slow, so the fixtures share one hash.
+        var fixtureHash = passwordHasher.Hash(FixturePassword);
         for (int i = 1; i <= NUMBER_OF_SEED_USERS; i++)
         {
-            names.Add($"User {i}");
+            dbContext.Users.Add(
+                User.Create(
+                    UserName.From($"User {i}"),
+                    new EmailAddress($"user{i}@example.com"),
+                    fixtureHash
+                )
+            );
         }
 
-        // Seed users are fixtures for pagination demos, not accounts anyone can log into - their
-        // ExternalIds don't match any identity in Keycloak.
-        var users = names.Select(
-            (name, index) =>
-                User.Create(
-                    $"seed-{index + 1}",
-                    UserName.From(name),
-                    new EmailAddress($"{name.ToLowerInvariant().Replace(" ", "")}@example.com")
-                )
-        );
-        dbContext.Users.AddRange(users);
         await dbContext.SaveChangesAsync();
     }
 }

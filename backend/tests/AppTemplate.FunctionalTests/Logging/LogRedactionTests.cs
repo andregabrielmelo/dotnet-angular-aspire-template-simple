@@ -146,12 +146,11 @@ public class LogRedactionTests(LogRedactionTests.CapturingFactory factory)
     [Fact]
     public async Task RequestLogs_HaveTheCallerAndEndpointButNoHeadersOrBody()
     {
-        var subject = $"sub-{Guid.NewGuid():N}";
-        var me = await factory
-            .CreateAuthenticatedClient(subject)
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
-        var client = factory.CreateAuthenticatedClient(subject, Permission.UsersWrite);
-        var request = new HttpRequestMessage(HttpMethod.Put, $"/users/{me!.Id}")
+        var user = await factory.CreateUserAsync();
+        var subject = user.Id.Value.ToString();
+        var me = new { Id = user.Id.Value };
+        var client = factory.CreateAuthenticatedClient(user.Id, Permission.UsersWrite);
+        var request = new HttpRequestMessage(HttpMethod.Put, $"/users/{me.Id}")
         {
             Content = JsonContent.Create(
                 new

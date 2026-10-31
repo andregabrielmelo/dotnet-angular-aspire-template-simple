@@ -1,5 +1,7 @@
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
+using AppTemplate.Infrastructure.Identity;
+using AppTemplate.UseCases.Authentication;
 using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -71,7 +73,8 @@ public static class InfrastructureServiceExtensions
 
         services
             .AddScoped(typeof(IRepository<>), typeof(EntityFrameworkRepository<>))
-            .AddScoped<IListUsersQueryService, ListUsersQueryService>();
+            .AddScoped<IListUsersQueryService, ListUsersQueryService>()
+            .AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

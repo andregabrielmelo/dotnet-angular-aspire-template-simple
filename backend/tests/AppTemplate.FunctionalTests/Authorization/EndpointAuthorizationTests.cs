@@ -21,6 +21,14 @@ public class EndpointAuthorizationTests(AppTemplateWebApplicationFactory factory
         // credentials, and they answer with only a status word.
         "ANY /alive",
         "ANY /health",
+        // Signing in, up and out, and getting the antiforgery token for it: the caller has no
+        // access token yet (or any more). Refresh and logout are authenticated by the refresh
+        // cookie, plus Origin and antiforgery checks (AuthCookies).
+        "GET /auth/antiforgery",
+        "POST /auth/login",
+        "POST /auth/logout",
+        "POST /auth/refresh",
+        "POST /auth/register",
     ];
 
     private IEnumerable<RouteEndpoint> RouteEndpoints() =>

@@ -1,11 +1,11 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace AppTemplate.UseCases.Behaviors;
 
 /// <summary>
-/// Logs every command and query through the Mediator pipeline. The request is destructured
-/// ({@Request}), so classified properties ([PersonalData], [SecretData]) are redacted.
+/// Logs every command and query through the Mediator pipeline, by name only: requests carry
+/// passwords, refresh tokens and personal data, which never belong in logs.
 /// Configure by adding the service with a scoped lifetime
 /// </summary>
 /// <typeparam name="TRequest"></typeparam>
@@ -30,11 +30,7 @@ public class LoggingBehavior<TRequest, TResponse>(
 
         if (_logger.IsEnabled(LogLevel.Information))
         {
-            _logger.LogInformation(
-                "Handling {RequestName} with {@Request}",
-                typeof(TRequest).Name,
-                request
-            );
+            _logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
         }
 
         var sw = Stopwatch.StartNew();
@@ -45,8 +41,7 @@ public class LoggingBehavior<TRequest, TResponse>(
 
         if (_logger.IsEnabled(LogLevel.Information))
         {
-            // Not the response itself: a DTO's ToString() prints every property, and nothing
-            // classified inside it would be redacted.
+            // Not the response itself: a DTO's ToString() prints every property, tokens included.
             _logger.LogInformation(
                 "Handled {RequestName} in {ElapsedMilliseconds} ms",
                 typeof(TRequest).Name,

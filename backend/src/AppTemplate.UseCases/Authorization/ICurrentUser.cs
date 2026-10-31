@@ -1,4 +1,6 @@
-﻿namespace AppTemplate.UseCases.Authorization;
+using AppTemplate.Core.Aggregates.UserAggregate;
+
+namespace AppTemplate.UseCases.Authorization;
 
 /// <summary>
 /// The authenticated caller, for authorization decisions that depend on the resource being
@@ -6,8 +8,8 @@
 /// </summary>
 public interface ICurrentUser
 {
-    /// <summary>The identity provider's subject (<c>sub</c>), i.e. <c>User.ExternalId</c>.</summary>
-    string? ExternalId { get; }
+    /// <summary>The caller's user id (the token's <c>sub</c>); <c>null</c> when anonymous.</summary>
+    UserId? Id { get; }
 
     IReadOnlySet<string> Permissions { get; }
 

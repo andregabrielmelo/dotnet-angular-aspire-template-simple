@@ -1,5 +1,5 @@
 using AppTemplate.Infrastructure.Email;
-using AppTemplate.Web.Authorization;
+using AppTemplate.Web.Authentication;
 using AppTemplate.Web.Configurations;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,10 +19,11 @@ public class OptionsRegistrationTests(AppTemplateWebApplicationFactory factory)
 {
     public static TheoryData<Type> WebOptions() =>
         [
-            typeof(KeycloakAuthorizationOptions),
             typeof(MailserverConfiguration),
             typeof(ForwardedHeadersSettings),
             typeof(RateLimitingSettings),
+            typeof(JwtSettings),
+            typeof(AuthCookieSettings),
         ];
 
     [Theory]
@@ -40,13 +41,6 @@ public class OptionsRegistrationTests(AppTemplateWebApplicationFactory factory)
     [MemberData(nameof(WebOptions))]
     public void Options_AreValidated(Type options)
     {
-        // KeycloakAuthorizationOptions has nothing left to validate: its only value comes
-        // from the required Keycloak:Audience, which fails startup when missing.
-        if (options == typeof(KeycloakAuthorizationOptions))
-        {
-            return;
-        }
-
         var validators = factory.Services.GetServices(
             typeof(IValidateOptions<>).MakeGenericType(options)
         );
@@ -59,15 +53,19 @@ public class OptionsRegistrationTests(AppTemplateWebApplicationFactory factory)
 public class StartupConfigurationTests
 {
     [Theory]
-    [InlineData("Keycloak:Realm")]
-    [InlineData("Keycloak:Audience")]
-    public void MissingRequiredKeycloakSetting_FailsStartupNamingTheKey(string key)
+    [InlineData("Jwt:SigningKey", "", "Jwt:SigningKey")]
+    [InlineData("Jwt:SigningKey", "c2hvcnQ=", "Jwt:SigningKey")] // 5 bytes
+    [InlineData("Jwt:SigningKey", "not base64!", "Jwt:SigningKey")]
+    [InlineData("Jwt:Issuer", "", "Issuer")]
+    [InlineData("Authentication:AllowedOrigins:0", "https://app.test/path", "AllowedOrigins")]
+    [InlineData("Mailserver:FromAddress", "", "FromAddress")]
+    public void InvalidSetting_FailsStartupNamingTheKey(string key, string value, string named)
     {
-        using var factory = new MisconfiguredFactory((key, ""));
+        using var factory = new MisconfiguredFactory((key, value));
 
         var exception = Assert.ThrowsAny<Exception>(() => factory.Services);
 
-        Assert.Contains(key, Flatten(exception));
+        Assert.Contains(named, Flatten(exception));
     }
 
     private static string Flatten(Exception exception) =>

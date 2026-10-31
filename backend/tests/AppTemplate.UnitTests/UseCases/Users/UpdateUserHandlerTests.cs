@@ -13,9 +13,9 @@ public class UpdateUserHandlerTests
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
 
     private readonly User _target = User.Create(
-        "owner-sub",
         UserName.From("Ada Lovelace"),
-        new EmailAddress("ada@example.com")
+        new EmailAddress("ada@example.com"),
+        "hashed-password"
     );
 
     private static readonly UpdateUserCommand Command = new(
@@ -26,8 +26,11 @@ public class UpdateUserHandlerTests
         null
     );
 
+    private static readonly UserId TargetId = UserId.From(1);
+
     public UpdateUserHandlerTests()
     {
+        _target.Id = TargetId; // as if loaded from the database
         _repository.GetByIdAsync(Command.UserId, Arg.Any<CancellationToken>()).Returns(_target);
     }
 
@@ -39,7 +42,7 @@ public class UpdateUserHandlerTests
     [Fact]
     public async Task Handle_OwnProfile_UpdatesWithoutPermissions()
     {
-        _currentUser.ExternalId.Returns("owner-sub");
+        _currentUser.Id.Returns(TargetId);
 
         var result = await Handle();
 
@@ -51,7 +54,7 @@ public class UpdateUserHandlerTests
     [Fact]
     public async Task Handle_SomeoneElse_WithoutUsersWrite_IsForbiddenAndChangesNothing()
     {
-        _currentUser.ExternalId.Returns("another-sub");
+        _currentUser.Id.Returns(UserId.From(2));
         _currentUser.HasPermission(Permission.UsersWrite).Returns(false);
 
         var result = await Handle();
@@ -66,7 +69,7 @@ public class UpdateUserHandlerTests
     [Fact]
     public async Task Handle_SomeoneElse_WithUsersWrite_Updates()
     {
-        _currentUser.ExternalId.Returns("admin-sub");
+        _currentUser.Id.Returns(UserId.From(3));
         _currentUser.HasPermission(Permission.UsersWrite).Returns(true);
 
         var result = await Handle();
@@ -77,7 +80,7 @@ public class UpdateUserHandlerTests
     [Fact]
     public async Task Handle_WithPhoneNumber_StoresAndReturnsIt()
     {
-        _currentUser.ExternalId.Returns("owner-sub");
+        _currentUser.Id.Returns(TargetId);
         var command = Command with
         {
             PhoneNumber = "11 98765 4321",
@@ -98,7 +101,7 @@ public class UpdateUserHandlerTests
     [Fact]
     public async Task Handle_WithPhoneNumberButNoCountryCode_FailsAndChangesNothing()
     {
-        _currentUser.ExternalId.Returns("owner-sub");
+        _currentUser.Id.Returns(TargetId);
 
         var result = await new UpdateUserHandler(_repository, _currentUser)
             .Handle(Command with { PhoneNumber = "11 98765 4321" }, CancellationToken.None)
@@ -115,7 +118,7 @@ public class UpdateUserHandlerTests
     [Fact]
     public async Task Handle_WithoutPhoneNumber_KeepsTheCurrentOne()
     {
-        _currentUser.ExternalId.Returns("owner-sub");
+        _currentUser.Id.Returns(TargetId);
         var phoneNumber = new PhoneNumber("+55", "11 98765 4321", null);
         _target.UpdatePhoneNumber(phoneNumber);
 

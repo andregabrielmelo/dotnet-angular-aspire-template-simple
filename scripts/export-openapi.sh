@@ -6,8 +6,8 @@
 # Usage: scripts/export-openapi.sh [--no-build]
 #
 # The API starts briefly on a loopback port to build the document (see OpenApiExport.cs). It
-# never connects to Postgres or Keycloak, so the values below only satisfy startup
-# validation and must never be real credentials.
+# never connects to Postgres or signs a token, so the values below only satisfy startup
+# validation and must never be real credentials (the signing key is 33 zero bytes).
 set -euo pipefail
 
 cd "$(dirname "$0")/../backend"
@@ -15,4 +15,7 @@ cd "$(dirname "$0")/../backend"
 dotnet run --project src/AppTemplate.Web --configuration Release --no-launch-profile "$@" -- \
   --OpenApi:ExportPath=../../openapi/v1.json \
   --urls=http://127.0.0.1:0 \
-  "--ConnectionStrings:apptemplate=Host=openapi-export-unused"
+  "--ConnectionStrings:apptemplate=Host=openapi-export-unused" \
+  --Jwt:SigningKey=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \
+  --Authentication:AllowedOrigins:0=http://openapi-export.invalid \
+  --Mailserver:FromAddress=openapi-export@example.invalid

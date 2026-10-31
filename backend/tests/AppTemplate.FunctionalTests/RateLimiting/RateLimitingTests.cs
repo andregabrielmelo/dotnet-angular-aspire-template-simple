@@ -21,6 +21,9 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
     : IClassFixture<RateLimitingTests.LowLimitFactory>
 {
     private const int Limit = 3;
+
+    /// <summary>Below <see cref="Limit"/>, so a 429 can only come from the authentication policy.</summary>
+    private const int AuthenticationLimit = 2;
     private static int _nextAddress;
 
     private static string NewAddress()
@@ -76,9 +79,10 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
             (await ExhaustAsync(() => anonymous.GetAsync("/users/me"))).StatusCode
         );
 
+        var signedIn = await factory.CreateUserAsync();
         var user = factory.CreateClient();
         user.DefaultRequestHeaders.Add("X-Forwarded-For", address);
-        user.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, $"sub-{Guid.NewGuid():N}");
+        user.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, signedIn.Id.Value.ToString());
         var response = await user.GetAsync("/users/me");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -87,13 +91,13 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
     [Fact]
     public async Task SignedInUsers_HaveSeparatePartitions()
     {
-        var first = factory.CreateAuthenticatedClient($"sub-{Guid.NewGuid():N}");
+        var (_, first) = await factory.CreateSignedInUserAsync();
         Assert.Equal(
             HttpStatusCode.TooManyRequests,
             (await ExhaustAsync(() => first.GetAsync("/users/me"))).StatusCode
         );
 
-        var second = factory.CreateAuthenticatedClient($"sub-{Guid.NewGuid():N}");
+        var (_, second) = await factory.CreateSignedInUserAsync();
         Assert.Equal(HttpStatusCode.OK, (await second.GetAsync("/users/me")).StatusCode);
     }
 
@@ -115,6 +119,23 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
         Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
     }
 
+    [Fact]
+    public async Task SignIn_HasItsOwnStricterLimit_PerClient()
+    {
+        // Wrong passwords: the limit counts attempts, whatever their outcome.
+        var session = new BrowserSession(factory);
+        var rejected = await ExhaustAsync(
+            () => session.LoginAsync($"nobody-{Guid.NewGuid():N}@example.com", "wrong-password"),
+            AuthenticationLimit
+        );
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            (await new BrowserSession(factory).LoginAsync("nobody@example.com", "wrong")).StatusCode
+        );
+    }
+
     [Theory]
     [InlineData("/health", true)]
     [InlineData("/alive", true)]
@@ -129,6 +150,10 @@ public class RateLimitingTests(RateLimitingTests.LowLimitFactory factory)
             base.ConfigureWebHost(builder);
             builder.UseSetting("RateLimiting:AnonymousPermitLimit", Limit.ToString());
             builder.UseSetting("RateLimiting:AuthenticatedPermitLimit", Limit.ToString());
+            builder.UseSetting(
+                "RateLimiting:AuthenticationPermitLimit",
+                AuthenticationLimit.ToString()
+            );
         }
     }
 }

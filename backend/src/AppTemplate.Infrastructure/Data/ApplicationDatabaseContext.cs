@@ -1,4 +1,5 @@
 using System.Reflection;
+using AppTemplate.Core.Aggregates.RefreshTokenAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate;
 
 namespace AppTemplate.Infrastructure.Data;
@@ -7,6 +8,7 @@ public class ApplicationDatabaseContext(DbContextOptions<ApplicationDatabaseCont
     : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     // Override OnModelCreating to apply class configurations from the assembly
     protected override void OnModelCreating(ModelBuilder modelBuilder)

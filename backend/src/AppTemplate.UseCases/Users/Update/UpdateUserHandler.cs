@@ -21,8 +21,7 @@ public class UpdateUserHandler(IRepository<User> _repository, ICurrentUser _curr
         if (user == null)
             return Result<UserDto>.NotFound();
 
-        var isOwnProfile =
-            _currentUser.ExternalId is not null && _currentUser.ExternalId == user.ExternalId;
+        var isOwnProfile = _currentUser.Id == user.Id;
         if (!isOwnProfile && !_currentUser.HasPermission(Permission.UsersWrite))
             return Result<UserDto>.Forbidden();
 

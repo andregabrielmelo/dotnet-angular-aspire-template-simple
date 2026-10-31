@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using System.Text.Json;
+using AppTemplate.Web.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -8,9 +8,10 @@ using Microsoft.Extensions.Options;
 namespace AppTemplate.FunctionalTests;
 
 /// <summary>
-/// Stands in for Keycloak-issued JWTs in functional tests: a request carrying
-/// <see cref="UserHeader"/> is authenticated as that <c>sub</c>, with the same claim names a
-/// real access token has. Requests without it stay anonymous.
+/// Stands in for an access token in functional tests: a request carrying
+/// <see cref="UserHeader"/> is authenticated as that user id (<c>sub</c>), with the permission
+/// claims a real token would carry. Requests without it are forwarded to the real JWT bearer
+/// handler (see <see cref="AppTemplateWebApplicationFactory"/>).
 /// </summary>
 public class TestAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -21,7 +22,7 @@ public class TestAuthHandler(
     public const string SchemeName = "Test";
     public const string UserHeader = "X-Test-User";
 
-    /// <summary>Comma-separated API permissions, emitted like Keycloak's resource_access claim.</summary>
+    /// <summary>Comma-separated API permissions, emitted as <c>permission</c> claims.</summary>
     public const string PermissionsHeader = "X-Test-Permissions";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -38,22 +39,17 @@ public class TestAuthHandler(
         {
             new("sub", subject!),
             new("name", $"Test {subject}"),
-            new("email", $"{subject}@example.com"),
+            new("email", $"user-{subject}@example.com"),
         };
+        claims.AddRange(
+            Request
+                .Headers[PermissionsHeader]
+                .ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(permission => new Claim(AppClaimTypes.Permission, permission))
+        );
 
-        var permissions = Request
-            .Headers[PermissionsHeader]
-            .ToString()
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (permissions.Length > 0)
-        {
-            var resourceAccess = JsonSerializer.Serialize(
-                new Dictionary<string, object> { ["apptemplate-api"] = new { roles = permissions } }
-            );
-            claims.Add(new Claim("resource_access", resourceAccess, "JSON"));
-        }
-
-        var identity = new ClaimsIdentity(claims, SchemeName, "name", "roles");
+        var identity = new ClaimsIdentity(claims, SchemeName, "name", "role");
 
         return Task.FromResult(
             AuthenticateResult.Success(

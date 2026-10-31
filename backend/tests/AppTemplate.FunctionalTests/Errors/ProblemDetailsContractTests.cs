@@ -2,13 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.ValueObjects;
-using AppTemplate.SharedKernel;
 using AppTemplate.UseCases;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.List;
-using AppTemplate.Web.Features.UserFeatures;
+using AppTemplate.UseCases.Users.Register;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -25,7 +23,7 @@ namespace AppTemplate.FunctionalTests.Errors;
 public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {
-    private static string NewSubject() => $"sub-{Guid.NewGuid():N}";
+    private static UserId AnyUser() => UserId.From(Random.Shared.Next(1_000_000, int.MaxValue));
 
     /// <summary>Asserts the response is a problem details document and returns its body.</summary>
     private static async Task<JsonElement> AssertProblemAsync(
@@ -47,7 +45,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     public async Task ValidatorFailure_IsAValidationProblemKeyedByJsonFieldName()
     {
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .CreateAuthenticatedClient(AnyUser(), Permission.UsersRead)
             .GetAsync("/users/0");
 
         var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest);
@@ -74,7 +72,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     [Fact]
     public async Task MissingPermission_IsA403Problem()
     {
-        var response = await factory.CreateAuthenticatedClient(NewSubject()).GetAsync("/users");
+        var response = await factory.CreateAuthenticatedClient(AnyUser()).GetAsync("/users");
 
         await AssertProblemAsync(response, HttpStatusCode.Forbidden);
     }
@@ -82,14 +80,15 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     [Fact]
     public async Task ForbiddenUseCaseResult_IsA403Problem()
     {
-        var target = await factory
-            .CreateAuthenticatedClient(NewSubject())
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
+        var target = await factory.CreateUserAsync();
 
         // Another user's profile without users:write is rejected by the use case itself.
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject())
-            .PutAsJsonAsync($"/users/{target!.Id}", new { id = target.Id, name = "Hijacked" });
+            .CreateAuthenticatedClient(AnyUser())
+            .PutAsJsonAsync(
+                $"/users/{target.Id.Value}",
+                new { id = target.Id.Value, name = "Hijacked" }
+            );
 
         var body = await AssertProblemAsync(response, HttpStatusCode.Forbidden);
         Assert.Equal(
@@ -102,7 +101,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     public async Task NotFoundUseCaseResult_IsA404Problem()
     {
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .CreateAuthenticatedClient(AnyUser(), Permission.UsersRead)
             .GetAsync($"/users/{int.MaxValue}");
 
         await AssertProblemAsync(response, HttpStatusCode.NotFound);
@@ -111,35 +110,19 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
     [Fact]
     public async Task ConflictUseCaseResult_IsA409ProblemWithTheUseCaseMessage()
     {
-        // Another identity already owns the email this caller's token carries.
-        var subject = NewSubject();
-        using (var scope = factory.Services.CreateScope())
-        {
-            await scope
-                .ServiceProvider.GetRequiredService<IRepository<User>>()
-                .AddAsync(
-                    User.Create(
-                        NewSubject(),
-                        UserName.From("Earlier Account"),
-                        new EmailAddress($"{subject}@example.com")
-                    )
-                );
-        }
+        var existing = await factory.CreateUserAsync();
 
-        var response = await factory.CreateAuthenticatedClient(subject).GetAsync("/users/me");
+        var response = await new BrowserSession(factory).RegisterAsync(existing.Email.Value);
 
         var body = await AssertProblemAsync(response, HttpStatusCode.Conflict);
-        Assert.Equal(
-            "Email is already linked to another user",
-            body.GetProperty("detail").GetString()
-        );
+        Assert.Equal(RegisterUserHandler.EmailTakenMessage, body.GetProperty("detail").GetString());
     }
 
     [Fact]
     public async Task UnmatchedRoute_IsA404Problem()
     {
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject())
+            .CreateAuthenticatedClient(AnyUser())
             .GetAsync("/no-such-route");
 
         await AssertProblemAsync(response, HttpStatusCode.NotFound);
@@ -156,7 +139,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
             })
         );
         var client = app.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, NewSubject());
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, AnyUser().Value.ToString());
         client.DefaultRequestHeaders.Add(TestAuthHandler.PermissionsHeader, Permission.UsersRead);
 
         var response = await client.GetAsync("/users");
@@ -181,7 +164,7 @@ public class ProblemDetailsContractTests(AppTemplateWebApplicationFactory factor
             })
         );
         var client = app.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, NewSubject());
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, AnyUser().Value.ToString());
         client.DefaultRequestHeaders.Add(TestAuthHandler.PermissionsHeader, Permission.UsersRead);
 
         var invalid = await AssertProblemAsync(

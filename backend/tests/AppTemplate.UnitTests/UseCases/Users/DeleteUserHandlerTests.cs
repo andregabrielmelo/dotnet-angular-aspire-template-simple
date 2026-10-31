@@ -13,9 +13,9 @@ public class DeleteUserHandlerTests
     public async Task Handle_WithExistingUser_DeletesAndReturnsSuccess()
     {
         var user = User.Create(
-            "keycloak-sub-1",
             UserName.From("Ada Lovelace"),
-            new EmailAddress("ada@example.com")
+            new EmailAddress("ada@example.com"),
+            "hashed-password"
         );
         _repository.GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>()).Returns(user);
 

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
 using AppTemplate.Web.Features.UserFeatures;
@@ -11,18 +12,9 @@ namespace AppTemplate.FunctionalTests.UserFeatures;
 public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {
-    private static string NewSubject() => $"sub-{Guid.NewGuid():N}";
+    private static UserId UnknownUser() => UserId.From(Random.Shared.Next(1_000_000, int.MaxValue));
 
-    private async Task<CurrentUserResponse> ProvisionAsync(
-        string subject,
-        params string[] permissions
-    )
-    {
-        var me = await factory
-            .CreateAuthenticatedClient(subject, permissions)
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
-        return me!;
-    }
+    private Task<User> ProvisionAsync() => factory.CreateUserAsync();
 
     // --- Authentication -------------------------------------------------------------------
 
@@ -37,34 +29,37 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     // --- /users/me (any authenticated user) -------------------------------------------------
 
     [Fact]
-    public async Task Me_OnFirstCall_ProvisionsTheUserFromTokenClaims()
+    public async Task Me_ReturnsTheUserTheTokenNames()
     {
-        var subject = NewSubject();
+        var user = await factory.CreateUserAsync(email: $"me-{Guid.NewGuid():N}@example.com");
 
-        var me = await ProvisionAsync(subject);
+        var me = await factory
+            .CreateAuthenticatedClient(user.Id)
+            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
 
-        Assert.Equal($"Test {subject}", me.Name);
-        Assert.Equal($"{subject}@example.com", me.Email);
+        Assert.Equal(user.Id.Value, me!.Id);
+        Assert.Equal(user.Email.Value, me.Email);
         Assert.Empty(me.Permissions);
     }
 
     [Fact]
-    public async Task Me_CalledTwice_ReturnsTheSameUser()
+    public async Task Me_ReturnsTheTokensPermissions()
     {
-        var client = factory.CreateAuthenticatedClient(NewSubject());
+        var user = await ProvisionAsync();
 
-        var first = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
-        var second = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
+        var me = await factory
+            .CreateAuthenticatedClient(user.Id, Permission.UsersRead)
+            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
 
-        Assert.Equal(first!.Id, second!.Id);
+        Assert.Equal([Permission.UsersRead], me!.Permissions);
     }
 
     [Fact]
-    public async Task Me_ReturnsOnlyKnownPermissions()
+    public async Task Me_ForADeletedUser_ReturnsNotFound()
     {
-        var me = await ProvisionAsync(NewSubject(), Permission.UsersRead, "not-a-permission");
+        var response = await factory.CreateAuthenticatedClient(UnknownUser()).GetAsync("/users/me");
 
-        Assert.Equal([Permission.UsersRead], me.Permissions);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     // --- Permission policies ----------------------------------------------------------------
@@ -72,7 +67,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task List_WithoutUsersRead_IsForbidden()
     {
-        var response = await factory.CreateAuthenticatedClient(NewSubject()).GetAsync("/users");
+        var response = await factory.CreateAuthenticatedClient(UnknownUser()).GetAsync("/users");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -81,7 +76,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     public async Task List_WithUsersRead_ReturnsUsers()
     {
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .CreateAuthenticatedClient(UnknownUser(), Permission.UsersRead)
             .GetAsync("/users");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -90,11 +85,11 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task GetById_WithoutUsersRead_IsForbidden()
     {
-        var me = await ProvisionAsync(NewSubject());
+        var me = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject())
-            .GetAsync($"/users/{me.Id}");
+            .CreateAuthenticatedClient(UnknownUser())
+            .GetAsync($"/users/{me.Id.Value}");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -102,11 +97,11 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task GetById_WithUsersRead_ReturnsTheUser()
     {
-        var me = await ProvisionAsync(NewSubject());
+        var me = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync($"/users/{me.Id}");
+            .CreateAuthenticatedClient(UnknownUser(), Permission.UsersRead)
+            .GetAsync($"/users/{me.Id.Value}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -115,7 +110,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     public async Task GetById_WithUnknownId_ReturnsNotFound()
     {
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .CreateAuthenticatedClient(UnknownUser(), Permission.UsersRead)
             .GetAsync("/users/999999");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -124,27 +119,27 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task Delete_WithoutUsersDelete_IsForbiddenAndKeepsTheUser()
     {
-        var target = await ProvisionAsync(NewSubject());
+        var target = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead, Permission.UsersWrite)
-            .DeleteAsync($"/users/{target.Id}");
+            .CreateAuthenticatedClient(UnknownUser(), Permission.UsersRead, Permission.UsersWrite)
+            .DeleteAsync($"/users/{target.Id.Value}");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         var stillThere = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync($"/users/{target.Id}");
+            .CreateAuthenticatedClient(UnknownUser(), Permission.UsersRead)
+            .GetAsync($"/users/{target.Id.Value}");
         Assert.Equal(HttpStatusCode.OK, stillThere.StatusCode);
     }
 
     [Fact]
     public async Task Delete_WithUsersDelete_RemovesTheUser()
     {
-        var target = await ProvisionAsync(NewSubject());
+        var target = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersDelete)
-            .DeleteAsync($"/users/{target.Id}");
+            .CreateAuthenticatedClient(UnknownUser(), Permission.UsersDelete)
+            .DeleteAsync($"/users/{target.Id.Value}");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
@@ -154,12 +149,14 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task Update_OwnProfile_IsAllowedWithoutPermissions()
     {
-        var subject = NewSubject();
-        var me = await ProvisionAsync(subject);
+        var me = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(subject)
-            .PutAsJsonAsync($"/users/{me.Id}", new { id = me.Id, name = "Renamed Myself" });
+            .CreateAuthenticatedClient(me.Id)
+            .PutAsJsonAsync(
+                $"/users/{me.Id.Value}",
+                new { id = me.Id.Value, name = "Renamed Myself" }
+            );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -167,13 +164,12 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task Update_WithPhoneNumber_EchoesItBack()
     {
-        var subject = NewSubject();
-        var me = await ProvisionAsync(subject);
+        var me = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(subject)
+            .CreateAuthenticatedClient(me.Id)
             .PutAsJsonAsync(
-                $"/users/{me.Id}",
+                $"/users/{me.Id.Value}",
                 new
                 {
                     name = "Ada Lovelace",
@@ -190,13 +186,12 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task Update_WithPhoneNumberButNoCountryCode_IsRejected()
     {
-        var subject = NewSubject();
-        var me = await ProvisionAsync(subject);
+        var me = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(subject)
+            .CreateAuthenticatedClient(me.Id)
             .PutAsJsonAsync(
-                $"/users/{me.Id}",
+                $"/users/{me.Id.Value}",
                 new { name = "Ada Lovelace", phoneNumber = "11 98765 4321" }
             );
 
@@ -214,13 +209,12 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
         string? phoneExtension
     )
     {
-        var subject = NewSubject();
-        var me = await ProvisionAsync(subject);
+        var me = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(subject)
+            .CreateAuthenticatedClient(me.Id)
             .PutAsJsonAsync(
-                $"/users/{me.Id}",
+                $"/users/{me.Id.Value}",
                 new
                 {
                     name = "Ada Lovelace",
@@ -236,27 +230,32 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task Update_UsesTheRouteId_EvenIfTheBodyNamesAnotherUser()
     {
-        var subject = NewSubject();
-        var me = await ProvisionAsync(subject);
-        var other = await ProvisionAsync(NewSubject());
+        var me = await ProvisionAsync();
+        var other = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(subject)
-            .PutAsJsonAsync($"/users/{me.Id}", new { id = other.Id, name = "Renamed Myself" });
+            .CreateAuthenticatedClient(me.Id)
+            .PutAsJsonAsync(
+                $"/users/{me.Id.Value}",
+                new { id = other.Id.Value, name = "Renamed Myself" }
+            );
         var body = await response.Content.ReadFromJsonAsync<UpdateUserResponse>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(me.Id, body!.User.Id);
+        Assert.Equal(me.Id.Value, body!.User.Id);
     }
 
     [Fact]
     public async Task Update_SomeoneElse_WithoutUsersWrite_IsForbidden()
     {
-        var target = await ProvisionAsync(NewSubject());
+        var target = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .PutAsJsonAsync($"/users/{target.Id}", new { id = target.Id, name = "Hijacked" });
+            .CreateAuthenticatedClient(UnknownUser(), Permission.UsersRead)
+            .PutAsJsonAsync(
+                $"/users/{target.Id.Value}",
+                new { id = target.Id.Value, name = "Hijacked" }
+            );
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -264,13 +263,13 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task Update_SomeoneElse_WithUsersWrite_IsAllowed()
     {
-        var target = await ProvisionAsync(NewSubject());
+        var target = await ProvisionAsync();
 
         var response = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.UsersWrite)
+            .CreateAuthenticatedClient(UnknownUser(), Permission.UsersWrite)
             .PutAsJsonAsync(
-                $"/users/{target.Id}",
-                new { id = target.Id, name = "Renamed By Admin" }
+                $"/users/{target.Id.Value}",
+                new { id = target.Id.Value, name = "Renamed By Admin" }
             );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

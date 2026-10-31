@@ -15,9 +15,9 @@ public class GetUserHandlerTests
     private static User CreateUser()
     {
         var user = User.Create(
-            "sub-1",
             UserName.From("Ada Lovelace"),
-            new EmailAddress("ada@example.com")
+            new EmailAddress("ada@example.com"),
+            "hashed-password"
         );
         user.UpdatePhoneNumber(new PhoneNumber("+44", "5551234", "7"));
         user.Id = UserId.From(1); // as if loaded from the database

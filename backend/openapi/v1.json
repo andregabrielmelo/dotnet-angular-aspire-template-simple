@@ -322,7 +322,7 @@
           "Users"
         ],
         "summary": "Get the current user",
-        "description": "Returns the authenticated caller's profile, creating it from the access token's claims on first call.",
+        "description": "Returns the authenticated caller's profile and the permissions their access token grants.",
         "operationId": "AppTemplateWebFeaturesUserFeaturesMeEndpoint",
         "responses": {
           "200": {
@@ -343,16 +343,6 @@
               }
             }
           },
-          "400": {
-            "description": "The access token is missing a required claim",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Missing or invalid access token",
             "content": {
@@ -363,8 +353,8 @@
               }
             }
           },
-          "409": {
-            "description": "The token's email is already linked to another user",
+          "404": {
+            "description": "The user was deleted",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -379,6 +369,250 @@
             "JWTBearerAuth": []
           }
         ]
+      }
+    },
+    "/auth/antiforgery": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get antiforgery tokens",
+        "description": "Sets the XSRF-TOKEN cookie, whose value /auth/refresh and /auth/logout expect in the X-XSRF-TOKEN header.",
+        "operationId": "AppTemplateWebFeaturesAuthFeaturesAntiforgeryEndpoint",
+        "responses": {
+          "204": {
+            "description": "Cookies set"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign in",
+        "description": "Returns a 15-minute access token, to send as Authorization: Bearer, and sets the refresh token cookie used by /auth/refresh.",
+        "operationId": "AppTemplateWebFeaturesAuthFeaturesLoginEndpoint",
+        "requestBody": {
+          "x-name": "LoginRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+                  "expiresIn": 900
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong email or password",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; retry after Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign out",
+        "description": "Revokes the refresh token cookie's session and deletes the cookie. Requires an allowed Origin and the X-XSRF-TOKEN header from GET /auth/antiforgery.",
+        "operationId": "AppTemplateWebFeaturesAuthFeaturesLogoutEndpoint",
+        "responses": {
+          "204": {
+            "description": "Signed out"
+          },
+          "403": {
+            "description": "Missing or invalid Origin or antiforgery token",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Refreshed concurrently while signing out; sign out again",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Refresh the session",
+        "description": "Rotates the refresh token cookie and returns a new access token. Requires an allowed Origin and the X-XSRF-TOKEN header from GET /auth/antiforgery.",
+        "operationId": "AppTemplateWebFeaturesAuthFeaturesRefreshEndpoint",
+        "responses": {
+          "200": {
+            "description": "Session refreshed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+                  "expiresIn": 900
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid refresh token; sign in again",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing or invalid Origin or antiforgery token",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Refreshed concurrently by another request; retry",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register",
+        "description": "Creates an account and signs it in: returns an access token and sets the refresh token cookie. A welcome email is sent to the address.",
+        "operationId": "AppTemplateWebFeaturesAuthFeaturesRegisterEndpoint",
+        "requestBody": {
+          "x-name": "RegisterRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "201": {
+            "description": "Account created and signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+                  "expiresIn": 900
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An account with this email already exists",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; retry after Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -566,6 +800,88 @@
             "type": "string",
             "nullable": true,
             "example": null
+          }
+        }
+      },
+      "AccessTokenResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "accessToken",
+          "expiresIn"
+        ],
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com",
+          "password": "correct horse battery staple"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 0,
+            "nullable": false,
+            "example": "ada@example.com"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0,
+            "nullable": false,
+            "example": "correct horse battery staple"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "example": {
+          "name": "Ada Lovelace",
+          "email": "ada@example.com",
+          "password": "correct horse battery staple"
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "nullable": false,
+            "example": "Ada Lovelace"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 0,
+            "nullable": false,
+            "example": "ada@example.com"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "nullable": false,
+            "example": "correct horse battery staple"
           }
         }
       }

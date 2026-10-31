@@ -1,4 +1,6 @@
-﻿using AppTemplate.UseCases.Authorization;
+using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.UseCases.Authorization;
+using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace AppTemplate.Web.Authorization;
 
@@ -7,14 +9,18 @@ public sealed class HttpContextCurrentUser(IHttpContextAccessor httpContextAcces
 {
     private IReadOnlySet<string>? _permissions;
 
-    public string? ExternalId => httpContextAccessor.HttpContext?.User.FindFirst("sub")?.Value;
+    public UserId? Id =>
+        int.TryParse(
+            httpContextAccessor.HttpContext?.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value,
+            out var value
+        ) && UserId.TryFrom(value, out var id)
+            ? id
+            : null;
 
     public IReadOnlySet<string> Permissions =>
         _permissions ??=
             httpContextAccessor
-                .HttpContext?.User.FindAll(
-                    KeycloakPermissionsClaimsTransformation.PermissionClaimType
-                )
+                .HttpContext?.User.FindAll(AppClaimTypes.Permission)
                 .Select(claim => claim.Value)
                 .ToHashSet(StringComparer.Ordinal)
             ?? [];

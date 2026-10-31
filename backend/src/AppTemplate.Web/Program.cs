@@ -10,10 +10,10 @@ var startupLogger = loggerFactory.CreateLogger<Program>();
 
 startupLogger.LogInformation("Starting web host");
 
-builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger, builder);
+builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger);
 builder.Services.AddServiceConfigurations(startupLogger, builder);
 builder.Services.AddAuthenticationConfigurations(startupLogger, builder);
-builder.Services.AddAuthorizationConfigurations(startupLogger, builder);
+builder.Services.AddAuthorizationConfigurations(startupLogger);
 
 // RFC 9457 problem details (with a traceId) for exceptions, status code pages and TypedResults.Problem.
 builder.Services.AddProblemDetails();

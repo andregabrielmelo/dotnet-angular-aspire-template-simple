@@ -25,4 +25,21 @@ public class EmailAddressTests
     {
         Assert.Equal(new EmailAddress("ada@example.com"), new EmailAddress("ada@example.com"));
     }
+
+    [Fact]
+    public void Constructor_LowerCasesAndTrims_SoCasingDoesNotMakeANewAddress()
+    {
+        Assert.Equal(new EmailAddress("ada@example.com"), new EmailAddress(" Ada@Example.COM "));
+    }
+
+    [Theory]
+    [InlineData("ada@example.com", true)]
+    [InlineData(" Ada@Example.com ", true)]
+    [InlineData("ada@example", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void IsValid_MatchesWhatTheConstructorAccepts(string? value, bool expected)
+    {
+        Assert.Equal(expected, EmailAddress.IsValid(value));
+    }
 }

@@ -1,14 +1,20 @@
-using AppTemplate.ServiceDefaults;
+using AppTemplate.UseCases.Authentication;
+using AppTemplate.Web.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AppTemplate.Web.Configurations;
 
 public static class AuthenticationConfigurations
 {
     /// <summary>
-    /// The API only accepts OAuth 2.0 access tokens (JWTs) issued by Keycloak for this API's
-    /// audience. Browsers never call it directly - AppTemplate.BackendForFrontend holds the
-    /// user's session cookie and attaches the access token as a Bearer header when proxying.
-    /// See ADR 007.
+    /// The API issues its own tokens (ADR 007): a short-lived JWT access token, sent as
+    /// <c>Authorization: Bearer</c>, and a rotating refresh token in an HttpOnly cookie
+    /// (<see cref="AuthCookies"/>). Every part of the JWT is validated explicitly: signature and
+    /// algorithm, issuer, audience and lifetime.
     /// </summary>
     public static IServiceCollection AddAuthenticationConfigurations(
         this IServiceCollection services,
@@ -16,32 +22,56 @@ public static class AuthenticationConfigurations
         WebApplicationBuilder builder
     )
     {
-        var keycloak = builder.Configuration.GetSection("Keycloak");
-        // Required: read here so a missing value stops startup, not the first request.
-        var realm = builder.Configuration.GetRequiredValue("Keycloak:Realm");
-        var audience = builder.Configuration.GetRequiredValue("Keycloak:Audience");
-
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        // Read from the registered settings when the options are built, never at registration.
         services
-            .AddAuthentication()
-            .AddKeycloakJwtBearer(
-                serviceName: "keycloak",
-                realm: realm,
-                options =>
+            .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<IOptions<JwtSettings>>(
+                (options, registered) =>
                 {
-                    options.Audience = audience;
-                    // Keycloak runs over plain HTTP inside Aspire locally.
-                    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
-                    // The Aspire service-discovery address is for local development. Elsewhere,
-                    // set Keycloak:Authority to the realm's public HTTPS URL (the tokens' issuer).
-                    if (keycloak["Authority"] is { Length: > 0 } authority)
-                    {
-                        options.Authority = authority;
-                    }
+                    var jwt = registered.Value;
                     // Keep JWT claim names ("sub", "email", ...) instead of the legacy
                     // WS-Federation URIs ASP.NET Core maps them to by default.
                     options.MapInboundClaims = false;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = jwt.Issuer,
+                        ValidateAudience = true,
+                        ValidAudience = jwt.Audience,
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(jwt.SigningKeyBytes()),
+                        ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.FromSeconds(30),
+                        NameClaimType = JwtRegisteredClaimNames.Name,
+                    };
                 }
             );
+
+        var isDevelopment = builder.Environment.IsDevelopment();
+        services.AddAntiforgery(options =>
+        {
+            options.HeaderName = AuthCookies.AntiforgeryHeaderName;
+            options.Cookie.Name = "apptemplate_antiforgery";
+            options.Cookie.SecurePolicy = isDevelopment
+                ? CookieSecurePolicy.SameAsRequest
+                : CookieSecurePolicy.Always;
+        });
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<ITokenIssuer, JwtTokenIssuer>();
+        services.AddSingleton(provider =>
+        {
+            var jwt = provider.GetRequiredService<IOptions<JwtSettings>>().Value;
+            return new RefreshTokenOptions(
+                jwt.RefreshTokenSlidingLifetime,
+                jwt.RefreshTokenAbsoluteLifetime,
+                jwt.RefreshTokenReuseGracePeriod
+            );
+        });
+        services.AddScoped<SessionFactory>();
+        services.AddScoped<AuthCookies>();
 
         logger.LogInformation("{Project} were configured", "Authentication");
 

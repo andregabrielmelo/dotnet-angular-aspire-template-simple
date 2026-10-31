@@ -6,7 +6,7 @@ namespace AppTemplate.Web.Configurations;
 
 /// <summary>
 /// The proxies allowed to report the client's address in <c>X-Forwarded-For</c>, such as the
-/// backend for frontend or a load balancer. Empty by default: unless the connection comes
+/// Angular dev server proxy or a load balancer. Empty by default: unless the connection comes
 /// from one of these, the header is ignored and <c>RemoteIpAddress</c> stays the real peer, so
 /// a client can't pick its own rate-limit partition by sending the header itself.
 /// </summary>

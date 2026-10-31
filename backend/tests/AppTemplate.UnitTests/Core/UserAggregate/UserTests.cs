@@ -1,51 +1,80 @@
+using AppTemplate.Core.Aggregates.UserAggregate.Events;
+
 namespace AppTemplate.UnitTests.Core.UserAggregate;
 
 public class UserTests
 {
     private static User CreateUser() =>
-        User.Create(
-            "keycloak-sub-1",
-            UserName.From("Ada Lovelace"),
-            new EmailAddress("ada@example.com")
-        );
+        User.Create(UserName.From("Ada Lovelace"), new EmailAddress("ada@example.com"), "hash");
 
     [Fact]
-    public void Create_SetsExternalIdNameAndEmail()
+    public void Create_SetsNameEmailAndHash_AsAMember()
     {
         var user = CreateUser();
 
-        Assert.Equal("keycloak-sub-1", user.ExternalId);
         Assert.Equal("Ada Lovelace", user.Name.Value);
         Assert.Equal("ada@example.com", user.Email.Value);
+        Assert.Equal("hash", user.PasswordHash);
+        Assert.Equal(UserRole.Member, user.Role);
         Assert.Null(user.PhoneNumber);
+        Assert.Empty(user.DomainEvents);
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Create_WithEmptyExternalId_Throws(string externalId)
+    public void Create_WithEmptyPasswordHash_Throws(string passwordHash)
     {
         Assert.Throws<ArgumentException>(() =>
             User.Create(
-                externalId,
                 UserName.From("Ada Lovelace"),
-                new EmailAddress("ada@example.com")
+                new EmailAddress("ada@example.com"),
+                passwordHash
             )
         );
     }
 
     [Fact]
-    public void Create_WithTooLongExternalId_Throws()
+    public void Create_WithTooLongPasswordHash_Throws()
     {
-        var externalId = new string('x', User.ExternalIdMaxLength + 1);
+        var passwordHash = new string('x', User.PasswordHashMaxLength + 1);
 
         Assert.Throws<ArgumentException>(() =>
             User.Create(
-                externalId,
                 UserName.From("Ada Lovelace"),
-                new EmailAddress("ada@example.com")
+                new EmailAddress("ada@example.com"),
+                passwordHash
             )
         );
+    }
+
+    [Fact]
+    public void MarkRegistered_BeforeTheUserHasAnId_Throws()
+    {
+        Assert.Throws<InvalidOperationException>(() => CreateUser().MarkRegistered());
+    }
+
+    [Fact]
+    public void MarkRegistered_RaisesUserRegisteredWithTheIdAndEmail()
+    {
+        var user = CreateUser();
+        user.Id = UserId.From(7); // as if saved
+
+        user.MarkRegistered();
+
+        var registered = Assert.IsType<UserRegisteredDomainEvent>(Assert.Single(user.DomainEvents));
+        Assert.Equal(UserId.From(7), registered.UserId);
+        Assert.Equal("ada@example.com", registered.Email);
+    }
+
+    [Fact]
+    public void ChangeRole_ChangesTheRole()
+    {
+        var user = CreateUser();
+
+        user.ChangeRole(UserRole.Admin);
+
+        Assert.Equal(UserRole.Admin, user.Role);
     }
 
     [Fact]

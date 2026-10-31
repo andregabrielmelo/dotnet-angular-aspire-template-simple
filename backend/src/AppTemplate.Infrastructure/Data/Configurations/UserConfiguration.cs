@@ -1,5 +1,6 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
+using AppTemplate.UseCases.Users;
 
 namespace AppTemplate.Infrastructure.Data.Configurations;
 
@@ -25,17 +26,20 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(320)
             .IsRequired();
 
-        builder.HasIndex(entity => entity.Email).IsUnique();
+        // Emails are stored lower-cased (EmailAddress), so this is unique regardless of case.
+        builder
+            .HasIndex(entity => entity.Email)
+            .IsUnique()
+            .HasDatabaseName(UserConstraints.EmailUniqueIndex);
 
         builder
-            .Property(entity => entity.ExternalId)
-            .HasMaxLength(User.ExternalIdMaxLength)
+            .Property(entity => entity.PasswordHash)
+            .HasMaxLength(User.PasswordHashMaxLength)
             .IsRequired();
 
-        builder.HasIndex(entity => entity.ExternalId).IsUnique();
+        builder.Property(entity => entity.Role).HasConversion<string>().HasMaxLength(32);
 
-        // Set by Postgres on insert (EF leaves the column out while the value is unset); the
-        // migration that added it backfilled existing rows with the migration time.
+        // Set by Postgres on insert (EF leaves the column out while the value is unset).
         builder.Property(entity => entity.CreatedAtUtc).HasDefaultValueSql("now()");
 
         builder.OwnsOne(builder => builder.PhoneNumber);
