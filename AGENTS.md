@@ -23,10 +23,9 @@ Dependencies point inward:
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
 | `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports to external resources in `Core/Interfaces` (`IEmailSender`, ...) | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; pipeline behaviors (`UseCases/Behaviors`); list query-service interfaces (`IListUsersQueryService`) and request context (`ICurrentUser`) | Core, SharedKernel |
-| `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit | Core, UseCases, SharedKernel |
-| `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, composition root | everything above |
-| `AppTemplate.BackendForFrontend` | OpenID Connect session, YARP proxy to Web | ServiceDefaults only |
+| `AppTemplate.UseCases` | Mediator commands, queries and handlers; pipeline behaviors (`UseCases/Behaviors`); list query-service interfaces (`IListUsersQueryService`), request context (`ICurrentUser`) and authentication ports (`IPasswordHasher`, `ITokenIssuer`) | Core, SharedKernel |
+| `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, password hashing | Core, UseCases, SharedKernel |
+| `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, JWT issuance and validation, the refresh cookie, composition root | everything above |
 
 - Core never references UseCases, Infrastructure, Web, EF Core or ASP.NET Core.
 - UseCases never references Infrastructure, Web or EF Core. Data access goes through `IRepository<T>` or a query-service interface defined in UseCases.
@@ -42,11 +41,10 @@ Dependencies point inward:
 - Endpoints are thin: translate the request into a command or query, `await mediator.Send(..., cancellationToken)`, and map the `Result` with `Web/Extensions/ResultExtensions.cs` (`ToOkResult`, `ToCreatedResult`, `ToNoContentResult`, `ToAcceptedResult`). The return type is `Results<Ok<T>, ProblemHttpResult>` (or `Created`, `NoContent`, `Accepted`). No business logic, EF Core or external SDKs in endpoints.
 - Every error is an RFC 9457 problem details response with a `traceId` ([ADR 009](docs/content/architecture-decisions/adr-009-problem-details-error-contract.md)). Never build an error response by hand or `switch` on `ResultStatus` in an endpoint.
 - Request and response types are dedicated DTOs. Never expose an entity, aggregate or value object.
-- Every endpoint is authenticated by default, and a fallback policy covers routes that declare nothing. Declare either `AllowAnonymous()` (deliberately) or `Policies(Permission.X)` explicitly ([ADR 008](docs/content/architecture-decisions/adr-008-permission-based-authorization.md)). A new anonymous route must be added to `EndpointAuthorizationTests`.
+- Every endpoint is authenticated by default, and a fallback policy covers routes that declare nothing. Declare either `AllowAnonymous()` (deliberately) or `Policies(Permission.X)` explicitly ([ADR 011](docs/content/architecture-decisions/adr-011-role-based-permissions.md)). A new anonymous route must be added to `EndpointAuthorizationTests`.
 - Never put Data Annotations attributes (`[Required]` and so on) on request DTOs. FastEndpoints ignores them; use the validator.
 - Declare `Summary`, `Tags` and `Description(... .Produces...)` so the OpenAPI document stays accurate.
 - A sensitive or expensive operation gets a named rate-limit policy, added in `RateLimitingConfigurations` and applied with `Options(x => x.RequireRateLimiting(name))`. Don't use FastEndpoints' `Throttle(...)`: it keys on the raw `X-Forwarded-For` header, which any client can set, and its 429 isn't a problem details response.
-- An endpoint that waits on an external service longer than the default 30-second request timeout gets a named timeout policy in `RequestTimeoutConfigurations`, applied with `Options(x => x.WithRequestTimeout(name))`.
 
 ## 4. Use cases
 
@@ -68,7 +66,7 @@ Dependencies point inward:
 - Aggregates protect their own invariants. No public setters that bypass them.
 - IDs and primitives with a real invariant are Vogen value objects with a `Validate` method. Register EF conversions centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. New entity IDs also need `HasValueGenerator<VogenIdValueGenerator<...>>()` in their `IEntityTypeConfiguration`.
 - Plain DTOs and projections (`UserDto`, `UserRecord`) stay plain. Don't wrap everything.
-- Domain events are for meaningful domain occurrences (`UserProvisioned`). They are dispatched in-process after `SaveChanges` succeeds (`EventDispatchInterceptor`); a failing handler is logged and never fails the request. They are not a reliable delivery mechanism: work that must happen needs a transactional outbox (see [Transactions and side effects](docs/content/design-decisions.md#transactions-and-side-effects)).
+- Domain events are for meaningful domain occurrences (`UserRegisteredDomainEvent`). They are dispatched in-process after `SaveChanges` succeeds (`EventDispatchInterceptor`), or by the use case right after saving when the event needs a database-assigned id (`RegisterUserHandler`); a failing handler is logged and never fails the request. They are not a reliable delivery mechanism: work that must happen needs a transactional outbox (see [Transactions and side effects](docs/content/design-decisions.md#transactions-and-side-effects)).
 
 ## 6. Persistence ([ADR 004](docs/content/architecture-decisions/adr-004-postgresql.md))
 
@@ -80,7 +78,7 @@ Dependencies point inward:
 ## 7. Configuration and dependency injection
 
 - Register options before using them: `AddOptions<T>().Bind(...)` with explicit validation rules and `ValidateOnStart()`. `ValidateOnStart` alone makes nothing required; the rules do.
-- Never invent configuration at the call site: no `GetSection(...).Get<T>() ?? new T()`, no `configuration["Key"] ?? "literal"`. Read options through `IOptions<T>` when the service or framework options are built (`AddOptions<TFramework>().Configure<IOptions<T>>(...)`, DI factories), not at registration. A required plain value uses `GetRequiredValue` (ServiceDefaults), read at registration so a missing value fails startup, not the first request.
+- Never invent configuration at the call site: no `GetSection(...).Get<T>() ?? new T()`, no `configuration["Key"] ?? "literal"`. Read options through `IOptions<T>` when the service or framework options are built (`AddOptions<TFramework>().Configure<IOptions<T>>(...)`, DI factories), not at registration. A required value is validated with `ValidateOnStart`, so a missing value fails startup, not the first request.
 - Three kinds of settings: **required** (validated as present), **optional feature** (empty means off; when on, every setting is validated so a partial configuration fails), and **safe defaults** (defaults live in the options class, never in `appsettings*.json`, which keeps only values we set).
 - A new options type joins the explicit list in its composition root's tests (`OptionsRegistrationTests` for Web). Why: `docs/content/best-practices.md`, Options.
 - Never hardcode secrets, credentials or environment-specific URLs. Local services are wired by Aspire (`WithReference`/`WaitFor` in `AppHost.cs`); secrets are AppHost parameters or user secrets.
@@ -97,9 +95,8 @@ Dependencies point inward:
 - **Unit tests** (`AppTemplate.UnitTests`) cover domain rules and handler behavior with NSubstitute and no I/O.
 - **Functional tests** (`AppTemplate.FunctionalTests`) cover HTTP contracts, validation, authorization, status codes and serialization through `AppTemplateWebApplicationFactory`, against a real Postgres (Testcontainers):
   - Mark every class that uses the factory with `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
-  - Authenticate with `factory.CreateAuthenticatedClient(sub, Permission.X, ...)`.
+  - Authenticate with `factory.CreateAuthenticatedClient(userId, Permission.X, ...)` (the user needn't exist; `factory.CreateUserAsync()` saves one). Drive real sign-in, refresh and cookies with `BrowserSession`.
   - Emails go to `factory.EmailSender`, a fake that records them.
-- **Backend for frontend tests** (`AppTemplate.BackendForFrontend.Tests`) cover session endpoints and proxy rules.
 - **Architecture tests** (`AppTemplate.ArchitectureTests`) enforce section 2 and the placement rules in sections 3 and 4. If one fails, fix the code, not the rule. Only change a rule together with the ADR that justifies it.
 - Tests follow Arrange-Act-Assert, one behavior per test. Change tests whenever observable behavior changes.
 
@@ -109,15 +106,14 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 - Standalone components in `core/`, `shared/` and `features/<feature>/`.
 - HTTP calls live in feature services, not components.
 - Guards are UX, not authorization.
-- The SPA runs under a strict CSP: no inline scripts, inline event handlers or `eval`. New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Security headers).
-- The browser never holds tokens ([ADR 007](docs/content/architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak.md)).
+- The SPA must run under a strict CSP, sent by the production host: no inline scripts, inline event handlers or `eval` (`npm run csp:check`). New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Production deployment).
+- The access token lives in memory only, never in Web Storage; the refresh token is an HttpOnly cookie the app never reads ([ADR 010](docs/content/architecture-decisions/adr-010-authentication-api-issued-tokens.md)).
 
 ## 11. Code style
 
 - C#: `backend/.editorconfig`, CSharpier, central package versions in `backend/Directory.Packages.props`, and LF line endings.
 - After changing a package version, run `dotnet restore` and commit the regenerated `packages.lock.json` files.
-- Inject `ILogger<T>` and use message templates (`"{UserId} created"`), never string interpolation: interpolated text bypasses redaction. Never log tokens, passwords or full request bodies.
-- Mark personal data and secrets with `[PersonalData]`/`[SecretData]` (SharedKernel) on the type or property (`[property: PersonalData]` on a record parameter), and log objects with `{@Object}`. The logging pipeline redacts classified values in both the console and the OpenTelemetry export. Never log a DTO's `ToString()` (`{Response}` without `@`): it prints every property and nothing gets redacted. See `docs/content/best-practices.md`, Logging.
+- Inject `ILogger<T>` and use message templates (`"{UserId} created"`), never string interpolation. Log ids and names, never tokens, passwords, personal data, request bodies, commands or DTOs (`{@Command}` or a record's `ToString()` prints every property): nothing redacts logs. See `docs/content/best-practices.md`, Logging.
 - Comments explain *why*, not *what*. Don't add a dependency when the framework or an existing library already solves the problem.
 
 ## 12. Git workflow

@@ -10,32 +10,19 @@ Short recipes for things that come up after the first feature. Each one lists th
 ## Add a permission and protect an endpoint
 
 1. Add the constant to `UseCases/Authorization/Permission.cs` and include it in `All`. Every name in `All` becomes an ASP.NET Core policy automatically.
-2. Add it as a client role on `apptemplate-api` in `AppHost/Realms/apptemplate-realm.json`, and to the composites of the realm roles that should have it (such as `admin`). Then delete the Keycloak data volume, or add the role in the admin console, because the realm file is imported only once.
+2. Grant it to the roles that should have it in `UseCases/Authorization/RolePermissions.cs` (`Admin` gets `Permission.All` already). Users get it in their next access token, at the latest on the next refresh.
 3. Protect the endpoint in the way that fits:
    - **Who you are** decides it: `Policies(Permission.X)` in `Configure()`. See `Web/Features/UserFeatures/ListEndpoint.cs`.
    - **What you touch** decides it ("the owner, or anyone with X"): check in the handler with `ICurrentUser`, and return `Result.Forbidden()`. See `UseCases/Users/Update/UpdateUserHandler.cs`.
 4. Add it to `frontend/src/app/core/auth/permissions.ts`, so the UI can hide what the user can't do.
-5. In functional tests, grant it with `factory.CreateAuthenticatedClient(sub, Permission.X)`, and test both with and without it.
+5. In functional tests, grant it with `factory.CreateAuthenticatedClient(userId, Permission.X)`, and test both with and without it. Add a case to `RolePermissionsTests` for the roles that get it.
 
 ## Make an endpoint public
 
 1. Call `AllowAnonymous()` in `Configure()`. Without it, the authorization fallback policy requires a signed-in user.
 2. Add the route to `ExpectedAnonymousRoutes` in `FunctionalTests/Authorization/EndpointAuthorizationTests.cs`. The test fails until you do, so making something public is always a reviewed change.
-3. Give it a stricter rate limit if it does anything expensive or sends email ([below](#limit-or-time-out-one-endpoint)).
-4. For a browser on a signed-out page to reach it, the backend for frontend needs a route that requires no session. In `BackendForFrontend/Configurations/ReverseProxyConfigurations.cs`, add a route before the `api` one:
-   ```csharp
-   private const string AnonymousApiRouteId = "api-anonymous";
-
-   // in the routes list:
-   new()
-   {
-       RouteId = AnonymousApiRouteId,
-       ClusterId = "web",
-       Order = -1,
-       Match = new RouteMatch { Path = "/api/newsletter", Methods = [HttpMethods.Post] },
-   },
-   ```
-   Then let the path transform apply to it as well: change `if (context.Route.RouteId is not ApiRouteId)` to `is not (ApiRouteId or AnonymousApiRouteId)`. The second check in that transform keeps the access token off the anonymous route. The `X-CSRF` header is still required. Add a test in `BackendForFrontend.Tests/ProxyRoutingTests.cs`.
+3. Give it a stricter rate limit if it does anything expensive or sends email ([below](#limit-one-endpoint)), as sign-in and registration have.
+4. The SPA reaches it like any other `api/...` URL; `authInterceptor` adds an access token only if there is one, and a public endpoint simply ignores it.
 
 ## Filter or sort a list
 
@@ -44,8 +31,8 @@ Short recipes for things that come up after the first feature. Each one lists th
 3. **Filters** go in the query service's `FromSqlRaw` SQL as `WHERE` conditions, with each value as a `{n}` placeholder, which EF sends as a parameter:
    ```csharp
    _db.Projects.FromSqlRaw(
-       "SELECT id, owner_external_id, name, created_at_utc FROM projects WHERE owner_external_id = {0} AND name ILIKE {1}",
-       ownerExternalId,
+       "SELECT id, owner_id, name, created_at_utc FROM projects WHERE owner_id = {0} AND name ILIKE {1}",
+       ownerId.Value,
        $"%{nameContains}%"
    )
    ```
@@ -58,76 +45,46 @@ Short recipes for things that come up after the first feature. Each one lists th
 
 `IEmailSender` (`Core/Interfaces/IEmailSender.cs`) sends through MailKit to the `Mailserver` host, which is Mailpit when you run the AppHost. Open the `mailpit` resource's http endpoint in the Aspire dashboard to read what was sent.
 
-1. Inject `IEmailSender` into the handler (or domain event handler) that decides to send, and call `SendEmailAsync(to, from, subject, body, cancellationToken)`.
+1. Inject `IEmailSender` into the handler (or domain event handler) that decides to send, and call `SendAsync(to, subject, body, cancellationToken)`. The sender is `Mailserver:FromAddress`.
 2. Keep addresses and subjects in an options class rather than in code ([Add a setting](#add-a-setting)).
 3. In functional tests the factory replaces the sender with `FakeEmailSender`. Assert on `factory.EmailSender.Sent`, as the recipe below does.
-4. Don't log the email address or body. They're personal data and are redacted, but it's better not to log them at all.
+4. Don't log the email address or body. They're personal data, and nothing redacts logs.
 
 Sending inside the request adds the SMTP round trip to its time, and a failure isn't retried. For mail that must arrive, use a transactional outbox (see the full template).
 
 ## React to a domain event
 
-A domain event lets one part of the system react to something without the aggregate knowing who listens. `User.Create` raises `UserProvisioned` when someone signs in for the first time. This handler sends them a welcome email. It was compiled and tested against this template:
+A domain event lets one part of the system react to something without the aggregate knowing who listens. The template has one, end to end: registering raises `UserRegisteredDomainEvent`, and its handler sends a welcome email.
 
 ```csharp
-// UseCases/Users/Provisioned/SendWelcomeEmailWhenUserProvisioned.cs
-using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.Aggregates.UserAggregate.Events;
-using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
+// Core/Aggregates/UserAggregate/Events/UserRegisteredDomainEvent.cs
+public sealed record UserRegisteredDomainEvent(UserId UserId, string Email) : DomainEventBase;
 
-namespace AppTemplate.UseCases.Users.Provisioned;
-
-/// <summary>
-/// Runs in-process right after the new user is saved. Best-effort: if sending fails, the
-/// failure is logged and the sign-in still succeeds, and nothing retries the email.
-/// </summary>
-public sealed class SendWelcomeEmailWhenUserProvisioned(
-    IRepository<User> _repository,
-    IEmailSender _emailSender
-) : IDomainEventHandler<UserProvisioned>
+// UseCases/Users/Register/UserRegisteredDomainEventHandler.cs
+public sealed class UserRegisteredDomainEventHandler(IEmailSender _emailSender)
+    : IDomainEventHandler<UserRegisteredDomainEvent>
 {
-    public async ValueTask Handle(UserProvisioned notification, CancellationToken cancellationToken)
+    public async ValueTask Handle(
+        UserRegisteredDomainEvent domainEvent,
+        CancellationToken cancellationToken
+    )
     {
-        var user = await _repository.FirstOrDefaultAsync(
-            new UserByExternalIdSpecification(notification.ExternalId),
-            cancellationToken
-        );
-        if (user is null)
-            return;
-
-        await _emailSender.SendEmailAsync(
-            user.Email.Value,
-            "no-reply@apptemplate.local",
+        await _emailSender.SendAsync(
+            domainEvent.Email,
             "Welcome!",
-            $"Hi {user.Name.Value}, your account is ready.",
+            "Thanks for registering. We're glad to have you on board.",
             cancellationToken
         );
     }
 }
 ```
 
-```csharp
-// FunctionalTests/Events/WelcomeEmailTests.cs
-[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
-public class WelcomeEmailTests(AppTemplateWebApplicationFactory factory)
-    : IClassFixture<AppTemplateWebApplicationFactory>
-{
-    [Fact]
-    public async Task FirstSignIn_SendsAWelcomeEmail()
-    {
-        var subject = $"sub-{Guid.NewGuid():N}";
-
-        await factory.CreateAuthenticatedClient(subject).GetAsync("/users/me");
-
-        Assert.Contains(factory.EmailSender.Sent, email => email.To == $"{subject}@example.com");
-    }
-}
-```
+`DomainEventDispatchTests` checks that registering sends it, and that a failing email doesn't fail registration; `UserRegisteredDomainEventHandlerTests` covers the handler on its own. To add a second reaction, add another `IDomainEventHandler<UserRegisteredDomainEvent>`.
 
 **How this works:**
 - **Registration is automatic.** Mediator's source generator finds every handler.
-- **To raise your own event,** create a class deriving from `DomainEventBase` in the aggregate's `Events/` folder (see `UserProvisioned.cs`), and call `RegisterDomainEvent(new YourEvent(...))` in the aggregate method where it happens.
-- **When the handler runs:** after `SaveChanges` succeeds, in the same request. If it throws, the error is logged and the request still succeeds. Inside an explicit transaction, it runs before the commit. See [Transactions And Side Effects]({{< relref "design-decisions#transactions-and-side-effects" >}}).
+- **To raise your own event,** create a record deriving from `DomainEventBase` in the aggregate's `Events/` folder, carrying ids and values rather than the aggregate itself, and call `RegisterDomainEvent(new YourEvent(...))` in the aggregate method where it happens. An event that needs the database-assigned id is raised once the entity is saved, as `User.MarkRegistered()` is.
+- **When the handler runs:** after `SaveChanges` succeeds, in the same request (`EventDispatchInterceptor`), or when the use case dispatches it itself right after saving (`RegisterUserHandler`). If it throws, the error is logged and the request still succeeds. Inside an explicit transaction, it runs before the commit. See [Transactions And Side Effects]({{< relref "design-decisions#transactions-and-side-effects" >}}).
 - **Keep handlers short.** They add to the request's time.
 
 ## Add a setting
@@ -140,8 +97,8 @@ Settings are classes bound from configuration and validated at startup, never re
    {
        public const string SectionName = "WelcomeEmail";
 
-       public string From { get; set; } = "no-reply@apptemplate.local";
        public string Subject { get; set; } = "Welcome!";
+       public string SupportAddress { get; set; } = "support@apptemplate.local";
    }
    ```
 2. **Register and validate it** in `Web/Configurations/OptionConfigurations.cs`:
@@ -150,14 +107,14 @@ Settings are classes bound from configuration and validated at startup, never re
        .AddOptions<WelcomeEmailOptions>()
        .Bind(configuration.GetSection(WelcomeEmailOptions.SectionName))
        .Validate(
-           o => !string.IsNullOrWhiteSpace(o.From) && !string.IsNullOrWhiteSpace(o.Subject),
-           "WelcomeEmail needs a From address and a Subject."
+           o => !string.IsNullOrWhiteSpace(o.Subject) && EmailAddress.IsValid(o.SupportAddress),
+           "WelcomeEmail needs a Subject and a valid SupportAddress."
        )
        .ValidateOnStart();
    ```
 3. **Use it** by injecting `IOptions<WelcomeEmailOptions>` and reading `.Value`.
 4. **Test it:** add the type to `WebOptions()` in `FunctionalTests/Configuration/OptionsConfigurationTests.cs`, which checks it's registered and validated.
-5. **Set values per environment** in `appsettings.{Environment}.json`, environment variables (`WelcomeEmail__From`) or, for local secrets, user secrets. A secret never goes in a committed file.
+5. **Set values per environment** in `appsettings.{Environment}.json`, environment variables (`WelcomeEmail__Subject`) or, for local secrets, user secrets. A secret never goes in a committed file.
 
 A required value with no sensible default fails startup when missing: validate that it's present. An optional feature is off when its setting is empty, but once turned on, every setting is validated (Options, in [Best Practices]({{< relref "best-practices#options" >}})).
 
@@ -167,18 +124,17 @@ Anything outside the process, such as an HTTP API, a payment provider or a messa
 
 1. **The interface** goes in `Core/Interfaces/`, in your domain's terms rather than the vendor's. Its doc comment names the implementation and who uses it (see `IEmailSender.cs`).
 2. **The implementation** goes in `Infrastructure/<Concern>/` (for example `Infrastructure/Payments/`), with its options class next to it.
-3. **Register it** in `Infrastructure/InfrastructureServiceExtensions.cs`. For HTTP, use `services.AddHttpClient<IThing, ThingClient>(...)`; ServiceDefaults adds retries and timeouts to every `HttpClient`.
-4. **Pick a timeout:** if a request waits for it, check whether the 30-second request timeout is enough ([below](#limit-or-time-out-one-endpoint)).
-5. **Tests:**
+3. **Register it** in `Infrastructure/InfrastructureServiceExtensions.cs`. For HTTP, use `services.AddHttpClient<IThing, ThingClient>(...)`; ServiceDefaults adds retries and timeouts to every `HttpClient`. Pass the request's `CancellationToken` through, so the call stops when the client goes away.
+4. **Tests:**
    - Handlers depend on the interface, so unit tests substitute it.
    - In functional tests, replace it with a fake in `AppTemplateWebApplicationFactory`, as `FakeEmailSender` replaces `IEmailSender`.
    - Test the real client against a stub HTTP handler, not the live service.
-6. **Health:** if the app can't serve anything without it, add a health check tagged `ready`; otherwise, make the calling code fail gracefully ([Health checks]({{< relref "best-practices#health-checks" >}})).
+5. **Health:** if the app can't serve anything without it, add a health check tagged `ready`; otherwise, make the calling code fail gracefully ([Health checks]({{< relref "best-practices#health-checks" >}})).
 
-## Limit or time out one endpoint
+## Limit one endpoint
 
 **A stricter rate limit**, for a public form or an expensive call:
-1. Add a policy in `Web/Configurations/RateLimitingConfigurations.cs`, next to the global limiter:
+1. Add a policy in `Web/Configurations/RateLimitingConfigurations.cs`, next to the global limiter and `AuthenticationPolicy` (which sign-in and registration use):
    ```csharp
    options.AddPolicy(
        "newsletter",
@@ -188,10 +144,6 @@ Anything outside the process, such as an HTTP API, a payment provider or a messa
 2. Apply it: `Options(x => x.RequireRateLimiting("newsletter"))` in the endpoint's `Configure()`. Keep the name in a constant.
 
 Rejections are 429 problem details with `Retry-After`. Don't use FastEndpoints' `Throttle`.
-
-**A longer timeout**, for an endpoint that waits on a slow service:
-1. Add a policy in `Web/Configurations/RequestTimeoutConfigurations.cs`: `options.AddPolicy("external-call", new RequestTimeoutPolicy { Timeout = ..., TimeoutStatusCode = 504 })`.
-2. Apply it with `Options(x => x.WithRequestTimeout("external-call"))`.
 
 ## Change the database schema
 
@@ -228,5 +180,7 @@ The full template, [dotnet-angular-aspire-template](https://github.com/andregabr
 | File uploads | `IFileStorage` over S3 (Garage locally), image processing, ADR 018 |
 | Lost-update protection | ETags and `If-Match`, ADR 019 |
 | Versioned URLs (`/v1/...`) | ADR 015 |
+| Keycloak sign-in through a backend for frontend, password reset, external sign-in | `AppTemplate.BackendForFrontend`, the Keycloak realm, ADR 007 |
+| Log redaction, a global request timeout, API security headers | `ServiceDefaults/Logging/`, `RequestTimeoutConfigurations`, `SecurityHeadersConfigurations` |
 | Business metrics | `UseCases/Telemetry/ApplicationMetrics.cs` |
 | Browser end-to-end tests | `tests/AppTemplate.EndToEndTests` (Playwright) |

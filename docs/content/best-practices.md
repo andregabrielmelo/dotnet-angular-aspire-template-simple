@@ -14,9 +14,9 @@ Explicit guidelines for projects built from this template, so every project that
 - Repository + Specification (`IRepository<T>`, `Ardalis.Specification`) is for the **write** path, where domain rules matter. Read-only queries don't need it - project straight to a DTO in a query service (see `ListUsersQueryService`'s raw SQL) instead of loading and mapping full entities. Specifications used purely for lookups (not followed by a mutation) should call `.AsNoTracking()` - see `UserByIdSpecification`/`UserByEmailSpecification`.
 - Wrap a primitive in a [Vogen](https://github.com/SteveDunn/Vogen) value object when it has a real invariant to enforce or a real type-confusion risk (IDs, emails). Don't wrap everything - plain DTOs and read-only projections (`UserDto`, `UserRecord`) are supposed to stay plain.
 - EF Core: avoid queries in loops (N+1) - eager-load or batch instead. Reach for compiled queries only once a specific query is a measured hot path, not by default.
-- Inject `ILogger<T>`, never call the static `Serilog.Log` directly (it isn't configured). Use message templates (`"{UserId} created", id`), not string interpolation - it's what makes structured log fields searchable, and interpolated text bypasses redaction. Change log levels in `appsettings.json`'s `Serilog:MinimumLevel` section; the pipeline itself is in `ServiceDefaults/Logging/` (see Logging below).
+- Inject `ILogger<T>`, never call the static `Serilog.Log` directly (it isn't configured). Use message templates (`"{UserId} created", id`), not string interpolation - it's what makes structured log fields searchable. Change log levels in `appsettings.json` (see Logging below).
 - Tests follow Arrange-Act-Assert, one behavior per test. See `AppTemplate.UnitTests` for the current shape.
-- Endpoints require an authenticated user (a Keycloak JWT) by default. Only add `AllowAnonymous()` deliberately. Protect administrative operations with a permission policy (`Policies(Permission.X)`), and put rules that depend on the loaded resource (ownership) in the use case via `ICurrentUser` (see [ADR 008]({{< relref "architecture-decisions/adr-008-permission-based-authorization" >}})). Read the caller's identity from JWT claim names (`sub`, `email`, `name`), since inbound claim mapping is off. Never put tokens in the browser: the Angular app relies on the backend for frontend's HTTP-only cookie (see [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}})).
+- Endpoints require an authenticated user (a valid access token) by default. Only add `AllowAnonymous()` deliberately. Protect administrative operations with a permission policy (`Policies(Permission.X)`), and put rules that depend on the loaded resource (ownership) in the use case via `ICurrentUser` (see [ADR 011]({{< relref "architecture-decisions/adr-011-role-based-permissions" >}})). Read the caller's identity from JWT claim names (`sub`, `email`, `name`), since inbound claim mapping is off. Never store a token in the browser: the Angular app keeps the access token in memory and the refresh token is an HttpOnly cookie (see [ADR 010]({{< relref "architecture-decisions/adr-010-authentication-api-issued-tokens" >}})).
 
 ## Angular
 
@@ -34,36 +34,40 @@ Explicit guidelines for projects built from this template, so every project that
 
 ## Security headers
 
-- **The SPA document** (served by the backend for frontend, from `wwwroot` or the Angular dev server) gets a strict `Content-Security-Policy` (`SecurityHeadersMiddleware.ContentSecurityPolicy`), `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and `X-Content-Type-Options: nosniff`. Scripts load only from the same origin: no inline `<script>`, no inline event handlers, no `eval`. Styles allow `'unsafe-inline'`, because Angular injects component styles at runtime.
-- **Keep the build CSP-compatible.** Angular's critical CSS inlining is off in `angular.json`, because it adds an `onload` handler the CSP blocks, which would leave the page unstyled. `npm run csp:check` (run in CI after the build) fails if the built `index.html` contains an inline script or handler. If you add a third-party script, font or image host, add its origin to the matching CSP directive instead of loosening `script-src`.
-- **The API** (`UseApiSecurityHeaders` in Web) only returns JSON, so it sends `X-Content-Type-Options: nosniff` on every response, and `Cache-Control: no-store` on every response for a signed-in caller, so browsers and shared proxies never keep one user's data.
-- **No response compression.** Compressing HTTPS responses that mix secrets with attacker-influenced input enables [BREACH](https://www.breachattack.com/)-style attacks, and the reverse proxy or CDN in front of a real deployment compresses static assets better anyway. Don't add `UseResponseCompression()` to either host.
+- **The API sets none of its own.** The host that serves the app in production (a reverse proxy, CDN or static host in front of the built SPA and `/api`) sends them; see Production deployment below.
+- **Keep the build CSP-compatible.** The SPA must work under a strict `Content-Security-Policy`: scripts only from the same origin, no inline `<script>`, no inline event handlers, no `eval` (styles may allow `'unsafe-inline'`, because Angular injects component styles at runtime). Angular's critical CSS inlining is off in `angular.json`, because it adds an `onload` handler such a CSP blocks, which would leave the page unstyled. `npm run csp:check` (run in CI after the build) fails if the built `index.html` contains an inline script or handler. If you add a third-party script, font or image host, add its origin to the matching CSP directive instead of loosening `script-src`.
+- **No response compression.** Compressing HTTPS responses that mix secrets with attacker-influenced input enables [BREACH](https://www.breachattack.com/)-style attacks, and the reverse proxy or CDN in front of a real deployment compresses static assets better anyway. Don't add `UseResponseCompression()` to the API.
+
+## Production deployment
+
+The AppHost is for local development ([ADR 002]({{< relref "architecture-decisions/adr-002-aspire-orchestration" >}})). Wherever you deploy:
+
+- **Serve the SPA and `/api` from one origin** (the default this template assumes): the host strips `/api` before forwarding to the API, as the dev server proxy does, so the refresh cookie (`SameSite=Strict`, path `/api/auth`) stays first-party and no CORS is needed. Set `Authentication:AllowedOrigins` to that origin.
+  - `app.example.com` with `api.example.com` (same site, different origins) also works: enable CORS on the API for exactly the app's origin with credentials, send requests `withCredentials`, and set the cookie path to the API's own `/auth`.
+  - A fully cross-site SPA and API needs a `SameSite=None; Secure` cookie and is not supported as is.
+- **Security headers from the host:** `Content-Security-Policy` (as above), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` (or `frame-ancestors 'none'`), and `Strict-Transport-Security` over HTTPS.
+- **Trust your proxy, and only it:** list it in `ForwardedHeaders:KnownProxies`/`KnownNetworks`, or every caller shares one rate limit partition (and `X-Forwarded-Proto` is ignored).
+- **A secret signing key:** `jwt-signing-key` (`Jwt:SigningKey`) is base64 of at least 32 random bytes (`openssl rand -base64 64`), one per environment, never committed. Changing it signs every user out within 15 minutes, when their access tokens expire; refresh tokens don't depend on it.
+- **The rate limiter is in memory, so per instance.** With several instances, add a distributed limiter (or account-level throttling) for sign-in.
+- **Clean up refresh tokens** whose family has expired (`family_expires_at_utc < now()`), for example with a scheduled job. Don't delete revoked tokens earlier: reuse detection needs them while their family is alive.
 
 ## Logging
 
-- **One pipeline, two outputs.** Every host calls `AddServiceDefaults()`, which makes Serilog the only logging provider (`ServiceDefaults/Logging/LoggingExtensions.cs`). It writes to the console and, when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire sets it), exports the same events over OTLP to the Aspire dashboard. Redaction runs before both, so the console and the dashboard can never disagree about what was hidden.
-- **One line per request** (`UseDefaultRequestLogging`): method, path (never the query string), status, duration, `EndpointName`, the caller's `Subject` (`sub`), and the trace and span ids. Request and response bodies and headers (`Authorization`, `Cookie`) are never logged. Health probes log at Verbose.
-- **Quiet by default:** ASP.NET Core, EF Core (every SQL command), `System.Net.Http.HttpClient` (full URLs, query strings included) and YARP log at Warning and above. Lower one in `Serilog:MinimumLevel:Override` while debugging; don't commit it.
-- **What may be logged:** ids (`UserId`, `sub`), names of operations, counts, durations, status codes and error codes. **What must not be logged in clear text:** emails, phone numbers, addresses, passwords, tokens (access, refresh, reset), API keys, cookies, and request bodies.
-- **How redaction works**, in three layers:
-  1. **Classification.** Mark the type (`[PersonalData] class EmailAddress`) or the property (`[property: PersonalData] string? PhoneNumber` on a record) with `[PersonalData]` or `[SecretData]` from SharedKernel (`Microsoft.Extensions.Compliance` data classifications). When the object is destructured (`{@Command}`), those values go through the configured redactor (`PlaceholderRedactor`, which writes `[redacted]`; swap in an HMAC redactor in `AddDefaultLogging` if you need to correlate values without revealing them).
-  2. **Property names.** Any string property named like `Email`, `Phone...`, `...Token`, `Password`, `Secret`, `Authorization`, `Cookie` or `ApiKey`, including scope properties and nested ones, is replaced.
-  3. **Patterns.** Every other string has emails, JWTs and `Bearer` tokens masked.
-- **Log classified objects with `@`.** Without it, Serilog captures `ToString()`, which loses the type: only the property name and pattern layers apply then. `{Phone}` is still caught by its name; `{Value}` holding a phone number is not.
-- `LoggingBehavior` logs every command and query with `{@Request}` (so classified properties are redacted) and how long it took. It deliberately doesn't log the response.
+- **Two providers, one set of events.** `LoggerConfigs` (Web) adds Serilog, which writes the console; `AddServiceDefaults()` adds OpenTelemetry's logging provider, which exports the same events to the Aspire dashboard when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire sets it). That's the shape of [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture)'s `LoggerConfigs`.
+- **Levels:** the console's come from the `Serilog` section (Serilog ignores `Logging` for its own output), the dashboard's from `Logging:LogLevel`; keep them in step. ASP.NET Core, EF Core (every SQL command) and `System.Net.Http.HttpClient` (full URLs, query strings included) log at Warning and above. Lower one while debugging; don't commit it.
+- **Nothing is redacted, so don't log what must not be read.** **What may be logged:** ids (`UserId`, `sub`), names of operations, counts, durations, status codes and error codes. **What must not be logged:** emails, phone numbers, addresses, passwords, tokens (access, refresh, antiforgery), API keys, cookies, request bodies, and whole commands, queries or DTOs (`{@Command}`, or a record's `ToString()`, prints every property). The full template has a redaction pipeline if a project needs one.
+- `LoggingBehavior` logs every command and query by name, and how long it took, never its contents: registration and sign-in commands carry passwords, and a session carries tokens.
 - **Diagnosing a failed request in the Aspire dashboard:**
   1. The client gets a problem details body with a `traceId` (ADR 009).
   2. In the dashboard, open **Traces** and search for that trace id, or open **Structured logs** and filter on `TraceId`.
-  3. The trace shows every span: the backend for frontend's proxy call, the API request, EF Core queries and outbound HTTP calls, with the failing one marked. Its logs, including the request line (`HTTP PUT /users/7 responded 500`) and any exception, are attached to the same trace.
-  4. Locally the console shows the same trace and span ids at the end of each line, so you can also `grep` for them.
+  3. The trace shows every span: the API request, EF Core queries and outbound HTTP calls, with the failing one marked. Its logs, including any exception, are attached to the same trace.
 
-## Rate limiting and timeouts
+## Rate limiting
 
-- **A global limiter, plus named policies when needed.** ASP.NET Core's rate limiter (`RateLimitingConfigurations`) has a **global** limiter for overall traffic (600 requests a minute per signed-in user, 120 per anonymous address, set under `RateLimiting`). A sensitive or expensive endpoint (an anonymous form that sends email, an upload) gets a stricter **named policy**, added with `options.AddPolicy` next to the global one and applied with `Options(x => x.RequireRateLimiting(name))`. Every rejection is a 429 problem details response with `Retry-After`. Health endpoints are never limited.
-- **Partitions are never client-controlled.** A signed-in caller counts against `user:{sub}`, read only after JWT validation. Anyone else counts against `ip:{address}`, and that address comes from `X-Forwarded-For` only when the connection is from a proxy listed in `ForwardedHeaders:KnownProxies`/`KnownNetworks`. The list is empty by default; `appsettings.Development.json` trusts loopback for the local backend for frontend. In production, list your load balancer or reverse proxy, or every caller behind it shares one anonymous partition.
+- **A global limiter, plus named policies when needed.** ASP.NET Core's rate limiter (`RateLimitingConfigurations`) has a **global** limiter for overall traffic (600 requests a minute per signed-in user, 120 per anonymous address, set under `RateLimiting`). A sensitive or expensive endpoint (an anonymous form that sends email, an upload) gets a stricter **named policy**, added with `options.AddPolicy` next to the global one and applied with `Options(x => x.RequireRateLimiting(name))`. Sign-in and registration already have one, `AuthenticationPolicy` (5 attempts a minute per client, `RateLimiting:AuthenticationPermitLimit`), against password guessing; the template has no account lockout. Every rejection is a 429 problem details response with `Retry-After`. Health endpoints are never limited.
+- **Partitions are never client-controlled.** A signed-in caller counts against `user:{sub}`, read only after JWT validation. Anyone else counts against `ip:{address}`, and that address comes from `X-Forwarded-For` only when the connection is from a proxy listed in `ForwardedHeaders:KnownProxies`/`KnownNetworks`. The list is empty by default; `appsettings.Development.json` trusts loopback for the Angular dev server's proxy. In production, list your load balancer or reverse proxy, or every caller behind it shares one anonymous partition.
 - **Don't use FastEndpoints' `Throttle(...)`.** It keys on the raw `X-Forwarded-For` header, so a client can rotate it to get a fresh limit, and its 429 is plain text, not problem details.
-- **Request timeouts.** Every request gets 30 seconds (`RequestTimeouts:Default`), after which `HttpContext.RequestAborted` is cancelled and the client gets a 504 problem details response. Pass the `CancellationToken` through to EF Core and HttpClient calls so the work actually stops. An endpoint that waits on an external service with retries needs longer than the HttpClient's resilience total timeout (30 seconds): add a named policy in `RequestTimeoutConfigurations` and apply it with `Options(x => x.WithRequestTimeout(name))`. Timeouts are disabled while a debugger is attached.
-- **A timeout doesn't undo anything.** If the transaction already committed, or an email or HTTP call already went out, it stays done even though the client got a 504. Make writes safe to retry, or make them idempotent.
+- **No request timeout.** The template sets none; pass the `CancellationToken` through to EF Core and HttpClient calls so work stops when the client goes away. The full template has a global timeout if a project needs one.
 
 ## Metrics
 
@@ -75,7 +79,7 @@ Explicit guidelines for projects built from this template, so every project that
 ## Health checks
 
 - **Policy: Postgres is required.** Without it an instance can't serve anything.
-- **Two probes**, mapped by `MapDefaultEndpoints()` in every environment, anonymous, excluded from rate limiting, tracing and request logs (Verbose). They answer only with `Healthy`/`Unhealthy`:
+- **Two probes**, mapped by `MapDefaultEndpoints()` in every environment, anonymous, excluded from rate limiting and tracing. They answer only with `Healthy`/`Unhealthy`:
 
   | Probe | Checks (tag) | Fails with | Use it for |
   |---|---|---|---|
@@ -98,10 +102,10 @@ Configuration reaches code through registered, validated options, never through 
 - **Register before use.** `AddOptions<T>().Bind(section)` with explicit validation rules and `ValidateOnStart()`. `ValidateOnStart` only runs the rules you wrote: without a rule, a missing value is just the default.
 - **No fallbacks at the call site.** `GetSection(...).Get<T>() ?? new T()` and `configuration["Key"] ?? "literal"` hide a misspelt section or a forgotten registration behind defaults that look like they work. Read `IOptions<T>` when the consumer is built instead: in a DI factory, or for framework options with `AddOptions<TFramework>().Configure<IOptions<T>>(...)`. Registration-time code only registers.
 - **Three kinds of settings.**
-  - *Required*: validated as present, and missing fails startup with the key in the message. Plain required values (the Keycloak realm, audience and client id) use `GetRequiredValue`, read at registration so they fail at startup rather than on the first request.
+  - *Required*: validated as present, and missing fails startup with the key in the message. `Jwt:SigningKey` is one: its rule checks it is base64 of at least 32 bytes.
   - *Optional feature*: empty means off, by design (for example a storage service URL). When it's on, every setting is validated, so a half-configured feature fails instead of silently switching itself off.
   - *Safe defaults*: the default lives in the options class and the bound result is still validated. `appsettings*.json` keeps only the values we set.
-- **Tested per composition root.** Each host's tests list the options it needs and assert they're registered and validated (`OptionsRegistrationTests`), plus startup tests for a missing required value (`StartupConfigurationTests`, the backend for frontend's `ConfigurationTests`). A global reflection rule would force every options type into every host, which is the wrong boundary.
+- **Tested per composition root.** Each host's tests list the options it needs and assert they're registered and validated (`OptionsRegistrationTests`), plus startup tests for a missing or invalid required value (`StartupConfigurationTests`). A global reflection rule would force every options type into every host, which is the wrong boundary.
 
 ## Third-party configuration files
 
@@ -111,7 +115,7 @@ Configuration files for services we run but don't write (the full template's `Ap
 - Options we don't use stay commented out, showing their default and when you'd set them, so the file doubles as a reference for the version we actually run. The online reference often describes a newer release.
 - The file names the version it was checked against. When the image tag is bumped, re-check every option and default; many services silently ignore unknown keys, so a renamed option wouldn't fail loudly.
 
-This applies to third-party service configuration only. `appsettings*.json` keeps just the values we set, and the Keycloak realm file is an export.
+This applies to third-party service configuration only. `appsettings*.json` keeps just the values we set.
 
 ## PostgreSQL & migrations
 

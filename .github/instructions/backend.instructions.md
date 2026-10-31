@@ -73,4 +73,4 @@ UseCases/<Feature>/<UseCase>/
   - Add `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
   - Create clients with `factory.CreateAuthenticatedClient(sub, Permission.X)`.
 - **What to test:** for each endpoint, cover the success path, invalid input (400), no permission (403), a missing resource (404) and any conflict (409). Errors are problem details, so assert the status code and, where it matters, `errors`/`detail` (see `ProblemDetailsContractTests`).
-- **Replacing services:** use `factory.WithWebHostBuilder(b => b.ConfigureTestServices(...))`, as `DomainEventDispatchTests` and `RequestTimeoutTests` do.
+- **Replacing services:** use `factory.WithWebHostBuilder(b => b.ConfigureTestServices(...))`, as `DomainEventDispatchTests` does.

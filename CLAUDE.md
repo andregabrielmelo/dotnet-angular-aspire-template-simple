@@ -8,9 +8,9 @@ The agent-neutral rules (layer boundaries, endpoint and use case conventions, te
 
 A GitHub **template repository** for starting new full-stack projects: a Clean Architecture .NET backend, an Angular frontend, and .NET Aspire orchestrating both locally. It is not a sample app - the `User` feature is a deliberate end-to-end reference slice (Core → UseCases → Infrastructure → Web) to copy the shape of when adding a real feature, then delete once no longer needed as a reference.
 
-It is the **simple** variant of [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template): it keeps what most projects use (Keycloak sign-in through a backend for frontend, permissions, email, structured logging, health checks, rate limiting, tests) and leaves out background jobs, the transactional outbox, auditing, caching, file storage, ETags and API versioning. When a task needs one of those, copy it from the full template, with its tests and ADR.
+It is the **simple** variant of [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template): it keeps what most projects use (sign-in with API-issued access and refresh tokens, permissions, email, logging, health checks, rate limiting, tests) and leaves out Keycloak and the backend for frontend, background jobs, the transactional outbox, auditing, caching, file storage, ETags and API versioning. When a task needs one of those, copy it from the full template, with its tests and ADR.
 
-Every project, namespace, folder, the Postgres database name, and the Keycloak realm/client names are currently named `AppTemplate` / `apptemplate`. When someone actually uses this template for a new project, they run `scripts/rename-template.sh YourProjectName` (a plain find-and-replace, not a `dotnet new` template engine) as their first step - keep that in mind if a task looks like it wants a "real" project name; the placeholder is intentional.
+Every project, namespace, folder, the Postgres database name, and the JWT issuer/audience are currently named `AppTemplate` / `apptemplate`. When someone actually uses this template for a new project, they run `scripts/rename-template.sh YourProjectName` (a plain find-and-replace, not a `dotnet new` template engine) as their first step - keep that in mind if a task looks like it wants a "real" project name; the placeholder is intentional.
 
 Step-by-step guides live in `docs/content/guides/`: `project-map.md` (layout, a request's path, vocabulary), `adding-a-feature.md` (a complete, tested `Project` example through every layer, including the frontend and tests) and `cookbook.md` (permissions, public endpoints, email, domain events, settings, external services, schema changes). Follow them when building something.
 
@@ -51,7 +51,7 @@ The API contract is committed: after changing an endpoint, request or response, 
 
 ```bash
 npm ci
-npm start                                          # ng serve - reached through the backend for frontend, not directly
+npm start                                          # ng serve, proxying /api to the Web API (proxy.conf.mjs)
 npm run build
 npm run csp:check                                  # fails if the built index.html breaks the CSP (inline scripts/handlers)
 npm run test                                       # vitest, runs once (not watch mode)
@@ -66,46 +66,48 @@ Not run day-to-day, but useful when editing docs: requires the `hugo-book` theme
 
 ## Architecture
 
-### Backend: Clean Architecture, five projects under `backend/src/` (plus AppHost, ServiceDefaults and BackendForFrontend)
+### Backend: Clean Architecture, five projects under `backend/src/` (plus AppHost and ServiceDefaults)
 
 Dependencies point inward; nothing below depends on something above it in this list:
 
-- **`AppTemplate.SharedKernel`** - base types shared by every layer: `EntityBase`/`EntityBase<TId>`, domain event interfaces + dispatch, and the `[PersonalData]`/`[SecretData]` data classifications the logging pipeline redacts. Kept in-repo (not a separate NuGet package) since this template is meant to be self-contained.
-- **`AppTemplate.Core`** - the domain model: aggregates (`Aggregates/UserAggregate/`), value objects, specifications, domain events (`UserProvisioned`), and the ports Infrastructure implements against external resources (`Core/Interfaces`, such as `IEmailSender`). Near-zero external dependencies (`Ardalis.Specification`, `Ardalis.Result`, `Vogen`).
+- **`AppTemplate.SharedKernel`** - base types shared by every layer: `EntityBase`/`EntityBase<TId>`, domain event interfaces + dispatch, and the persistence exceptions use cases react to (`UniqueConstraintViolationException`, `ConcurrencyConflictException`). Kept in-repo (not a separate NuGet package) since this template is meant to be self-contained.
+- **`AppTemplate.Core`** - the domain model: aggregates (`Aggregates/UserAggregate/`, `Aggregates/RefreshTokenAggregate/`), value objects, specifications, domain events (`UserRegisteredDomainEvent`), and the ports Infrastructure implements against external resources (`Core/Interfaces`, such as `IEmailSender`). Near-zero external dependencies (`Ardalis.Specification`, `Ardalis.Result`, `Vogen`).
 - **`AppTemplate.UseCases`** - CQRS commands/queries dispatched via `Mediator`, with the `LoggingBehavior` pipeline behavior in `UseCases/Behaviors/` (martinothamar/Mediator, source-generated - **not** MediatR). Depends on Core only; data access goes through `IRepository<T>` (`SharedKernel/IRepository.cs`, an `Ardalis.Specification` repository) and query-service interfaces defined here, implemented in Infrastructure.
-- **`AppTemplate.Infrastructure`** - EF Core + Npgsql (`Data/ApplicationDatabaseContext.cs`), email (MailKit), repository/query-service implementations. Anything talking to the outside world lives here.
-- **`AppTemplate.Web`** - the ASP.NET Core entry point and composition root (`Program.cs`, `Configurations/`). One [FastEndpoints](https://fast-endpoints.com/) class per endpoint under `Features/<Feature>Features/`, following the REPR pattern (Request-Endpoint-Response), with FluentValidation validators colocated in the same file as their endpoint. Endpoints map `Ardalis.Result` only through `Extensions/ResultExtensions.cs` (`ToOkResult` and siblings), and every error, including validation, 401/403, unmatched routes and exceptions, is an RFC 9457 problem details response with a `traceId` (ADR 009, `Configurations/ProblemDetailsConfigurations.cs`).
-
-**`AppTemplate.BackendForFrontend`** sits outside the layers: it references only ServiceDefaults and is the browser's single origin. It runs the OpenID Connect flow against Keycloak, keeps the session in an HTTP-only `__Host-apptemplate` cookie, and proxies `/api/**` to Web with YARP, stripping `/api` and adding the user's access token as `Authorization: Bearer` (Duende.AccessTokenManagement refreshes it). Its session endpoints are `/backend-for-frontend/{login,register,user,logout}`. `/api/**` and `/backend-for-frontend/user` require the header `X-CSRF: 1`.
+- **`AppTemplate.Infrastructure`** - EF Core + Npgsql (`Data/ApplicationDatabaseContext.cs`), email (MailKit), password hashing (`Identity/AspNetPasswordHasher`), repository/query-service implementations. Anything talking to the outside world lives here.
+- **`AppTemplate.Web`** - the ASP.NET Core entry point and composition root (`Program.cs`, `Configurations/`). One [FastEndpoints](https://fast-endpoints.com/) class per endpoint under `Features/<Feature>Features/`, following the REPR pattern (Request-Endpoint-Response), with FluentValidation validators colocated in the same file as their endpoint. Endpoints map `Ardalis.Result` only through `Extensions/ResultExtensions.cs` (`ToOkResult` and siblings), and every error, including validation, 401/403, unmatched routes and exceptions, is an RFC 9457 problem details response with a `traceId` (ADR 009: the built-in `AddProblemDetails()`, plus the validation shape built in `MiddlewareConfigurations` and `ResultExtensions`).
 
 ### Authentication
 
-Keycloak is the OpenID Connect provider and owns credentials, registration, password reset and logout pages. The realm is `AppHost/Realms/apptemplate-realm.json`, imported on first start. Web accepts only Keycloak JWTs with audience `apptemplate-api` (`Configurations/AuthenticationConfigurations.cs`, `MapInboundClaims = false`, so read `sub`/`email`/`name`). FastEndpoints endpoints are authenticated unless marked `AllowAnonymous()`. Endpoints are unversioned: the API serves `/users`, which the browser calls as `/api/users` through the backend for frontend. Domain `User` rows are provisioned just in time by `GET /users/me`, linked through `User.ExternalId` (= `sub`), and raise the `UserProvisioned` domain event. Functional tests authenticate with `TestAuthHandler` via the `X-Test-User` header (`factory.CreateAuthenticatedClient(sub)`). Keycloak's admin console is on `http://localhost:8080`; the admin password is the `keycloak-password` parameter in the Aspire dashboard. See ADR 007.
+The API issues its own tokens (ADR 010); there is no external identity provider:
 
-Password reset is Keycloak's own: the realm sets `resetPasswordAllowed`, so its sign-in page has a "Forgot password?" link, and Keycloak sends the email through its `smtpServer` setting. In development that is the Mailpit container; read the emails in Mailpit's web UI.
+- `POST /auth/register` and `POST /auth/login` (`Web/Features/AuthFeatures/`) check the password (`IPasswordHasher` in UseCases, ASP.NET Core's `PasswordHasher` in Infrastructure) and return a 15-minute **access token**, an HS256 JWT signed with `Jwt:SigningKey` (`Web/Authentication/JwtTokenIssuer`). Its claims are `sub` (the `UserId`), `email`, `name`, `jti`, `iat` and one `permission` claim per permission.
+- They also set the **refresh token**, an HttpOnly, SameSite=Strict cookie (`apptemplate_refresh`, path `Authentication:RefreshCookiePath`, `/api/auth` as the browser sees it), stored only as a SHA-256 hash (`RefreshToken` aggregate). Every sign-in starts a token family; `POST /auth/refresh` rotates the token within its family (7 days sliding, 30 days absolute). Rotation is atomic: an `xmin` row version makes a concurrent second rotation fail, and a token rotated in the last 10 seconds answers 409 (another tab refreshed) rather than counting as reuse. Replaying an older rotated token revokes its family only. `POST /auth/logout` revokes the family.
+- Refresh and logout are authenticated by the cookie, so they also require an `Origin` from `Authentication:AllowedOrigins` and the antiforgery header `X-XSRF-TOKEN` (cookie from `GET /auth/antiforgery`; `Web/Authentication/AuthCookies`). Login and register have a stricter rate limit policy (`RateLimitingConfigurations.AuthenticationPolicy`).
+- Web validates access tokens with plain `AddJwtBearer` (`Configurations/AuthenticationConfigurations.cs`): issuer, audience, signing key, `HS256` only and lifetime, all explicit, `MapInboundClaims = false` (so read `sub`/`email`/`name`). FastEndpoints endpoints are authenticated unless marked `AllowAnonymous()`. `GET /users/me` returns the caller's profile by `sub`.
+- `SessionFactory` (UseCases) is the one place a session is built, for login, registration and refresh alike; use cases get times from `TimeProvider`.
+- No password reset, email verification, lockout or 2FA: copy Keycloak from the full template when a project needs them.
 
-Authorization (ADR 008): the API's permissions are Keycloak client roles on `apptemplate-api` (`users:read`, `users:write`, `users:delete`), defined in `UseCases/Authorization/Permission.cs` and bundled into realm roles such as `admin`. `Web/Authorization/KeycloakPermissionsClaimsTransformation` maps `resource_access.apptemplate-api.roles` to `permission` claims. Each permission is also an ASP.NET Core policy of the same name, so endpoints use `Policies(Permission.X)` for coarse checks. Resource-based rules, such as "may update own profile, or anyone's with users:write", live in use cases via `ICurrentUser` and return `Result.Forbidden()`, which maps to 403. `GET /users/me` returns the caller's permissions for the UI (`CurrentUserService`, `permissionGuard`), but the API always enforces them itself. In functional tests, grant permissions with `factory.CreateAuthenticatedClient(sub, Permission.UsersRead, ...)`; the test handler emits a real `resource_access` claim. The dev realm has an `admin`/`admin` account (temporary password) with the `admin` role.
+Development signs tokens with a key the AppHost generates once and keeps in its user secrets (the `jwt-signing-key` parameter); elsewhere supply that parameter (base64 of at least 32 random bytes). The seeded `admin@example.com` / `Admin123!` account has the `Admin` role (Development only). Functional tests authenticate with `TestAuthHandler` via the `X-Test-User` header (`factory.CreateAuthenticatedClient(userId, permissions...)`, `factory.CreateUserAsync()`); requests without it go through the real JWT handler, which `BrowserSession` drives with real sign-ins, cookies and antiforgery.
 
-The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
+Authorization (ADR 011): the API's permissions (`users:read`, `users:write`, `users:delete`) are defined in `UseCases/Authorization/Permission.cs`, granted by the user's role (`User.Role`, mapped by `RolePermissions`: `Admin` has all, `Member` none) and written into the access token, so a role change reaches the user at their next refresh. Each permission is also an ASP.NET Core policy of the same name, so endpoints use `Policies(Permission.X)` for coarse checks. Resource-based rules, such as "may update own profile, or anyone's with users:write", live in use cases via `ICurrentUser` (`Id`, `Permissions`) and return `Result.Forbidden()`, which maps to 403. `GET /users/me` returns the caller's permissions for the UI (`CurrentUserService`, `permissionGuard`), but the API always enforces them itself.
 
 ### Email
 
-`IEmailSender` (Core) is implemented by `Infrastructure/Email/MimeKitEmailSender` over MailKit, configured by `Mailserver:Hostname`/`Port` (`MailserverConfiguration`). The AppHost points it at Mailpit. Nothing sends email yet; call it from a use case, or from a handler of a domain event such as `UserProvisioned`. Functional tests replace it with `FakeEmailSender` (`factory.EmailSender`).
+`IEmailSender` (Core) is implemented by `Infrastructure/Email/MimeKitEmailSender` over MailKit, configured by `Mailserver:Hostname`/`Port`/`FromAddress` (`MailserverConfiguration`). The AppHost points it at Mailpit in Development. `UserRegisteredDomainEventHandler` sends the welcome email; read it in Mailpit's web UI. Functional tests replace it with `FakeEmailSender` (`factory.EmailSender`).
 
 ### Domain events
 
-Entities register domain events (`RegisterDomainEvent`); `Infrastructure/Data/EventDispatchInterceptor` publishes them through Mediator right after `SaveChanges` succeeds. They are in-process and best-effort: a failing handler is logged and never fails the request, and nothing retries it. Work that must reliably follow a database change needs a transactional outbox, which this template leaves out (see `docs/content/design-decisions.md`, Transactions and side effects).
+Entities register domain events (`RegisterDomainEvent`); `Infrastructure/Data/EventDispatchInterceptor` publishes them through Mediator right after `SaveChanges` succeeds. A use case can also dispatch them itself after saving, as registration does (`UserRegisteredDomainEvent` carries the id, which is only assigned when the row is added). They are in-process and best-effort: `MediatorDomainEventDispatcher` logs a failing handler, which never fails the request, and nothing retries it. Work that must reliably follow a database change needs a transactional outbox, which this template leaves out (see `docs/content/design-decisions.md`, Transactions and side effects).
 
 ### Tests
 
-Four test projects under `backend/tests/`, all xUnit (see ADR 006 for the reasoning):
+Three test projects under `backend/tests/`, all xUnit (see ADR 006 for the reasoning):
 
 - **`AppTemplate.UnitTests`** - Core/UseCases in isolation, `IRepository<T>` substituted with NSubstitute. No I/O.
 - **`AppTemplate.FunctionalTests`** - full HTTP → FastEndpoints → Mediator → EF Core → Postgres pipeline via `WebApplicationFactory<Program>`. `PostgresTestDatabase` starts one real Postgres container per test run (Testcontainers), and each `AppTemplateWebApplicationFactory` gets a fresh database in it, created by the real migrations - so **Docker is required** (Podman works via `DOCKER_HOST` with `TESTCONTAINERS_RYUK_DISABLED=true`). Mark every test class that uses the factory `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`: CI's Windows/macOS jobs run `--filter "Category!=RequiresDocker"`, since they can't run Linux containers.
-- **`AppTemplate.BackendForFrontend.Tests`** - the backend for frontend, in-process. No Docker.
 - **`AppTemplate.ArchitectureTests`** - enforces ADR 001: allowed `ProjectReference`s per `src` project (a new project must be added to the allow-list), forbidden type dependencies per layer (NetArchTest), endpoints under `Web.Features`, no MVC controllers, handlers only in UseCases, and `<UseCase>Command`/`<UseCase>Query` naming. Run it with `dotnet test tests/AppTemplate.ArchitectureTests`.
 
-Every route requires an authenticated user unless it calls `AllowAnonymous()`: there is an authorization fallback policy, and `EndpointAuthorizationTests` (functional) pins the list of anonymous routes, so update it when you deliberately make an endpoint public.
+Every route requires an authenticated user unless it calls `AllowAnonymous()`: there is an authorization fallback policy, and `EndpointAuthorizationTests` (functional) pins the list of anonymous routes (the health probes and `/auth/*`), so update it when you deliberately make an endpoint public. Tests that move the session clock (`factory.Time`, a `FakeTimeProvider`) get their own factory, as `AuthSessionLifetimeTests` does.
 
 ### Cross-cutting concerns
 
@@ -113,9 +115,9 @@ Strongly-typed IDs and simple domain primitives (`UserId`, `UserName`) use [Voge
 
 Health probes (`ServiceDefaults/Extensions.cs`, every environment): `/alive` (process) and `/health` (readiness: Postgres, tag `ready`).
 
-Logging is Serilog only, configured for every host by `AddServiceDefaults()` (`ServiceDefaults/Logging/`): console plus OTLP export (Aspire dashboard), one request log line per request (`UseDefaultRequestLogging`), and redaction of classified, sensitively named and pattern-matched values before either sink. `LogRedactionTests` checks the serialized output of both sinks. Metrics and traces (ASP.NET Core, HttpClient, runtime, Npgsql, EF Core) are exported by ServiceDefaults too.
+Logging: `Web/Configurations/LoggerConfigs.cs` adds Serilog for the console (levels in the `Serilog` section), and `AddServiceDefaults()` adds OpenTelemetry's logging provider, which exports the same logs to the Aspire dashboard (levels in `Logging`). Nothing is redacted, so never log request objects or DTOs: `LoggingBehavior` logs request names only, because commands carry passwords and tokens. Metrics and traces (ASP.NET Core, HttpClient, runtime, Npgsql, EF Core) are exported by ServiceDefaults too.
 
-Rate limiting (`Web/Configurations/RateLimitingConfigurations.cs`) is a global limiter, partitioned by validated `sub` or by client address; add a named policy there for a sensitive endpoint. `X-Forwarded-For` is honored only from `ForwardedHeaders:KnownProxies` (loopback in Development). Every request has a 30-second timeout (`RequestTimeoutConfigurations.cs`, 504 problem details). Don't use FastEndpoints' `Throttle`; see `docs/content/best-practices.md`.
+Rate limiting (`Web/Configurations/RateLimitingConfigurations.cs`) is a global limiter, partitioned by validated `sub` or by client address, plus the `authentication` policy (5 attempts a minute per client) on login and registration; add a named policy there for another sensitive endpoint. `X-Forwarded-For` is honored only from `ForwardedHeaders:KnownProxies` (loopback in Development, where the Angular dev server proxies the API). Don't use FastEndpoints' `Throttle`; see `docs/content/best-practices.md`. The API sets no response security headers: the host that serves the app in production does (CSP, `nosniff`, HSTS; see best-practices.md, Production deployment).
 
 Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL must use snake_case column names, not the C# property names. List query services always read with `FromSqlRaw` (see `ListUsersQueryService`): every mapped column, input only as `{n}` parameters, and ordering, paging and projection in LINQ on top.
 
@@ -123,23 +125,22 @@ Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL must
 
 The AppHost wires up these resources for local dev only (not a production deployment mechanism):
 - a containerized Postgres with a persistent data volume
-- Keycloak on the fixed port 8080, with the realm imported
-- Mailpit, a development SMTP catcher for Keycloak's and the API's emails
-- the Web API
-- the backend for frontend on the fixed port `https://localhost:7100`; the realm's redirect URIs depend on this port
-- the Angular frontend, via Aspire's JavaScript app hosting (`AddJavaScriptApp` + `WithNpm`, running `npm ci`/`npm start`)
+- Mailpit, a development SMTP catcher for the API's emails (Development only)
+- the Web API, with `Jwt__SigningKey` from the `jwt-signing-key` parameter and `Authentication__AllowedOrigins__0` set to the Angular endpoint
+- the Angular frontend, via Aspire's JavaScript app hosting (`AddJavaScriptApp` + `WithNpm`, running `npm ci`/`npm start`), with a reference to the API
 
-Open the app at `https://localhost:7100`. Connection strings and service URLs are wired by Aspire (`WithReference`/`WaitFor`), not hardcoded in `appsettings.json`.
+Open the app at the `angular` resource's URL in the Aspire dashboard. Connection strings and service URLs are wired by Aspire (`WithReference`/`WaitFor`), not hardcoded in `appsettings.json`. After pulling a schema change that rewrote `InitialCreate` (as removing Keycloak did), delete the Postgres data volume.
+
+Outside the `Development` environment the AppHost doesn't start Mailpit: it expects the SMTP server as the `mailserver-hostname` and `mailserver-port` parameters, and the signing key as the `jwt-signing-key` parameter.
 
 ### Frontend (`frontend/src/app/`)
 
-Standalone Angular components, organized as `core/`, `shared/`, and `features/<feature>/` (`auth`, `home`, `profile`, `users`). It holds no tokens:
-- `AuthService` asks `/backend-for-frontend/user` whether a session exists.
-- Login, register and logout are full-page redirects (`BROWSER_REDIRECT`).
-- `core/auth/auth-interceptor.ts` adds `X-CSRF: 1`.
-- `authGuard` protects routes, and `permissionGuard` hides pages the user has no permission for.
+Standalone Angular components, organized as `core/`, `shared/`, and `features/<feature>/` (`auth`, `home`, `profile`, `users`). It never stores a token:
+- `AuthService` keeps the access token in memory (a signal) and signs in and registers against `api/auth/*`. `ensureSession()` gets a new access token from the refresh cookie after a reload; refreshes are shared within a tab, serialized across tabs (`REFRESH_LOCK`, Web Locks) and retried once after a 409. `logout()` clears the local session even if the request fails.
+- `core/auth/auth-interceptor.ts` adds `Authorization: Bearer` to API requests, and on a 401 refreshes once and retries. It leaves `api/auth/*` alone, so a failing refresh never triggers another. Angular's own XSRF support sends `X-XSRF-TOKEN`.
+- `authGuard` protects routes (sending the user to `/auth?returnUrl=...`), and `permissionGuard` hides pages the user has no permission for.
 
-Relative `api/...` URLs (`API_BASE` in `core/api/api-paths.ts`) reach the Web API through the backend for frontend. There is no `proxy.conf.ts` and no CORS.
+Relative `api/...` URLs (`API_BASE` in `core/api/api-paths.ts`) reach the Web API through the dev server proxy (`frontend/proxy.conf.mjs`, which strips `/api` and targets `services__web__http__0`). There is no CORS: in production, serve the app and `/api` from one origin.
 
 ### CI (`.github/workflows/`)
 

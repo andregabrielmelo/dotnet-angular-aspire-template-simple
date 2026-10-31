@@ -6,7 +6,7 @@ namespace AppTemplate.FunctionalTests;
 
 /// <summary>
 /// The test server has no real TCP peer, so this sets <c>RemoteIpAddress</c> before the app's
-/// own middleware runs: <see cref="TrustedProxy"/> (a stand-in for the backend for frontend)
+/// own middleware runs: <see cref="TrustedProxy"/> (a stand-in for the reverse proxy in front of the API, such as the Angular dev server's)
 /// unless the request names another peer in <see cref="HeaderName"/>, which lets a test act
 /// as a client connecting directly from an untrusted address.
 /// </summary>

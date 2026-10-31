@@ -6,7 +6,7 @@ Restores (`--locked-mode`, against the committed `packages.lock.json` files), fo
 
 ## `frontend-build.yml`
 
-Installs, regenerates the API types from `backend/openapi/v1.json` and fails if `src/app/core/api/api-types.ts` is stale (so it also runs when only `backend/openapi/` changed), format-checks (`npm run format:check`, prettier), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), builds the Angular app, and checks the built `index.html` has no inline script or event handler the backend for frontend's Content-Security-Policy would block (`npm run csp:check`). Triggers on pushes to `main`/`develop` that touch `frontend/**` and on every PR. On a PR, the build only runs if it touches `frontend/**`, but the `Frontend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)).
+Installs, regenerates the API types from `backend/openapi/v1.json` and fails if `src/app/core/api/api-types.ts` is stale (so it also runs when only `backend/openapi/` changed), format-checks (`npm run format:check`, prettier), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), builds the Angular app, and checks the built `index.html` has no inline script or event handler a strict Content-Security-Policy would block (the one the production host should send) (`npm run csp:check`). Triggers on pushes to `main`/`develop` that touch `frontend/**` and on every PR. On a PR, the build only runs if it touches `frontend/**`, but the `Frontend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)).
 
 ## `pr-conventions.yml`
 
@@ -18,7 +18,7 @@ Runs on every PR and enforces the [Git workflow rules](../CONTRIBUTING.md#branch
 
 Runs [gitleaks](https://github.com/gitleaks/gitleaks) over the **whole git history** on every PR and on pushes to `main`/`develop`, and fails on anything that looks like a credential: cloud keys, private keys, tokens, connection strings with passwords. It scans every commit, not only the PR's, because a secret removed in a later commit is still leaked.
 - **CLI, not `gitleaks-action`.** It downloads the gitleaks release archive pinned by version and SHA-256 (`GITLEAKS_VERSION`/`GITLEAKS_SHA256`, from the release's `checksums.txt`). `gitleaks-action` needs a paid license for organization-owned repositories, which a project created from this template may well be. Dependabot can't bump a downloaded binary, so update both values together by hand.
-- **No allowlist.** The repository's history has no findings: the dev-only Keycloak and Postgres values are AppHost parameters or user secrets, never committed. If a finding is a genuine false positive, add its fingerprint (printed in the log) to a `.gitleaksignore` file. Never exempt whole paths or file types.
+- **No allowlist.** The repository's history has no findings: the dev-only Postgres password and JWT signing key are AppHost parameters or user secrets, never committed. If a finding is a genuine false positive, add its fingerprint (printed in the log) to a `.gitleaksignore` file. Never exempt whole paths or file types.
 - **If it catches a real secret, rotate it first.** Removing it from the branch doesn't un-leak it. Then rewrite the branch's history before it merges.
 - Run it locally with `gitleaks git .` ([install](https://github.com/gitleaks/gitleaks#installing)).
 

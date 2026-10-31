@@ -8,16 +8,16 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 
 ## Structure
 
-- `core/`: app-wide singletons. Today this is the session (`core/auth/`): `CurrentUserService`, `authGuard`, `permissionGuard`, `authInterceptor` (adds `X-CSRF: 1`) and `BROWSER_REDIRECT`.
+- `core/`: app-wide singletons. Today this is the session (`core/auth/`): `CurrentUserService`, `authGuard`, `permissionGuard`, `authInterceptor` (adds the access token, refreshes once on a 401) and `REFRESH_LOCK`. The session itself is `AuthService` (`features/auth/`).
 - `shared/`: UI and utilities that more than one feature genuinely reuses.
 - `features/<feature>/`: everything a feature owns, meaning its pages, its `<feature>.service.ts` (HTTP), its `<feature>.model.ts` (API types) and its routes. Model new features on `features/users/`.
 - File names are hyphenated, with one concept per file. A component's `.ts`, `.html`, `.css` and `.spec.ts` sit side by side.
 
 ## HTTP and authentication
 
-- Components never inject `HttpClient` (ESLint enforces this outside `*service.ts`). API calls live in the feature's service, which returns `Observable`s and uses relative `api/...` URLs. The backend for frontend proxies them, so there is no base URL, no CORS and no tokens.
+- Components never inject `HttpClient` (ESLint enforces this outside `*service.ts`). API calls live in the feature's service, which returns `Observable`s and uses relative `api/...` URLs. The dev server proxies them to the API (`proxy.conf.mjs`), so there is no base URL and no CORS.
 - API request and response types come from the OpenAPI document. Alias them in the feature's model file (`export type UserRow = ApiSchema<'UserRecord'>`) instead of writing interfaces by hand, and never edit `core/api/api-types.ts`; regenerate it with `npm run api:generate`.
-- The browser never holds tokens. Session state comes from `CurrentUserService` and `/backend-for-frontend/user`. Login, register and logout are full-page redirects through `BROWSER_REDIRECT`.
+- The access token lives only in `AuthService`'s memory: never put it in `localStorage`, `sessionStorage` or a cookie. The refresh token is an HttpOnly cookie the app can't read; `ensureSession()` exchanges it for an access token after a reload. Profile and permissions come from `CurrentUserService`. Never add the token yourself: `authInterceptor` does, and Angular's XSRF support adds `X-XSRF-TOKEN`.
 - `authGuard` and `permissionGuard` only shape the UI. The API enforces every permission itself, so never rely on a guard for security.
 - Never put secrets or environment-specific URLs in frontend code.
 
