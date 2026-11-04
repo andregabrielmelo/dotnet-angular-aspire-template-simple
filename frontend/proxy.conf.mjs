@@ -12,8 +12,6 @@ export default {
     target,
     secure: false,
     changeOrigin: true,
-    // The API's own rate limits and forwarded headers see the browser's address.
-    xfwd: true,
     pathRewrite: { '^/api': '' },
   },
 };

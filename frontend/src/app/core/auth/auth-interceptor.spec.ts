@@ -11,18 +11,28 @@ describe('authInterceptor', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
   let token: string | null;
+  let expiring: boolean;
   const refresh = vi.fn();
   const navigate = vi.fn();
 
   beforeEach(() => {
     token = 'access-1';
+    expiring = false;
     refresh.mockReset();
     navigate.mockReset();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { accessToken: () => token, refresh } },
+        {
+          provide: AuthService,
+          useValue: {
+            accessToken: () => token,
+            isAuthenticated: () => token !== null,
+            isExpiring: () => expiring,
+            refresh,
+          },
+        },
         { provide: Router, useValue: { url: '/users', navigate } },
       ],
     });
@@ -48,6 +58,21 @@ describe('authInterceptor', () => {
     expect(httpMock.expectOne('assets/config.json').request.headers.has('Authorization')).toBe(
       false,
     );
+  });
+
+  it('refreshes a token that is about to expire before sending the request', () => {
+    expiring = true;
+    refresh.mockImplementation(() => {
+      token = 'access-2';
+      expiring = false;
+      return of(true);
+    });
+    http.get('api/users/me').subscribe();
+
+    expect(httpMock.expectOne('api/users/me').request.headers.get('Authorization')).toBe(
+      'Bearer access-2',
+    );
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it('refreshes once on a 401 and retries with the new token', () => {
@@ -89,10 +114,12 @@ describe('authInterceptor', () => {
   });
 
   it('never refreshes because of an auth endpoint', () => {
-    http.post('api/auth/refresh', null).subscribe({ error: () => undefined });
+    http.post('api/auth/refresh-token', {}).subscribe({ error: () => undefined });
     http.post('api/auth/login', {}).subscribe({ error: () => undefined });
 
-    httpMock.expectOne('api/auth/refresh').flush(null, { status: 401, statusText: 'Unauthorized' });
+    httpMock
+      .expectOne('api/auth/refresh-token')
+      .flush(null, { status: 400, statusText: 'Bad Request' });
     httpMock.expectOne('api/auth/login').flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(refresh).not.toHaveBeenCalled();
