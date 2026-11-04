@@ -76,13 +76,35 @@ describe('AuthService', () => {
     expect(stored()).toEqual(response);
   });
 
-  it('register() signs the new account in', () => {
+  it('register() creates the account without signing in', () => {
     setup();
     service.register('Ada', 'ada@example.com', 'long secret').subscribe();
 
-    httpMock.expectOne('api/auth/register').flush(session('access-1'));
+    const request = httpMock.expectOne('api/auth/register');
+    expect(request.request.body).toEqual({
+      name: 'Ada',
+      email: 'ada@example.com',
+      password: 'long secret',
+    });
+    request.flush(null, { status: 201, statusText: 'Created' });
 
-    expect(service.isAuthenticated()).toBe(true);
+    expect(service.isAuthenticated()).toBe(false);
+  });
+
+  it('changePassword() sends the access token and keeps the new session', () => {
+    setup(session('access-1'));
+    service.changePassword('old secret', 'new secret').subscribe();
+
+    const request = httpMock.expectOne('api/auth/change-password');
+    expect(request.request.headers.get('Authorization')).toBe('Bearer access-1');
+    expect(request.request.body).toEqual({
+      currentPassword: 'old secret',
+      newPassword: 'new secret',
+    });
+    request.flush(session('access-2'));
+
+    expect(service.accessToken()).toBe('access-2');
+    expect(stored()?.accessToken).toBe('access-2');
   });
 
   it('restores the stored session, as after a reload', () => {

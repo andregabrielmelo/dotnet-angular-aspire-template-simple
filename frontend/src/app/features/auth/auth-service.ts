@@ -68,8 +68,31 @@ export class AuthService {
     return this.signIn(this.http.post<Session>(`${AUTH_PATH}/login`, { email, password }));
   }
 
+  /**
+   * Creates an account. It doesn't sign in: the API emails a confirmation link, and the account
+   * can sign in once it's confirmed.
+   */
   register(name: string, email: string, password: string): Observable<void> {
-    return this.signIn(this.http.post<Session>(`${AUTH_PATH}/register`, { name, email, password }));
+    return this.http.post<void>(`${AUTH_PATH}/register`, { name, email, password });
+  }
+
+  /**
+   * Changes the password. The API ends every other session and returns a new one for this tab,
+   * which replaces the current session (an expired access token is refreshed first).
+   */
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    const ready = this.isExpiring() ? this.refresh() : of(true);
+    return ready.pipe(
+      switchMap(() =>
+        this.signIn(
+          this.http.post<Session>(
+            `${AUTH_PATH}/change-password`,
+            { currentPassword, newPassword },
+            { headers: this.bearer() },
+          ),
+        ),
+      ),
+    );
   }
 
   /**
@@ -114,9 +137,7 @@ export class AuthService {
         switchMap((signedIn) => {
           const token = this.accessToken();
           return signedIn && token
-            ? this.http.delete<void>(REFRESH_TOKEN_PATH, {
-                headers: { Authorization: `Bearer ${token}` },
-              })
+            ? this.http.delete<void>(REFRESH_TOKEN_PATH, { headers: this.bearer() })
             : of(null);
         }),
         catchError(() => of(null)),
@@ -152,6 +173,12 @@ export class AuthService {
         return of(false);
       }),
     );
+  }
+
+  /** The interceptor leaves api/auth/* alone, so the endpoints there that need the token get it here. */
+  private bearer(): Record<string, string> {
+    const token = this.accessToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
   private signIn(request: Observable<Session>): Observable<void> {

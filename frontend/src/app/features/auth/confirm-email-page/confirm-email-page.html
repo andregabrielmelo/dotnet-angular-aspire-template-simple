@@ -1,0 +1,21 @@
+<div class="mx-auto max-w-sm p-6">
+  <h1 class="mb-4 text-2xl font-semibold">Confirm your email</h1>
+
+  @switch (status()) {
+    @case ('confirming') {
+      <p class="text-sm text-gray-600" role="status">Confirming…</p>
+    }
+    @case ('confirmed') {
+      <p class="mb-4 text-sm text-green-700" role="status">
+        Your email is confirmed. You can sign in now.
+      </p>
+      <a routerLink="/auth" class="text-sm text-blue-600 underline">Sign in</a>
+    }
+    @case ('failed') {
+      <p class="mb-4 text-sm text-red-600" role="alert">
+        This link is invalid or has expired. Sign in to have a new one sent.
+      </p>
+      <a routerLink="/auth" class="text-sm text-blue-600 underline">Go to sign in</a>
+    }
+  }
+</div>

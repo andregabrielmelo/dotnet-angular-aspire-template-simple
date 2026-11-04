@@ -43,4 +43,76 @@
       {{ status() === 'saving' ? 'Saving…' : 'Save' }}
     </button>
   </form>
+
+  <h2 class="mt-10 mb-4 text-lg font-semibold">Change your password</h2>
+  <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="space-y-4">
+    <div>
+      <label for="currentPassword" class="block text-sm font-medium">Current password</label>
+      <input
+        id="currentPassword"
+        type="password"
+        autocomplete="current-password"
+        formControlName="currentPassword"
+        [attr.aria-describedby]="
+          passwordErrors().currentPassword ||
+          (passwordForm.controls.currentPassword.touched &&
+            passwordForm.controls.currentPassword.invalid)
+            ? 'current-password-error'
+            : null
+        "
+        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+      />
+      @if (passwordErrors().currentPassword; as message) {
+        <p id="current-password-error" class="mt-1 text-sm text-red-600">{{ message }}</p>
+      } @else if (
+        passwordForm.controls.currentPassword.touched &&
+        passwordForm.controls.currentPassword.invalid
+      ) {
+        <p id="current-password-error" class="mt-1 text-sm text-red-600">
+          Enter your current password.
+        </p>
+      }
+    </div>
+
+    <div>
+      <label for="newPassword" class="block text-sm font-medium">New password</label>
+      <input
+        id="newPassword"
+        type="password"
+        autocomplete="new-password"
+        formControlName="newPassword"
+        [attr.aria-describedby]="
+          passwordErrors().newPassword ||
+          (passwordForm.controls.newPassword.touched && passwordForm.controls.newPassword.invalid)
+            ? 'new-password-error'
+            : null
+        "
+        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+      />
+      @if (passwordErrors().newPassword; as message) {
+        <p id="new-password-error" class="mt-1 text-sm text-red-600">{{ message }}</p>
+      } @else if (
+        passwordForm.controls.newPassword.touched && passwordForm.controls.newPassword.invalid
+      ) {
+        <p id="new-password-error" class="mt-1 text-sm text-red-600">Use at least 8 characters.</p>
+      }
+    </div>
+
+    @if (passwordMessage(); as message) {
+      <p class="text-sm text-red-600" role="alert">{{ message }}</p>
+    }
+    @if (passwordStatus() === 'saved') {
+      <p class="text-sm text-green-700" role="status">
+        Password changed. Your other devices are signed out.
+      </p>
+    }
+
+    <button
+      type="submit"
+      [disabled]="passwordStatus() === 'saving'"
+      class="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+    >
+      {{ passwordStatus() === 'saving' ? 'Changing…' : 'Change password' }}
+    </button>
+  </form>
 </div>
