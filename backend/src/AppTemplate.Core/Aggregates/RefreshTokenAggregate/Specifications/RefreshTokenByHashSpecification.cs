@@ -1,6 +1,6 @@
 namespace AppTemplate.Core.Aggregates.RefreshTokenAggregate.Specifications;
 
-/// <summary>Tracked, because a refresh revokes the token it finds.</summary>
+/// <summary>Tracked, because consuming a refresh token deletes it.</summary>
 public class RefreshTokenByHashSpecification : SingleResultSpecification<RefreshToken>
 {
     public RefreshTokenByHashSpecification(string tokenHash) =>

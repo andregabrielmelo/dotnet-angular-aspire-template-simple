@@ -1,14 +1,11 @@
 namespace AppTemplate.Core.Aggregates.RefreshTokenAggregate;
 
-/// <summary>
-/// Created in the domain (a version 7 GUID) rather than by the database, so concurrent sign-ins
-/// can never be handed the same id.
-/// </summary>
-[ValueObject<Guid>]
+// The database generates ids. EF Core hands a new row a negative temporary id and converts it
+// (and every id it reads) through Vogen's deserialization, so that path skips Validate;
+// RefreshTokenId.From(...) in code still enforces it.
+[ValueObject<int>(deserializationStrictness: DeserializationStrictness.AllowAnything)]
 public readonly partial struct RefreshTokenId
 {
-    public static RefreshTokenId New() => From(Guid.CreateVersion7());
-
-    private static Validation Validate(Guid value) =>
-        value != Guid.Empty ? Validation.Ok : Validation.Invalid("RefreshTokenId cannot be empty.");
+    private static Validation Validate(int value) =>
+        value > 0 ? Validation.Ok : Validation.Invalid("RefreshTokenId must be positive.");
 }

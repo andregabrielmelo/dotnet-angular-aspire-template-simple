@@ -3,11 +3,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Where the export-swagger-docs switch writes v1.json: backend/openapi (scripts/export-openapi.sh). -->
+    <SwaggerExportPath>../../openapi</SwaggerExportPath>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Ardalis.Result" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="FastEndpoints" />
+    <PackageReference Include="FastEndpoints.Security" />
     <PackageReference Include="FastEndpoints.Swagger" />
     <PackageReference Include="Mediator.Abstractions" />
     <PackageReference Include="Mediator.SourceGenerator">

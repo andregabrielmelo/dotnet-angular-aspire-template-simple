@@ -4,16 +4,13 @@ using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 namespace AppTemplate.UseCases.Authentication.Login;
 
 /// <summary>
-/// An unknown email and a wrong password get the same answer, so the response doesn't reveal
-/// who has an account. Repeated attempts are limited by the endpoint's rate limit policy.
+/// Checks the credentials. An unknown email and a wrong password get the same answer, so the
+/// response doesn't reveal who has an account.
 /// </summary>
-public class LoginHandler(
-    IRepository<User> _users,
-    IPasswordHasher _passwordHasher,
-    SessionFactory _sessions
-) : ICommandHandler<LoginCommand, Result<AuthSession>>
+public class LoginHandler(IRepository<User> _users, IPasswordHasher _passwordHasher)
+    : ICommandHandler<LoginCommand, Result<AuthenticatedUserDto>>
 {
-    public async ValueTask<Result<AuthSession>> Handle(
+    public async ValueTask<Result<AuthenticatedUserDto>> Handle(
         LoginCommand command,
         CancellationToken cancellationToken
     )
@@ -35,6 +32,6 @@ public class LoginHandler(
             return Result.Unauthorized();
         }
 
-        return await _sessions.StartAsync(user, cancellationToken);
+        return AuthenticatedUserDto.FromEntity(user);
     }
 }

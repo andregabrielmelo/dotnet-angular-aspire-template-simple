@@ -44,18 +44,6 @@ public class User(UserName name, EmailAddress email, string passwordHash, UserRo
         return new User(name, email, passwordHash, role);
     }
 
-    /// <summary>
-    /// Raises <see cref="UserRegisteredDomainEvent"/>. Called once the user is saved: the event
-    /// carries the id, which is only assigned when the row is added.
-    /// </summary>
-    public void MarkRegistered()
-    {
-        if (!Id.IsInitialized())
-            throw new InvalidOperationException("A user is registered once it has been saved.");
-
-        RegisterDomainEvent(new UserRegisteredDomainEvent(Id, Email.Value));
-    }
-
     public User UpdateName(UserName newName)
     {
         if (Name == newName)

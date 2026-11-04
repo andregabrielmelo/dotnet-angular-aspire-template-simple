@@ -24,34 +24,16 @@ namespace AppTemplate.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("AppTemplate.Core.Aggregates.RefreshTokenAggregate.RefreshToken", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTimeOffset>("ExpiresAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at_utc");
-
-                    b.Property<DateTimeOffset>("FamilyExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("family_expires_at_utc");
-
-                    b.Property<Guid>("FamilyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("family_id");
-
-                    b.Property<string>("RevocationReason")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("revocation_reason");
-
-                    b.Property<DateTimeOffset?>("RevokedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("revoked_at_utc");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -64,17 +46,8 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("user_id");
 
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.HasKey("Id")
                         .HasName("pk_refresh_tokens");
-
-                    b.HasIndex("FamilyId")
-                        .HasDatabaseName("ix_refresh_tokens_family_id");
 
                     b.HasIndex("TokenHash")
                         .IsUnique()
@@ -89,8 +62,11 @@ namespace AppTemplate.Infrastructure.Data.Migrations
             modelBuilder.Entity("AppTemplate.Core.Aggregates.UserAggregate.User", b =>
                 {
                     b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()

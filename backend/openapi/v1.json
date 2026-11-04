@@ -14,7 +14,7 @@
         ],
         "summary": "Delete a user",
         "description": "Deletes a user with the specified id.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesDeleteEndpoint",
+        "operationId": "AppTemplateWebUsersDeleteEndpoint",
         "parameters": [
           {
             "name": "userId",
@@ -79,7 +79,7 @@
         ],
         "summary": "Get a user by Id",
         "description": "Get a user with the specified Id.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesGetByIdEndpoint",
+        "operationId": "AppTemplateWebUsersGetByIdEndpoint",
         "parameters": [
           {
             "name": "id",
@@ -147,7 +147,7 @@
         ],
         "summary": "Update a user",
         "description": "Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesUpdateEndpoint",
+        "operationId": "AppTemplateWebUsersUpdateEndpoint",
         "parameters": [
           {
             "name": "id",
@@ -239,7 +239,7 @@
         ],
         "summary": "List users with pagination",
         "description": "Retrieves a paginated list of all users. Supports GitHub-style pagination with 1-based page indexing and configurable page size.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesListEndpoint",
+        "operationId": "AppTemplateWebUsersListEndpoint",
         "parameters": [
           {
             "name": "page",
@@ -323,7 +323,7 @@
         ],
         "summary": "Get the current user",
         "description": "Returns the authenticated caller's profile and the permissions their access token grants.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesMeEndpoint",
+        "operationId": "AppTemplateWebUsersMeEndpoint",
         "responses": {
           "200": {
             "description": "Current user returned successfully",
@@ -371,29 +371,14 @@
         ]
       }
     },
-    "/auth/antiforgery": {
-      "get": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Get antiforgery tokens",
-        "description": "Sets the XSRF-TOKEN cookie, whose value /auth/refresh and /auth/logout expect in the X-XSRF-TOKEN header.",
-        "operationId": "AppTemplateWebFeaturesAuthFeaturesAntiforgeryEndpoint",
-        "responses": {
-          "204": {
-            "description": "Cookies set"
-          }
-        }
-      }
-    },
     "/auth/login": {
       "post": {
         "tags": [
           "Auth"
         ],
         "summary": "Sign in",
-        "description": "Returns a 15-minute access token, to send as Authorization: Bearer, and sets the refresh token cookie used by /auth/refresh.",
-        "operationId": "AppTemplateWebFeaturesAuthFeaturesLoginEndpoint",
+        "description": "Returns an access token, to send as Authorization: Bearer, and sets the refresh token cookie used by POST /auth/refresh-token.",
+        "operationId": "AppTemplateWebAuthenticationLoginEndpoint",
         "requestBody": {
           "x-name": "LoginRequest",
           "description": "",
@@ -414,10 +399,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AccessTokenResponse"
-                },
-                "example": {
-                  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-                  "expiresIn": 900
                 }
               }
             }
@@ -441,44 +422,24 @@
                 }
               }
             }
-          },
-          "429": {
-            "description": "Too many attempts; retry after Retry-After",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
           }
         }
       }
     },
-    "/auth/logout": {
-      "post": {
+    "/auth/refresh-token": {
+      "delete": {
         "tags": [
           "Auth"
         ],
         "summary": "Sign out",
-        "description": "Revokes the refresh token cookie's session and deletes the cookie. Requires an allowed Origin and the X-XSRF-TOKEN header from GET /auth/antiforgery.",
-        "operationId": "AppTemplateWebFeaturesAuthFeaturesLogoutEndpoint",
+        "description": "Deletes the refresh token cookie's session and revokes the access token sent with this request.",
+        "operationId": "AppTemplateWebAuthenticationLogoutEndpoint",
         "responses": {
           "204": {
             "description": "Signed out"
           },
-          "403": {
-            "description": "Missing or invalid Origin or antiforgery token",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Refreshed concurrently while signing out; sign out again",
+          "401": {
+            "description": "Missing, invalid or already revoked access token",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -487,58 +448,40 @@
               }
             }
           }
-        }
-      }
-    },
-    "/auth/refresh": {
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      },
       "post": {
         "tags": [
           "Auth"
         ],
-        "summary": "Refresh the session",
-        "description": "Rotates the refresh token cookie and returns a new access token. Requires an allowed Origin and the X-XSRF-TOKEN header from GET /auth/antiforgery.",
-        "operationId": "AppTemplateWebFeaturesAuthFeaturesRefreshEndpoint",
+        "summary": "Refresh the access token",
+        "description": "Uses the refresh token cookie (sent automatically by the browser), returns a new access token and rotates the cookie. Send {}: the body's userId and refreshToken are ignored.",
+        "operationId": "AppTemplateWebAuthenticationUserTokenService",
+        "requestBody": {
+          "x-name": "TokenRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
         "responses": {
           "200": {
-            "description": "Session refreshed",
+            "description": "A new access token",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AccessTokenResponse"
-                },
-                "example": {
-                  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-                  "expiresIn": 900
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "No valid refresh token; sign in again",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Missing or invalid Origin or antiforgery token",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Refreshed concurrently by another request; retry",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -553,7 +496,7 @@
         ],
         "summary": "Register",
         "description": "Creates an account and signs it in: returns an access token and sets the refresh token cookie. A welcome email is sent to the address.",
-        "operationId": "AppTemplateWebFeaturesAuthFeaturesRegisterEndpoint",
+        "operationId": "AppTemplateWebAuthenticationRegisterEndpoint",
         "requestBody": {
           "x-name": "RegisterRequest",
           "description": "",
@@ -574,10 +517,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AccessTokenResponse"
-                },
-                "example": {
-                  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-                  "expiresIn": 900
                 }
               }
             }
@@ -594,16 +533,6 @@
           },
           "409": {
             "description": "An account with this email already exists",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many attempts; retry after Retry-After",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -808,15 +737,15 @@
         "additionalProperties": false,
         "required": [
           "accessToken",
-          "expiresIn"
+          "accessTokenExpiry"
         ],
         "properties": {
           "accessToken": {
             "type": "string"
           },
-          "expiresIn": {
-            "type": "integer",
-            "format": "int32"
+          "accessTokenExpiry": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -882,6 +811,25 @@
             "minLength": 8,
             "nullable": false,
             "example": "correct horse battery staple"
+          }
+        }
+      },
+      "TokenRequest": {
+        "type": "object",
+        "description": "base dto for access/refresh token renewal requests",
+        "additionalProperties": false,
+        "required": [
+          "userId",
+          "refreshToken"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "unique identifier of a user"
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "a single-use refresh token which will be valid for the duration specified by RefreshExpiry"
           }
         }
       }

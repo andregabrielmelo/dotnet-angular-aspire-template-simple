@@ -33,22 +33,6 @@ var frontend = builder
     .WithExternalHttpEndpoints()
     .PublishAsDockerFile();
 
-// Refresh and sign-out only accept requests whose Origin is the app's (AuthCookies).
-api.WithEnvironment("Authentication__AllowedOrigins__0", frontend.GetEndpoint("http"));
-
-// The access token signing key: base64 of at least 32 random bytes. In Development it is
-// generated once (64 letters and digits are valid base64 for 48 bytes) and kept in this
-// project's user secrets; elsewhere supply it, e.g. from `openssl rand -base64 64`.
-var jwtSigningKey = builder.Environment.IsDevelopment()
-    ? builder.AddParameter(
-        "jwt-signing-key",
-        new GenerateParameterDefault { MinLength = 64, Special = false },
-        secret: true,
-        persist: true
-    )
-    : builder.AddParameter("jwt-signing-key", secret: true);
-api.WithEnvironment("Jwt__SigningKey", jwtSigningKey);
-
 if (builder.Environment.IsDevelopment())
 {
     // Development SMTP catcher: the API's emails (IEmailSender, such as the welcome email) go

@@ -13,13 +13,7 @@ startupLogger.LogInformation("Starting web host");
 
 builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger);
 builder.Services.AddServiceConfigurations(startupLogger, builder);
-builder.Services.AddAuthenticationConfigurations(startupLogger, builder);
-builder.Services.AddAuthorizationConfigurations(startupLogger);
-
-// RFC 9457 problem details (with a traceId) for exceptions, status code pages and TypedResults.Problem.
-builder.Services.AddProblemDetails();
-builder.Services.AddForwardedHeadersConfigurations(builder.Configuration);
-builder.Services.AddRateLimitingConfigurations(builder.Configuration);
+builder.Services.AddAuthConfigurations(startupLogger, builder);
 
 builder
     .Services.AddFastEndpoints()
@@ -31,22 +25,21 @@ builder
             s.Title = "AppTemplate API";
             s.Version = "v1";
             s.Description = "REST API for AppTemplate.";
-            s.SchemaSettings.SchemaProcessors.Add(
-                new RequireNonNullablePropertiesSchemaProcessor()
-            );
+            // Generated clients (the Angular types) get non-optional fields for non-nullable ones.
+            s.MarkNonNullablePropsAsRequired();
         };
+        // The "Bearer" security scheme, so Scalar/Swagger can send the access token.
+        o.EnableJWTBearerAuth = true;
     });
 
 var app = builder.Build();
 
 await app.UseAppMiddleware();
 
-// `--OpenApi:ExportPath=<file>` writes the OpenAPI document and exits, before anything below
-// needs a database or other services (see OpenApiExport).
-if (await app.TryExportOpenApiAsync())
-{
-    return;
-}
+// `--export-swagger-docs true` writes v1.json (SwaggerExportPath in the csproj) and exits, before
+// anything below needs a database (scripts/export-openapi.sh).
+await app.ExportSwaggerDocsAndExitAsync("v1");
+
 await app.StartDatabase(); // decides for itself: Development, or Database:ApplyMigrationsOnStartup
 
 app.MapDefaultEndpoints(); // Aspire health checks and metrics

@@ -1,0 +1,7 @@
+# Truncated example access tokens in an earlier OpenAPI contract and its generated types, not secrets.
+b413904898d9913b1b56a820806c484bcf172a14:backend/openapi/v1.json:generic-api-key:419
+58d551c273834ef9c393abd831bcafbda973c4e8:frontend/src/app/core/api/api-types.ts:generic-api-key:640
+b413904898d9913b1b56a820806c484bcf172a14:backend/openapi/v1.json:generic-api-key:510
+b413904898d9913b1b56a820806c484bcf172a14:backend/openapi/v1.json:generic-api-key:579
+58d551c273834ef9c393abd831bcafbda973c4e8:frontend/src/app/core/api/api-types.ts:generic-api-key:729
+58d551c273834ef9c393abd831bcafbda973c4e8:frontend/src/app/core/api/api-types.ts:generic-api-key:786

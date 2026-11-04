@@ -1,12 +1,12 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace AppTemplate.Web.Extensions;
 
 /// <summary>
 /// The only place an <see cref="Ardalis.Result.IResult"/> becomes an HTTP response, so every
 /// endpoint reports the same outcome with the same status code and problem details body
-/// (ADR 009). The problem details service (<c>AddProblemDetails</c>) adds the <c>traceId</c>.
-/// Endpoints return <c>Results&lt;Success, ProblemHttpResult&gt;</c>.
+/// (ADR 009). Endpoints return <c>Results&lt;Success, ProblemHttpResult&gt;</c>.
 /// </summary>
 public static class ResultExtensions
 {

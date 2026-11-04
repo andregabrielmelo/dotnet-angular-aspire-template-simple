@@ -18,7 +18,7 @@ export interface paths {
      * Delete a user
      * @description Deletes a user with the specified id.
      */
-    delete: operations['AppTemplateWebFeaturesUserFeaturesDeleteEndpoint'];
+    delete: operations['AppTemplateWebUsersDeleteEndpoint'];
     options?: never;
     head?: never;
     patch?: never;
@@ -35,12 +35,12 @@ export interface paths {
      * Get a user by Id
      * @description Get a user with the specified Id.
      */
-    get: operations['AppTemplateWebFeaturesUserFeaturesGetByIdEndpoint'];
+    get: operations['AppTemplateWebUsersGetByIdEndpoint'];
     /**
      * Update a user
      * @description Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.
      */
-    put: operations['AppTemplateWebFeaturesUserFeaturesUpdateEndpoint'];
+    put: operations['AppTemplateWebUsersUpdateEndpoint'];
     post?: never;
     delete?: never;
     options?: never;
@@ -59,7 +59,7 @@ export interface paths {
      * List users with pagination
      * @description Retrieves a paginated list of all users. Supports GitHub-style pagination with 1-based page indexing and configurable page size.
      */
-    get: operations['AppTemplateWebFeaturesUserFeaturesListEndpoint'];
+    get: operations['AppTemplateWebUsersListEndpoint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -79,27 +79,7 @@ export interface paths {
      * Get the current user
      * @description Returns the authenticated caller's profile and the permissions their access token grants.
      */
-    get: operations['AppTemplateWebFeaturesUserFeaturesMeEndpoint'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/antiforgery': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get antiforgery tokens
-     * @description Sets the XSRF-TOKEN cookie, whose value /auth/refresh and /auth/logout expect in the X-XSRF-TOKEN header.
-     */
-    get: operations['AppTemplateWebFeaturesAuthFeaturesAntiforgeryEndpoint'];
+    get: operations['AppTemplateWebUsersMeEndpoint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -119,16 +99,16 @@ export interface paths {
     put?: never;
     /**
      * Sign in
-     * @description Returns a 15-minute access token, to send as Authorization: Bearer, and sets the refresh token cookie used by /auth/refresh.
+     * @description Returns an access token, to send as Authorization: Bearer, and sets the refresh token cookie used by POST /auth/refresh-token.
      */
-    post: operations['AppTemplateWebFeaturesAuthFeaturesLoginEndpoint'];
+    post: operations['AppTemplateWebAuthenticationLoginEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/auth/logout': {
+  '/auth/refresh-token': {
     parameters: {
       query?: never;
       header?: never;
@@ -137,32 +117,16 @@ export interface paths {
     };
     get?: never;
     put?: never;
+    /**
+     * Refresh the access token
+     * @description Uses the refresh token cookie (sent automatically by the browser), returns a new access token and rotates the cookie. Send {}: the body's userId and refreshToken are ignored.
+     */
+    post: operations['AppTemplateWebAuthenticationUserTokenService'];
     /**
      * Sign out
-     * @description Revokes the refresh token cookie's session and deletes the cookie. Requires an allowed Origin and the X-XSRF-TOKEN header from GET /auth/antiforgery.
+     * @description Deletes the refresh token cookie's session and revokes the access token sent with this request.
      */
-    post: operations['AppTemplateWebFeaturesAuthFeaturesLogoutEndpoint'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/refresh': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Refresh the session
-     * @description Rotates the refresh token cookie and returns a new access token. Requires an allowed Origin and the X-XSRF-TOKEN header from GET /auth/antiforgery.
-     */
-    post: operations['AppTemplateWebFeaturesAuthFeaturesRefreshEndpoint'];
-    delete?: never;
+    delete: operations['AppTemplateWebAuthenticationLogoutEndpoint'];
     options?: never;
     head?: never;
     patch?: never;
@@ -181,7 +145,7 @@ export interface paths {
      * Register
      * @description Creates an account and signs it in: returns an access token and sets the refresh token cookie. A welcome email is sent to the address.
      */
-    post: operations['AppTemplateWebFeaturesAuthFeaturesRegisterEndpoint'];
+    post: operations['AppTemplateWebAuthenticationRegisterEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -253,8 +217,8 @@ export interface components {
     };
     AccessTokenResponse: {
       accessToken: string;
-      /** Format: int32 */
-      expiresIn: number;
+      /** Format: date-time */
+      accessTokenExpiry: string;
     };
     /**
      * @example {
@@ -283,6 +247,13 @@ export interface components {
       /** @example correct horse battery staple */
       password: string;
     };
+    /** @description base dto for access/refresh token renewal requests */
+    TokenRequest: {
+      /** @description unique identifier of a user */
+      userId: string;
+      /** @description a single-use refresh token which will be valid for the duration specified by RefreshExpiry */
+      refreshToken: string;
+    };
   };
   responses: never;
   parameters: never;
@@ -292,7 +263,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  AppTemplateWebFeaturesUserFeaturesDeleteEndpoint: {
+  AppTemplateWebUsersDeleteEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -347,7 +318,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesUserFeaturesGetByIdEndpoint: {
+  AppTemplateWebUsersGetByIdEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -409,7 +380,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesUserFeaturesUpdateEndpoint: {
+  AppTemplateWebUsersUpdateEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -479,7 +450,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesUserFeaturesListEndpoint: {
+  AppTemplateWebUsersListEndpoint: {
     parameters: {
       query: {
         /**
@@ -550,7 +521,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesUserFeaturesMeEndpoint: {
+  AppTemplateWebUsersMeEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -598,25 +569,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesAuthFeaturesAntiforgeryEndpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Cookies set */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AppTemplateWebFeaturesAuthFeaturesLoginEndpoint: {
+  AppTemplateWebAuthenticationLoginEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -635,12 +588,6 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          /**
-           * @example {
-           *       "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-           *       "expiresIn": 900
-           *     }
-           */
           'application/json': components['schemas']['AccessTokenResponse'];
         };
       };
@@ -662,18 +609,33 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
-      /** @description Too many attempts; retry after Retry-After */
-      429: {
+    };
+  };
+  AppTemplateWebAuthenticationUserTokenService: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TokenRequest'];
+      };
+    };
+    responses: {
+      /** @description A new access token */
+      200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
+          'application/json': components['schemas']['AccessTokenResponse'];
         };
       };
     };
   };
-  AppTemplateWebFeaturesAuthFeaturesLogoutEndpoint: {
+  AppTemplateWebAuthenticationLogoutEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -689,51 +651,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Missing or invalid Origin or antiforgery token */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Refreshed concurrently while signing out; sign out again */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  AppTemplateWebFeaturesAuthFeaturesRefreshEndpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Session refreshed */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          /**
-           * @example {
-           *       "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-           *       "expiresIn": 900
-           *     }
-           */
-          'application/json': components['schemas']['AccessTokenResponse'];
-        };
-      };
-      /** @description No valid refresh token; sign in again */
+      /** @description Missing, invalid or already revoked access token */
       401: {
         headers: {
           [name: string]: unknown;
@@ -742,27 +660,9 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
-      /** @description Missing or invalid Origin or antiforgery token */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Refreshed concurrently by another request; retry */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
     };
   };
-  AppTemplateWebFeaturesAuthFeaturesRegisterEndpoint: {
+  AppTemplateWebAuthenticationRegisterEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -781,12 +681,6 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          /**
-           * @example {
-           *       "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-           *       "expiresIn": 900
-           *     }
-           */
           'application/json': components['schemas']['AccessTokenResponse'];
         };
       };
@@ -801,15 +695,6 @@ export interface operations {
       };
       /** @description An account with this email already exists */
       409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Too many attempts; retry after Retry-After */
-      429: {
         headers: {
           [name: string]: unknown;
         };

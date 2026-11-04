@@ -5,17 +5,20 @@
 #
 # Usage: scripts/export-openapi.sh [--no-build]
 #
-# The API starts briefly on a loopback port to build the document (see OpenApiExport.cs). It
-# never connects to Postgres or signs a token, so the values below only satisfy startup
-# validation and must never be real credentials (the signing key is 33 zero bytes).
+# The API starts briefly on a loopback port to build the document, using FastEndpoints'
+# ExportSwaggerDocsAndExitAsync (Program.cs; the output folder is SwaggerExportPath in the Web
+# csproj). It never connects to Postgres or signs a token, so the values below only satisfy
+# startup validation and must never be real credentials.
 set -euo pipefail
 
 cd "$(dirname "$0")/../backend"
 
 dotnet run --project src/AppTemplate.Web --configuration Release --no-launch-profile "$@" -- \
-  --OpenApi:ExportPath=../../openapi/v1.json \
+  --export-swagger-docs true \
   --urls=http://127.0.0.1:0 \
   "--ConnectionStrings:apptemplate=Host=openapi-export-unused" \
-  --Jwt:SigningKey=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \
-  --Authentication:AllowedOrigins:0=http://openapi-export.invalid \
+  --Jwt:SigningKey=openapi-export-placeholder-signing-key-not-a-secret \
   --Mailserver:FromAddress=openapi-export@example.invalid
+
+# FastEndpoints writes the document without a final newline; keep the committed file stable.
+[ -n "$(tail -c1 openapi/v1.json)" ] && echo >> openapi/v1.json

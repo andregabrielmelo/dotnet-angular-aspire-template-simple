@@ -1,6 +1,5 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Email;
-using AppTemplate.Web.Authentication;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -34,31 +33,18 @@ public static class OptionConfigurations
                 "Jwt needs an Issuer and an Audience."
             )
             .Validate(
-                jwt => JwtSettings.IsValidSigningKey(jwt.SigningKey),
-                $"Jwt:SigningKey must be base64 of at least {JwtSettings.MinimumSigningKeyBytes} random bytes (openssl rand -base64 64)."
+                jwt => jwt.SigningKey.Length >= JwtSettings.MinimumSigningKeyLength,
+                $"Jwt:SigningKey must be at least {JwtSettings.MinimumSigningKeyLength} characters."
             )
             .Validate(
                 jwt =>
-                    jwt.AccessTokenLifetime > TimeSpan.Zero
-                    && jwt.RefreshTokenReuseGracePeriod >= TimeSpan.Zero
-                    && jwt.RefreshTokenSlidingLifetime > jwt.AccessTokenLifetime
-                    && jwt.RefreshTokenAbsoluteLifetime >= jwt.RefreshTokenSlidingLifetime,
-                "Jwt lifetimes must be positive, with access < sliding refresh <= absolute refresh."
-            )
-            .ValidateOnStart();
-
-        services
-            .AddOptions<AuthCookieSettings>()
-            .Bind(configuration.GetSection(AuthCookieSettings.SectionName))
-            .Validate(
-                cookies =>
-                    cookies.AllowedOrigins.Length > 0
-                    && cookies.AllowedOrigins.All(AuthCookieSettings.IsOrigin),
-                "Authentication:AllowedOrigins needs at least one origin, such as https://app.example.com (no path, no trailing slash)."
+                    jwt.AccessTokenValidity > TimeSpan.Zero
+                    && jwt.RefreshTokenValidity > jwt.AccessTokenValidity,
+                "Jwt validities must be positive, with the refresh token outliving the access token."
             )
             .Validate(
-                cookies => cookies.RefreshCookiePath.StartsWith('/'),
-                "Authentication:RefreshCookiePath must start with '/'."
+                jwt => jwt.RefreshCookiePath.StartsWith('/'),
+                "Jwt:RefreshCookiePath must start with '/'."
             )
             .ValidateOnStart();
 

@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text.Json;
+﻿using AppTemplate.Web.Authentication;
 using Scalar.AspNetCore;
 
 namespace AppTemplate.Web.Configurations;
@@ -8,53 +7,21 @@ public static class MiddlewareConfigurations
 {
     public static async Task<IApplicationBuilder> UseAppMiddleware(this WebApplication app)
     {
-        // Before anything reads the client address: rewrites RemoteIpAddress from
-        // X-Forwarded-For, but only for a connection from a configured proxy.
-        app.UseForwardedHeaders();
-
         if (app.Environment.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
         }
         else
         {
-            // Unhandled exceptions become a 500 problem details response without exception
-            // details; the middleware logs the exception with the request's trace id.
-            app.UseExceptionHandler();
+            // FastEndpoints' handler: logs the exception, and answers 500 without its message.
+            app.UseDefaultExceptionHandler(useGenericReason: true);
             app.UseHsts();
         }
 
-        // Empty error responses (401/403 from authorization, 404 for unmatched routes) get a
-        // problem details body too (AddProblemDetails in Program.cs).
-        app.UseStatusCodePages();
+        // FastEndpoints' order (https://fast-endpoints.com/docs/security): revocation before auth.
+        app.UseJwtRevocation<RevokedTokenChecker>().UseAuthentication().UseAuthorization();
 
-        app.UseAuthentication();
-        // After authentication: callers are partitioned by validated sub, or by address.
-        app.UseRateLimiter();
-        app.UseAuthorization();
-
-        app.UseFastEndpoints(config =>
-        {
-            // Validation failures use the same shape as a use case's Invalid result (ADR 009).
-            config.Errors.ResponseBuilder = (failures, context, statusCode) =>
-                new HttpValidationProblemDetails(
-                    failures
-                        .GroupBy(failure =>
-                            JsonNamingPolicy.CamelCase.ConvertName(failure.PropertyName)
-                        )
-                        .ToDictionary(
-                            group => group.Key,
-                            group =>
-                                group.Select(failure => failure.ErrorMessage).Distinct().ToArray()
-                        )
-                )
-                {
-                    Status = statusCode,
-                    Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-                    Extensions = { ["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier },
-                };
-            config.Errors.ProducesMetadataType = typeof(HttpValidationProblemDetails);
-        });
+        app.UseFastEndpoints();
 
         if (app.Environment.IsDevelopment())
         {

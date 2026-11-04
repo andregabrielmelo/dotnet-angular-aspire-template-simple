@@ -10,7 +10,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder
             .Property(entity => entity.Id)
-            .HasValueGenerator<VogenIdValueGenerator<ApplicationDatabaseContext, User, UserId>>()
+            .ValueGeneratedOnAdd()
             .HasVogenConversion()
             .IsRequired();
 
@@ -27,10 +27,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired();
 
         // Emails are stored lower-cased (EmailAddress), so this is unique regardless of case.
-        builder
-            .HasIndex(entity => entity.Email)
-            .IsUnique()
-            .HasDatabaseName(UserConstraints.EmailUniqueIndex);
+        builder.HasIndex(entity => entity.Email).IsUnique();
 
         builder
             .Property(entity => entity.PasswordHash)

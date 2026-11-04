@@ -1,27 +1,32 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using FastEndpoints;
 using NetArchTest.Rules;
 using Xunit;
 
 namespace AppTemplate.ArchitectureTests;
 
-/// <summary>Where things go: endpoints in Web's feature folders, handlers in UseCases (ADR 003).</summary>
+/// <summary>Where things go: endpoints in Web's feature namespaces, handlers in UseCases (ADR 003).</summary>
 public class ConventionTests
 {
     [Fact]
-    public void Endpoints_LiveInWebFeatureFolders()
+    public void Endpoints_LiveInWebFeatureNamespaces()
     {
+        // Web/Endpoints/<Feature>/ uses the namespace AppTemplate.Web.<Feature>, never one of
+        // Web's infrastructure namespaces.
         var result = Types
             .InAssembly(Layers.Web)
             .That()
             .Inherit(typeof(BaseEndpoint))
-            .Should()
-            .ResideInNamespaceStartingWith($"{Layers.WebNamespace}.Features.")
+            .ShouldNot()
+            .ResideInNamespaceMatching(
+                $@"^{Regex.Escape(Layers.WebNamespace)}(\.(Configurations|Extensions|Behaviors|Authorization))?$"
+            )
             .GetResult();
 
         Assert.True(
             result.IsSuccessful,
-            "Endpoints belong under Web/Features/<Feature>Features/: "
+            "Endpoints belong under Web/Endpoints/<Feature>/ (namespace AppTemplate.Web.<Feature>): "
                 + string.Join(", ", result.FailingTypeNames ?? [])
         );
     }

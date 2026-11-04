@@ -1,8 +1,8 @@
 global using AppTemplate.Core.Interfaces;
-global using AppTemplate.SharedKernel;
 global using AppTemplate.UseCases;
 global using Ardalis.Result;
 global using FastEndpoints;
+global using FastEndpoints.Security;
 global using FastEndpoints.Swagger;
 global using FluentValidation;
 global using Mediator;

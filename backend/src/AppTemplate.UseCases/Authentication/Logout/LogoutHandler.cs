@@ -4,10 +4,10 @@ using AppTemplate.Core.Aggregates.RefreshTokenAggregate.Specifications;
 namespace AppTemplate.UseCases.Authentication.Logout;
 
 /// <summary>
-/// Ends the sign-in session the refresh token belongs to, by revoking its whole family. Always
-/// succeeds for an unknown or already revoked token: there is nothing left to sign out.
+/// Ends the session by deleting its refresh token. Succeeds when there is nothing to delete:
+/// there is nothing left to sign out. The access token is revoked by the endpoint (Web).
 /// </summary>
-public class LogoutHandler(IRepository<RefreshToken> _refreshTokens, TimeProvider _timeProvider)
+public class LogoutHandler(IRepository<RefreshToken> _refreshTokens)
     : ICommandHandler<LogoutCommand, Result>
 {
     public async ValueTask<Result> Handle(
@@ -15,6 +15,11 @@ public class LogoutHandler(IRepository<RefreshToken> _refreshTokens, TimeProvide
         CancellationToken cancellationToken
     )
     {
+        if (string.IsNullOrEmpty(command.RefreshToken))
+        {
+            return Result.Success();
+        }
+
         var token = await _refreshTokens.FirstOrDefaultAsync(
             new RefreshTokenByHashSpecification(RefreshTokenHash.Of(command.RefreshToken)),
             cancellationToken
@@ -24,27 +29,13 @@ public class LogoutHandler(IRepository<RefreshToken> _refreshTokens, TimeProvide
             return Result.Success();
         }
 
-        var now = _timeProvider.GetUtcNow();
-        var family = await _refreshTokens.ListAsync(
-            new ActiveRefreshTokensByFamilySpecification(token.FamilyId),
-            cancellationToken
-        );
-        foreach (var member in family)
-        {
-            member.Revoke(now, RefreshTokenRevocationReason.LoggedOut);
-        }
-
         try
         {
-            await _refreshTokens.UpdateRangeAsync(family, cancellationToken);
+            await _refreshTokens.DeleteAsync(token, cancellationToken);
         }
         catch (ConcurrencyConflictException)
         {
-            // Another tab refreshed this session in the same instant. The client clears its
-            // state either way; it can sign out again to revoke the token that refresh issued.
-            return Result.Conflict(
-                "The session was refreshed while signing out. Sign out again to end it."
-            );
+            // A refresh used it in the meantime; it is gone either way.
         }
 
         return Result.Success();
