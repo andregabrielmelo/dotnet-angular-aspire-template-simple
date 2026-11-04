@@ -68,6 +68,19 @@ public sealed class TestSession(WebApplicationFactory<Program> factory)
                     }
                 ),
             },
+            keepAccessToken: false
+        );
+
+    /// <summary>POST /auth/change-password; keeps the new session's access token and cookie.</summary>
+    public Task<HttpResponseMessage> ChangePasswordAsync(
+        string currentPassword,
+        string newPassword
+    ) =>
+        SendAsync(
+            new HttpRequestMessage(HttpMethod.Post, "/auth/change-password")
+            {
+                Content = JsonContent.Create(new { currentPassword, newPassword }),
+            },
             keepAccessToken: true
         );
 

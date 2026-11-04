@@ -3,6 +3,7 @@ using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Authentication;
 using AppTemplate.UseCases.Users.List;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -73,11 +74,56 @@ public static class InfrastructureServiceExtensions
 
         services
             .AddScoped(typeof(IRepository<>), typeof(EntityFrameworkRepository<>))
-            .AddScoped<IListUsersQueryService, ListUsersQueryService>()
-            .AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
+            .AddScoped<IListUsersQueryService, ListUsersQueryService>();
+
+        AddIdentity(services);
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
         return services;
+    }
+
+    /// <summary>
+    /// ASP.NET Core Identity for accounts (ADR 013): Identity Core only, so it registers no cookie
+    /// scheme, and the API keeps signing in with FastEndpoints' JWTs. SignInManager is there for
+    /// its password check with lockout, not to sign anyone in.
+    /// </summary>
+    private static void AddIdentity(IServiceCollection services)
+    {
+        // Confirmation and reset codes are protected with Data Protection's keys; see
+        // best-practices.md, Production deployment, for keeping them across restarts.
+        services.AddDataProtection();
+
+        services
+            .AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                // The user name is the email, which EmailAddress has already validated.
+                options.User.AllowedUserNameCharacters = string.Empty;
+                options.SignIn.RequireConfirmedEmail = true;
+
+                // Length only, no composition rules (NIST SP 800-63B).
+                options.Password.RequiredLength = PasswordRules.MinLength;
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequiredUniqueChars = 1;
+
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+            })
+            .AddRoles<ApplicationRole>()
+            .AddEntityFrameworkStores<ApplicationDatabaseContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
+
+        services
+            .AddScoped<IEmailSender<ApplicationUser>, AccountEmailSender>()
+            .AddScoped<IdentityService>()
+            .AddScoped<IIdentityService>(provider =>
+                provider.GetRequiredService<IdentityService>()
+            );
     }
 }

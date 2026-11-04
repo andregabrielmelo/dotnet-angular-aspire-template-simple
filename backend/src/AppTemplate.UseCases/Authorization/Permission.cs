@@ -2,8 +2,8 @@
 
 /// <summary>
 /// Fine-grained permissions the API enforces. Roles grant them (<see cref="RolePermissions"/>),
-/// and they travel in the access token as <c>permission</c> claims. The names are also ASP.NET
-/// Core policy names (see the Web project's AuthorizationConfigurations).
+/// and they travel in the access token as <c>permissions</c> claims, which FastEndpoints'
+/// <c>Permissions(...)</c> checks on an endpoint.
 /// </summary>
 public static class Permission
 {

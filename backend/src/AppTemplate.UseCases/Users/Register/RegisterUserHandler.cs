@@ -1,32 +1,34 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
-using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.UseCases.Authentication;
 
 namespace AppTemplate.UseCases.Users.Register;
 
-public class RegisterUserHandler(
-    IRepository<User> _users,
-    IPasswordHasher _passwordHasher,
-    IMediator _mediator
-) : ICommandHandler<RegisterUserCommand, Result<AuthenticatedUserDto>>
+/// <summary>
+/// Creates the profile and its account (<see cref="IIdentityService"/>), then announces it:
+/// <see cref="SendConfirmationOnUserRegistered"/> emails the confirmation link.
+/// </summary>
+public class RegisterUserHandler(IIdentityService _identity, IMediator _mediator)
+    : ICommandHandler<RegisterUserCommand, Result<UserId>>
 {
-    public async ValueTask<Result<AuthenticatedUserDto>> Handle(
+    public async ValueTask<Result<UserId>> Handle(
         RegisterUserCommand command,
         CancellationToken cancellationToken
     )
     {
-        if (await _users.AnyAsync(new UserByEmailSpecification(command.Email), cancellationToken))
+        var created = await _identity.CreateAccountAsync(
+            command.Name,
+            command.Email,
+            command.Password,
+            cancellationToken
+        );
+        if (!created.IsSuccess)
         {
-            return Result.Conflict("An account with this email already exists");
+            return created;
         }
 
-        var user = User.Create(command.Name, command.Email, _passwordHasher.Hash(command.Password));
-        await _users.AddAsync(user, cancellationToken);
+        await _mediator.Publish(new UserRegisteredDomainEvent(created.Value), cancellationToken);
 
-        var domainEvent = new UserRegisteredDomainEvent(user.Id, user.Email.ToString());
-        await _mediator.Publish(domainEvent, cancellationToken);
-
-        return AuthenticatedUserDto.FromEntity(user);
+        return created;
     }
 }

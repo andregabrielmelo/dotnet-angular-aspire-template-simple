@@ -31,8 +31,9 @@ public static class ResultExtensions
         result.IsSuccess ? TypedResults.Accepted((string?)null) : result.ToProblem();
 
     /// <summary>
-    /// Maps a failed result to its status code. Messages from <c>Invalid</c>, <c>NotFound</c>
-    /// and <c>Conflict</c> are written by use cases for the caller and are passed on.
+    /// Maps a failed result to its status code. Messages from <c>Invalid</c>, <c>Forbidden</c>,
+    /// <c>NotFound</c> and <c>Conflict</c> are written by use cases for the caller and are passed
+    /// on (a <c>Forbidden</c> without one gets a generic detail).
     /// <c>Error</c>, <c>CriticalError</c> and <c>Unavailable</c> get a generic detail, because
     /// their messages may describe internals. Use cases log those details themselves.
     /// </summary>
@@ -58,7 +59,7 @@ public static class ResultExtensions
             ResultStatus.Unauthorized => Problem(StatusCodes.Status401Unauthorized, detail: null),
             ResultStatus.Forbidden => Problem(
                 StatusCodes.Status403Forbidden,
-                "You don't have permission to perform this operation."
+                MessagesOf(result) ?? "You don't have permission to perform this operation."
             ),
             ResultStatus.NotFound => Problem(StatusCodes.Status404NotFound, MessagesOf(result)),
             ResultStatus.Conflict => Problem(StatusCodes.Status409Conflict, MessagesOf(result)),

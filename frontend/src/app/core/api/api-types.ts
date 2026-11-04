@@ -88,6 +88,66 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/auth/change-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Change the password
+     * @description Checks the current password and sets the new one. Other sessions end at their next refresh; this one gets a new access token and refresh token cookie.
+     */
+    post: operations['AppTemplateWebAuthenticationChangePasswordEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/confirm-email': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Confirm an email address
+     * @description Takes the userId and code from the link in the confirmation email. The account can sign in afterwards.
+     */
+    post: operations['AppTemplateWebAuthenticationConfirmEmailEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/forgot-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ask for a password reset
+     * @description Emails a link to POST /auth/reset-password if the address has a confirmed account. Answers 202 either way.
+     */
+    post: operations['AppTemplateWebAuthenticationForgotPasswordEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/auth/login': {
     parameters: {
       query?: never;
@@ -143,9 +203,49 @@ export interface paths {
     put?: never;
     /**
      * Register
-     * @description Creates an account and signs it in: returns an access token and sets the refresh token cookie. A welcome email is sent to the address.
+     * @description Creates an account and emails a link that confirms the address. Sign in (POST /auth/login) once it's confirmed.
      */
     post: operations['AppTemplateWebAuthenticationRegisterEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/resend-confirmation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Resend the confirmation email
+     * @description Emails a new confirmation link if the address has an unconfirmed account. Answers 202 either way.
+     */
+    post: operations['AppTemplateWebAuthenticationResendConfirmationEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/reset-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reset the password
+     * @description Takes the email and code from the reset link and the new password. Signs out every session at its next refresh, and lifts a lockout.
+     */
+    post: operations['AppTemplateWebAuthenticationResetPasswordEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -222,6 +322,42 @@ export interface components {
     };
     /**
      * @example {
+     *       "currentPassword": "correct horse battery staple",
+     *       "newPassword": "a new and longer passphrase"
+     *     }
+     */
+    ChangePasswordRequest: {
+      /** @example correct horse battery staple */
+      currentPassword: string;
+      /** @example a new and longer passphrase */
+      newPassword: string;
+    };
+    /**
+     * @example {
+     *       "userId": 1,
+     *       "code": "Q2ZESjhB..."
+     *     }
+     */
+    ConfirmEmailRequest: {
+      /**
+       * Format: int32
+       * @example 1
+       */
+      userId: number;
+      /** @example Q2ZESjhB... */
+      code: string;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com"
+     *     }
+     */
+    ForgotPasswordRequest: {
+      /** @example ada@example.com */
+      email: string;
+    };
+    /**
+     * @example {
      *       "email": "ada@example.com",
      *       "password": "correct horse battery staple"
      *     }
@@ -246,6 +382,30 @@ export interface components {
       email: string;
       /** @example correct horse battery staple */
       password: string;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com"
+     *     }
+     */
+    ResendConfirmationRequest: {
+      /** @example ada@example.com */
+      email: string;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com",
+     *       "code": "Q2ZESjhB...",
+     *       "newPassword": "correct horse battery staple"
+     *     }
+     */
+    ResetPasswordRequest: {
+      /** @example ada@example.com */
+      email: string;
+      /** @example Q2ZESjhB... */
+      code: string;
+      /** @example correct horse battery staple */
+      newPassword: string;
     };
     /** @description base dto for access/refresh token renewal requests */
     TokenRequest: {
@@ -569,6 +729,110 @@ export interface operations {
       };
     };
   };
+  AppTemplateWebAuthenticationChangePasswordEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ChangePasswordRequest'];
+      };
+    };
+    responses: {
+      /** @description Changed; a new session for this device */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AccessTokenResponse'];
+        };
+      };
+      /** @description Invalid request data, a wrong current password, or a weak one */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Missing or invalid access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebAuthenticationConfirmEmailEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ConfirmEmailRequest'];
+      };
+    };
+    responses: {
+      /** @description Confirmed */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data, or a wrong or expired code */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebAuthenticationForgotPasswordEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ForgotPasswordRequest'];
+      };
+    };
+    responses: {
+      /** @description If the account exists, the email is on its way */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   AppTemplateWebAuthenticationLoginEndpoint: {
     parameters: {
       query?: never;
@@ -600,8 +864,17 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
-      /** @description Wrong email or password */
+      /** @description Wrong email or password, or too many failed attempts */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description The password is right, but the email isn't confirmed yet */
+      403: {
         headers: {
           [name: string]: unknown;
         };
@@ -675,14 +948,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Account created and signed in */
+      /** @description Account created; the confirmation email is on its way */
       201: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          'application/json': components['schemas']['AccessTokenResponse'];
-        };
+        content?: never;
       };
       /** @description Invalid request data */
       400: {
@@ -695,6 +966,68 @@ export interface operations {
       };
       /** @description An account with this email already exists */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebAuthenticationResendConfirmationEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ResendConfirmationRequest'];
+      };
+    };
+    responses: {
+      /** @description If the account exists and needs it, the email is on its way */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebAuthenticationResetPasswordEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ResetPasswordRequest'];
+      };
+    };
+    responses: {
+      /** @description The password is changed */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data, a wrong or expired code, or a weak password */
+      400: {
         headers: {
           [name: string]: unknown;
         };

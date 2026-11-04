@@ -6,12 +6,15 @@ namespace AppTemplate.UseCases.Authentication.ConsumeRefreshToken;
 
 /// <summary>
 /// Uses up a refresh token: it is deleted, so each one works once, and returns the user it belongs
-/// to with their current role. Of two requests using the same token at once, the second delete
-/// finds no row, so only one of them gets new tokens. Other sessions of the user are untouched.
+/// to with their current roles. Of two requests using the same token at once, the second delete
+/// finds no row, so only one of them gets new tokens. Other sessions of the user are untouched,
+/// unless the account's password changed since the token was issued (its security stamp differs)
+/// or the account is locked out: then no session refreshes.
 /// </summary>
 public class ConsumeRefreshTokenHandler(
     IRepository<RefreshToken> _refreshTokens,
     IRepository<User> _users,
+    IIdentityService _identity,
     TimeProvider _timeProvider
 ) : ICommandHandler<ConsumeRefreshTokenCommand, Result<AuthenticatedUserDto>>
 {
@@ -50,7 +53,15 @@ public class ConsumeRefreshTokenHandler(
         }
 
         // Deleting a user deletes their refresh tokens too; this covers a delete in between.
-        var user = await _users.GetByIdAsync(token.UserId, cancellationToken);
-        return user is null ? Result.Unauthorized() : AuthenticatedUserDto.FromEntity(user);
+        var account = await _identity.GetAccountAsync(token.UserId, cancellationToken);
+        if (account is null || account.IsLockedOut || token.IsStale(account.SecurityStamp))
+        {
+            return Result.Unauthorized();
+        }
+
+        var profile = await _users.GetByIdAsync(token.UserId, cancellationToken);
+        return profile is null
+            ? Result.Unauthorized()
+            : AuthenticatedUserDto.From(profile, account);
     }
 }

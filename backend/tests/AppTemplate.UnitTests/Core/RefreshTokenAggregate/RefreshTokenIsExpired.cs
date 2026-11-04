@@ -10,6 +10,7 @@ public class RefreshTokenIsExpired
         RefreshToken.Create(
             UserId.From(1),
             new string('a', RefreshToken.TokenHashLength),
+            "STAMP",
             ExpiresAt
         );
 

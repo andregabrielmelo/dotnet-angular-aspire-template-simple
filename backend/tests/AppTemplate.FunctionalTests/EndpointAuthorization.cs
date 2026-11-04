@@ -18,6 +18,11 @@ public class EndpointAuthorization(CustomWebApplicationFactory<Program> factory)
         "POST /auth/login",
         "POST /auth/refresh-token",
         "POST /auth/register",
+        // Account emails' links, and asking for them: whoever uses them isn't signed in.
+        "POST /auth/confirm-email",
+        "POST /auth/forgot-password",
+        "POST /auth/resend-confirmation",
+        "POST /auth/reset-password",
     ];
 
     private static string Describe(RouteEndpoint endpoint)

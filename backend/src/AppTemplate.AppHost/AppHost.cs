@@ -33,6 +33,9 @@ var frontend = builder
     .WithExternalHttpEndpoints()
     .PublishAsDockerFile();
 
+// Account emails (confirmation, password reset) link to the Angular app's pages.
+api.WithEnvironment("AccountLinks__ClientUrl", frontend.GetEndpoint("http"));
+
 if (builder.Environment.IsDevelopment())
 {
     // Development SMTP catcher: the API's emails (IEmailSender, such as the welcome email) go

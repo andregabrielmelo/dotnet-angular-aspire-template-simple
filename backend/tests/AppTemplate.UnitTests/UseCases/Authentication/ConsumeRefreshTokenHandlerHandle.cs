@@ -2,6 +2,7 @@ using AppTemplate.Core.Aggregates.RefreshTokenAggregate;
 using AppTemplate.Core.Aggregates.RefreshTokenAggregate.Specifications;
 using AppTemplate.UseCases.Authentication;
 using AppTemplate.UseCases.Authentication.ConsumeRefreshToken;
+using AppTemplate.UseCases.Authorization;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute.ExceptionExtensions;
 
@@ -15,6 +16,7 @@ public class ConsumeRefreshTokenHandlerHandle
         IRepository<RefreshToken>
     >();
     private readonly IRepository<User> _users = Substitute.For<IRepository<User>>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
     private readonly FakeTimeProvider _time = new(
         new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
     );
@@ -24,6 +26,7 @@ public class ConsumeRefreshTokenHandlerHandle
         var token = RefreshToken.Create(
             UserId.From(1),
             RefreshTokenHash.Of(Token),
+            TestUsers.SecurityStamp,
             _time.GetUtcNow() + expiresIn
         );
         _refreshTokens
@@ -36,22 +39,23 @@ public class ConsumeRefreshTokenHandlerHandle
     }
 
     private Task<Result<AuthenticatedUserDto>> Consume(string token = Token) =>
-        new ConsumeRefreshTokenHandler(_refreshTokens, _users, _time)
+        new ConsumeRefreshTokenHandler(_refreshTokens, _users, _identity, _time)
             .Handle(new ConsumeRefreshTokenCommand(token), TestContext.Current.CancellationToken)
             .AsTask();
 
     [Fact]
-    public async Task DeletesTheTokenAndReturnsItsUserWithTheirCurrentRole()
+    public async Task DeletesTheTokenAndReturnsItsUserWithTheirCurrentRoles()
     {
         var token = StoredToken(TimeSpan.FromDays(1));
+        AccountIs(TestUsers.Account(role: Roles.Admin));
         _users
             .GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>())
-            .Returns(TestUsers.Saved(role: UserRole.Admin));
+            .Returns(TestUsers.Saved());
 
         var result = await Consume();
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Role.ShouldBe(UserRole.Admin);
+        result.Value.Roles.ShouldBe([Roles.Admin]);
         await _refreshTokens.Received(1).DeleteAsync(token, Arg.Any<CancellationToken>());
     }
 
@@ -98,8 +102,35 @@ public class ConsumeRefreshTokenHandlerHandle
     public async Task ReturnsUnauthorizedWhenTheUserWasDeleted()
     {
         StoredToken(TimeSpan.FromDays(1));
-        _users.GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>()).Returns((User?)null);
+        AccountIs(null);
 
         (await Consume()).Status.ShouldBe(ResultStatus.Unauthorized);
     }
+
+    [Fact]
+    public async Task ReturnsUnauthorizedWhenThePasswordChangedSinceTheTokenWasIssued()
+    {
+        StoredToken(TimeSpan.FromDays(1));
+        AccountIs(TestUsers.Account(securityStamp: "STAMP-AFTER-PASSWORD-CHANGE"));
+        _users
+            .GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>())
+            .Returns(TestUsers.Saved());
+
+        (await Consume()).Status.ShouldBe(ResultStatus.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ReturnsUnauthorizedWhenTheAccountIsLockedOut()
+    {
+        StoredToken(TimeSpan.FromDays(1));
+        AccountIs(TestUsers.Account(isLockedOut: true));
+        _users
+            .GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>())
+            .Returns(TestUsers.Saved());
+
+        (await Consume()).Status.ShouldBe(ResultStatus.Unauthorized);
+    }
+
+    private void AccountIs(AccountDto? account) =>
+        _identity.GetAccountAsync(UserId.From(1), Arg.Any<CancellationToken>()).Returns(account);
 }

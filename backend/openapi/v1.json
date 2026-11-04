@@ -371,6 +371,142 @@
         ]
       }
     },
+    "/auth/change-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Change the password",
+        "description": "Checks the current password and sets the new one. Other sessions end at their next refresh; this one gets a new access token and refresh token cookie.",
+        "operationId": "AppTemplateWebAuthenticationChangePasswordEndpoint",
+        "requestBody": {
+          "x-name": "ChangePasswordRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Changed; a new session for this device",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data, a wrong current password, or a weak one",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/confirm-email": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Confirm an email address",
+        "description": "Takes the userId and code from the link in the confirmation email. The account can sign in afterwards.",
+        "operationId": "AppTemplateWebAuthenticationConfirmEmailEndpoint",
+        "requestBody": {
+          "x-name": "ConfirmEmailRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmEmailRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "204": {
+            "description": "Confirmed"
+          },
+          "400": {
+            "description": "Invalid request data, or a wrong or expired code",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Ask for a password reset",
+        "description": "Emails a link to POST /auth/reset-password if the address has a confirmed account. Answers 202 either way.",
+        "operationId": "AppTemplateWebAuthenticationForgotPasswordEndpoint",
+        "requestBody": {
+          "x-name": "ForgotPasswordRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "202": {
+            "description": "If the account exists, the email is on its way"
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/login": {
       "post": {
         "tags": [
@@ -414,7 +550,17 @@
             }
           },
           "401": {
-            "description": "Wrong email or password",
+            "description": "Wrong email or password, or too many failed attempts",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The password is right, but the email isn't confirmed yet",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -495,7 +641,7 @@
           "Auth"
         ],
         "summary": "Register",
-        "description": "Creates an account and signs it in: returns an access token and sets the refresh token cookie. A welcome email is sent to the address.",
+        "description": "Creates an account and emails a link that confirms the address. Sign in (POST /auth/login) once it's confirmed.",
         "operationId": "AppTemplateWebAuthenticationRegisterEndpoint",
         "requestBody": {
           "x-name": "RegisterRequest",
@@ -512,14 +658,7 @@
         },
         "responses": {
           "201": {
-            "description": "Account created and signed in",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessTokenResponse"
-                }
-              }
-            }
+            "description": "Account created; the confirmation email is on its way"
           },
           "400": {
             "description": "Invalid request data",
@@ -533,6 +672,82 @@
           },
           "409": {
             "description": "An account with this email already exists",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/resend-confirmation": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Resend the confirmation email",
+        "description": "Emails a new confirmation link if the address has an unconfirmed account. Answers 202 either way.",
+        "operationId": "AppTemplateWebAuthenticationResendConfirmationEndpoint",
+        "requestBody": {
+          "x-name": "ResendConfirmationRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendConfirmationRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "202": {
+            "description": "If the account exists and needs it, the email is on its way"
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset the password",
+        "description": "Takes the email and code from the reset link and the new password. Signs out every session at its next refresh, and lifts a lockout.",
+        "operationId": "AppTemplateWebAuthenticationResetPasswordEndpoint",
+        "requestBody": {
+          "x-name": "ResetPasswordRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "204": {
+            "description": "The password is changed"
+          },
+          "400": {
+            "description": "Invalid request data, a wrong or expired code, or a weak password",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -749,6 +964,80 @@
           }
         }
       },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "example": {
+          "currentPassword": "correct horse battery staple",
+          "newPassword": "a new and longer passphrase"
+        },
+        "additionalProperties": false,
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0,
+            "nullable": false,
+            "example": "correct horse battery staple"
+          },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "nullable": false,
+            "example": "a new and longer passphrase"
+          }
+        }
+      },
+      "ConfirmEmailRequest": {
+        "type": "object",
+        "example": {
+          "userId": 1,
+          "code": "Q2ZESjhB..."
+        },
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "userId"
+        ],
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0.0,
+            "example": 1,
+            "exclusiveMinimum": true
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": false,
+            "example": "Q2ZESjhB..."
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 0,
+            "nullable": false,
+            "example": "ada@example.com"
+          }
+        }
+      },
       "LoginRequest": {
         "type": "object",
         "example": {
@@ -806,6 +1095,61 @@
             "example": "ada@example.com"
           },
           "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "nullable": false,
+            "example": "correct horse battery staple"
+          }
+        }
+      },
+      "ResendConfirmationRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 0,
+            "nullable": false,
+            "example": "ada@example.com"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com",
+          "code": "Q2ZESjhB...",
+          "newPassword": "correct horse battery staple"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "code",
+          "newPassword"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 0,
+            "nullable": false,
+            "example": "ada@example.com"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": false,
+            "example": "Q2ZESjhB..."
+          },
+          "newPassword": {
             "type": "string",
             "maxLength": 128,
             "minLength": 8,

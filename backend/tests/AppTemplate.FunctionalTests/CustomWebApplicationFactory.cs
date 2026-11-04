@@ -1,7 +1,7 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Data;
-using AppTemplate.SharedKernel;
-using AppTemplate.UseCases.Authentication;
+using AppTemplate.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
@@ -23,6 +23,9 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
 
     /// <summary>The password of users made by <see cref="CreateUserAsync"/>.</summary>
     public const string Password = "correct horse battery staple";
+
+    /// <summary>Where account emails link to (AccountLinks:ClientUrl).</summary>
+    public const string ClientUrl = "https://app.test";
 
     protected string? ConnectionString { get; set; }
 
@@ -53,6 +56,7 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
         );
         builder.UseSetting("Jwt:SigningKey", SigningKey);
         builder.UseSetting("Mailserver:FromAddress", "noreply@app.test");
+        builder.UseSetting("AccountLinks:ClientUrl", ClientUrl);
 
         builder.ConfigureServices(services =>
         {
@@ -61,35 +65,54 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
 
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Time);
+
+            // Hashing is deliberately slow; tests create many accounts.
+            services.Configure<PasswordHasherOptions>(options => options.IterationCount = 1_000);
         });
     }
 
-    /// <summary>Saves a user who can sign in with <see cref="Password"/>.</summary>
-    public async Task<User> CreateUserAsync(UserRole role = UserRole.Member, string? email = null)
+    /// <summary>
+    /// Saves a user (profile and confirmed account, through <see cref="IdentityService"/>) who can
+    /// sign in with <see cref="Password"/>.
+    /// </summary>
+    public async Task<TestUser> CreateUserAsync(string role = Roles.Member, string? email = null)
     {
         using var scope = Services.CreateScope();
-        var passwordHash = scope
-            .ServiceProvider.GetRequiredService<IPasswordHasher>()
-            .Hash(Password);
-        return await scope
-            .ServiceProvider.GetRequiredService<IRepository<User>>()
-            .AddAsync(
-                User.Create(
-                    UserName.From("Ada Lovelace"),
-                    new EmailAddress(email ?? $"user-{Guid.NewGuid():N}@example.com"),
-                    passwordHash,
-                    role
-                )
+        var address = new EmailAddress(email ?? $"user-{Guid.NewGuid():N}@example.com");
+        var name = UserName.From("Ada Lovelace");
+        var created = await scope
+            .ServiceProvider.GetRequiredService<IdentityService>()
+            .CreateAccountAsync(
+                name,
+                address,
+                Password,
+                role,
+                emailConfirmed: true,
+                CancellationToken.None
             );
+        created.IsSuccess.ShouldBeTrue(string.Join("; ", created.Errors));
+        return new TestUser(created.Value, name, address);
+    }
+
+    /// <summary>Gives the user's account another role, as an administrator would.</summary>
+    public async Task AddToRoleAsync(TestUser user, string role)
+    {
+        using var scope = Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var account = await users.Users.SingleAsync(account => account.ProfileId == user.Id);
+        (await users.AddToRoleAsync(account, role)).Succeeded.ShouldBeTrue();
     }
 }
+
+/// <summary>A user made by <see cref="CustomWebApplicationFactory{TProgram}.CreateUserAsync"/>.</summary>
+public sealed record TestUser(UserId Id, UserName Name, EmailAddress Email);
 
 public static class CustomWebApplicationFactoryExtensions
 {
     /// <summary>A new user, signed in: the session's client sends their access token.</summary>
-    public static async Task<(User User, TestSession Session)> CreateSignedInSessionAsync(
+    public static async Task<(TestUser User, TestSession Session)> CreateSignedInSessionAsync(
         this CustomWebApplicationFactory<Program> factory,
-        UserRole role = UserRole.Member
+        string role = Roles.Member
     )
     {
         var user = await factory.CreateUserAsync(role);

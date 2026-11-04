@@ -23,7 +23,7 @@ public class UserMe(CustomWebApplicationFactory<Program> factory)
     [Fact]
     public async Task ReturnsEveryPermissionForAnAdmin()
     {
-        var (_, session) = await factory.CreateSignedInSessionAsync(UserRole.Admin);
+        var (_, session) = await factory.CreateSignedInSessionAsync(Roles.Admin);
 
         var me = await session.Client.GetAndDeserializeAsync<MeBody>("/users/me");
 

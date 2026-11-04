@@ -1,5 +1,6 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Email;
+using AppTemplate.Infrastructure.Identity;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -45,6 +46,23 @@ public static class OptionConfigurations
             .Validate(
                 jwt => jwt.RefreshCookiePath.StartsWith('/'),
                 "Jwt:RefreshCookiePath must start with '/'."
+            )
+            .ValidateOnStart();
+
+        services
+            .AddOptions<AccountLinkSettings>()
+            .Bind(configuration.GetSection(AccountLinkSettings.SectionName))
+            .Validate(
+                links =>
+                    Uri.TryCreate(links.ClientUrl, UriKind.Absolute, out var url)
+                    && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp),
+                "AccountLinks:ClientUrl must be the web app's absolute http(s) URL."
+            )
+            .Validate(
+                links =>
+                    links.ConfirmEmailPath.StartsWith('/')
+                    && links.ResetPasswordPath.StartsWith('/'),
+                "AccountLinks paths must start with '/'."
             )
             .ValidateOnStart();
 

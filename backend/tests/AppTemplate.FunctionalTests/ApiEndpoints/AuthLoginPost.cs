@@ -72,6 +72,20 @@ public class AuthLoginPost(CustomWebApplicationFactory<Program> factory)
     }
 
     [Fact]
+    public async Task LocksTheAccountOutAfterFiveWrongPasswords()
+    {
+        var user = await factory.CreateUserAsync();
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await new TestSession(factory).LoginAsync(user.Email.Value, "wrong-password");
+        }
+
+        var response = await new TestSession(factory).LoginAsync(user.Email.Value);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task ReturnsBadRequestGivenAnInvalidEmail()
     {
         var response = await new TestSession(factory).LoginAsync("not-an-email", "any-password");

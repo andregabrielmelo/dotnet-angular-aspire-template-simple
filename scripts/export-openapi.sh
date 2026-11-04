@@ -18,7 +18,8 @@ dotnet run --project src/AppTemplate.Web --configuration Release --no-launch-pro
   --urls=http://127.0.0.1:0 \
   "--ConnectionStrings:apptemplate=Host=openapi-export-unused" \
   --Jwt:SigningKey=openapi-export-placeholder-signing-key-not-a-secret \
-  --Mailserver:FromAddress=openapi-export@example.invalid
+  --Mailserver:FromAddress=openapi-export@example.invalid \
+  --AccountLinks:ClientUrl=https://openapi-export.invalid
 
 # FastEndpoints writes the document without a final newline; keep the committed file stable.
 [ -n "$(tail -c1 openapi/v1.json)" ] && echo >> openapi/v1.json

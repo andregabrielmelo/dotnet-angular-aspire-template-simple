@@ -11,8 +11,8 @@ public sealed class LoginRequest
 }
 
 /// <summary>
-/// Signs in, as in FastEndpoints' refresh token docs: the credentials are checked, then
-/// <c>CreateTokenWith&lt;UserTokenService&gt;</c> creates the token pair. The access token goes in
+/// Signs in, as in FastEndpoints' refresh token docs: Identity checks the credentials (with
+/// lockout), then <c>CreateTokenWith&lt;UserTokenService&gt;</c> creates the token pair. The access token goes in
 /// the body; the refresh token only in its HttpOnly cookie.
 /// </summary>
 public class LoginEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
@@ -36,7 +36,8 @@ public class LoginEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
             };
             s.Responses[200] = "Signed in";
             s.Responses[400] = "Invalid request data";
-            s.Responses[401] = "Wrong email or password";
+            s.Responses[401] = "Wrong email or password, or too many failed attempts";
+            s.Responses[403] = "The password is right, but the email isn't confirmed yet";
         });
 
         Tags("Auth");
@@ -47,6 +48,7 @@ public class LoginEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
                 .Produces<AccessTokenResponse>(200, "application/json")
                 .ProducesProblem(400)
                 .ProducesProblem(401)
+                .ProducesProblem(403)
         );
     }
 
@@ -79,9 +81,6 @@ public sealed class LoginValidator : Validator<LoginRequest>
     public LoginValidator()
     {
         RuleFor(x => x.Email).ValidEmail();
-        RuleFor(x => x.Password)
-            .NotEmpty()
-            .WithMessage("Password is required")
-            .MaximumLength(AuthValidation.PasswordMaxLength);
+        RuleFor(x => x.Password).ProvidedPassword();
     }
 }

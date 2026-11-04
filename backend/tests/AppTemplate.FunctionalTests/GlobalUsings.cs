@@ -3,6 +3,7 @@ global using System.Net.Http.Json;
 global using AppTemplate.Core.Aggregates.UserAggregate;
 global using AppTemplate.Core.Interfaces;
 global using AppTemplate.Tests;
+global using AppTemplate.UseCases.Authorization;
 global using Ardalis.HttpClientTestExtensions;
 global using Microsoft.AspNetCore.Hosting;
 global using Microsoft.AspNetCore.Mvc.Testing;

@@ -22,6 +22,7 @@ public class LogoutHandlerHandle
         var token = RefreshToken.Create(
             UserId.From(1),
             RefreshTokenHash.Of("plain-refresh-token"),
+            TestUsers.SecurityStamp,
             DateTimeOffset.UtcNow.AddDays(1)
         );
         _refreshTokens

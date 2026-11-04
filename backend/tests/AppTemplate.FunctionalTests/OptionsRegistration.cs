@@ -1,4 +1,5 @@
 using AppTemplate.Infrastructure.Email;
+using AppTemplate.Infrastructure.Identity;
 using AppTemplate.Web.Configurations;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +14,7 @@ public class OptionsRegistration(CustomWebApplicationFactory<Program> factory)
     : IClassFixture<CustomWebApplicationFactory<Program>>
 {
     public static TheoryData<Type> WebOptions() =>
-        [typeof(MailserverConfiguration), typeof(JwtSettings)];
+        [typeof(MailserverConfiguration), typeof(JwtSettings), typeof(AccountLinkSettings)];
 
     [Theory]
     [MemberData(nameof(WebOptions))]
@@ -37,6 +38,8 @@ public class OptionsValidationAtStartup
     [InlineData("Jwt:Issuer", "", "Issuer")]
     [InlineData("Jwt:RefreshTokenValidity", "00:01:00", "validities")]
     [InlineData("Mailserver:FromAddress", "", "FromAddress")]
+    [InlineData("AccountLinks:ClientUrl", "", "AccountLinks:ClientUrl")]
+    [InlineData("AccountLinks:ClientUrl", "/relative", "AccountLinks:ClientUrl")]
     public void FailsGivenAnInvalidSetting(string key, string value, string named)
     {
         using var factory = new MisconfiguredFactory(key, value);

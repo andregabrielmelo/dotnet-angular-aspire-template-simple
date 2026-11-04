@@ -1,6 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication;
+using AppTemplate.Infrastructure.Identity;
+using AppTemplate.UseCases.Authorization;
 
 namespace AppTemplate.Infrastructure.Data;
 
@@ -18,42 +18,66 @@ public class SeedData
 
     public static async Task InitializeAsync(
         ApplicationDatabaseContext dbContext,
-        IPasswordHasher passwordHasher
+        IdentityService identity,
+        CancellationToken cancellationToken = default
     )
     {
-        if (await dbContext.Users.AnyAsync())
+        if (await dbContext.UserProfiles.AnyAsync(cancellationToken))
             return; // DB has been seeded
 
-        await PopulateTestDataAsync(dbContext, passwordHasher);
+        await PopulateTestDataAsync(identity, cancellationToken);
     }
 
+    /// <summary>Accounts are created confirmed, so they can sign in without an email round trip.</summary>
     public static async Task PopulateTestDataAsync(
-        ApplicationDatabaseContext dbContext,
-        IPasswordHasher passwordHasher
+        IdentityService identity,
+        CancellationToken cancellationToken = default
     )
     {
-        dbContext.Users.Add(
-            User.Create(
-                UserName.From("Admin"),
-                new EmailAddress(AdminEmail),
-                passwordHasher.Hash(AdminPassword),
-                UserRole.Admin
-            )
+        await CreateAsync(
+            identity,
+            "Admin",
+            AdminEmail,
+            AdminPassword,
+            Roles.Admin,
+            cancellationToken
         );
 
-        // Hashing is deliberately slow, so the fixtures share one hash.
-        var fixtureHash = passwordHasher.Hash(FixturePassword);
         for (int i = 1; i <= NUMBER_OF_SEED_USERS; i++)
         {
-            dbContext.Users.Add(
-                User.Create(
-                    UserName.From($"User {i}"),
-                    new EmailAddress($"user{i}@example.com"),
-                    fixtureHash
-                )
+            await CreateAsync(
+                identity,
+                $"User {i}",
+                $"user{i}@example.com",
+                FixturePassword,
+                Roles.Member,
+                cancellationToken
             );
         }
+    }
 
-        await dbContext.SaveChangesAsync();
+    private static async Task CreateAsync(
+        IdentityService identity,
+        string name,
+        string email,
+        string password,
+        string role,
+        CancellationToken cancellationToken
+    )
+    {
+        var created = await identity.CreateAccountAsync(
+            UserName.From(name),
+            new EmailAddress(email),
+            password,
+            role,
+            emailConfirmed: true,
+            cancellationToken
+        );
+        if (!created.IsSuccess)
+        {
+            throw new InvalidOperationException(
+                $"Seeding {email} failed: {string.Join("; ", created.Errors)}"
+            );
+        }
     }
 }

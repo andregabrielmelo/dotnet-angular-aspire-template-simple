@@ -98,7 +98,7 @@ public class UserUpdate(CustomWebApplicationFactory<Program> factory)
     public async Task UpdatesSomeoneElseGivenUsersWrite()
     {
         var target = await factory.CreateUserAsync();
-        var (_, admin) = await factory.CreateSignedInSessionAsync(UserRole.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
 
         var response = await admin.Client.PutAndDeserializeAsync<UpdateUserResponse>(
             $"/users/{target.Id.Value}",

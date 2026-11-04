@@ -7,7 +7,7 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
     private static string NewEmail() => $"register-{Guid.NewGuid():N}@example.com";
 
     [Fact]
-    public async Task CreatesTheAccountSignsItInAndSendsAWelcomeEmail()
+    public async Task CreatesTheAccountAndEmailsAConfirmationLinkButDoesNotSignIn()
     {
         var email = NewEmail();
         var session = new TestSession(factory);
@@ -15,12 +15,33 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
         var response = await session.RegisterAsync(email);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        session.RefreshCookie.ShouldNotBeNull();
+        session.RefreshCookie.ShouldBeNull();
+        session.AccessToken.ShouldBeNull();
+        factory.EmailSender.Sent.ShouldContain(sent =>
+            sent.To == email && sent.Subject == "Confirm your email"
+        );
+    }
+
+    [Fact]
+    public async Task TheAccountCanSignInOnlyOnceItsEmailIsConfirmed()
+    {
+        var email = NewEmail();
+        var session = new TestSession(factory);
+        await session.RegisterAsync(email);
+
+        (await session.LoginAsync(email)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        var link = factory.EmailSender.LastLinkQueryTo(email);
+        (
+            await session.Client.PostAsync(
+                "/auth/confirm-email",
+                JsonContent.Create(new { userId = int.Parse(link["userId"]), code = link["code"] })
+            )
+        ).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await session.LoginAsync(email)).StatusCode.ShouldBe(HttpStatusCode.OK);
         var me = await session.Client.GetAndDeserializeAsync<UserMe.MeBody>("/users/me");
         me.Email.ShouldBe(email);
-        factory.EmailSender.Sent.ShouldContain(sent =>
-            sent.To == email && sent.Subject == "Welcome!"
-        );
     }
 
     [Fact]

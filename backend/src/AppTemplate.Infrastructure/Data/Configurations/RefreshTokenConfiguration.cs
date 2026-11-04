@@ -22,6 +22,11 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
             .IsRequired();
         builder.HasIndex(entity => entity.TokenHash).IsUnique();
 
+        builder
+            .Property(entity => entity.SecurityStamp)
+            .HasMaxLength(RefreshToken.SecurityStampMaxLength)
+            .IsRequired();
+
         // Deleting a user ends all of their sessions.
         builder
             .HasOne<User>()

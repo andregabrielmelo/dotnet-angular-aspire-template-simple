@@ -26,4 +26,22 @@ public sealed class FakeEmailSender : IEmailSender
         Sent.Enqueue(new SentEmail(to, subject, body));
         return Task.CompletedTask;
     }
+
+    /// <summary>The query of the last link emailed to <paramref name="to"/> (an account email).</summary>
+    public IReadOnlyDictionary<string, string> LastLinkQueryTo(string to)
+    {
+        var link = new Uri(
+            Sent.Last(email => email.To == to)
+                .Body.Split(['\n', ' '])
+                .Single(word =>
+                    word.StartsWith(
+                        CustomWebApplicationFactory<Program>.ClientUrl,
+                        StringComparison.Ordinal
+                    )
+                )
+        );
+        return Microsoft
+            .AspNetCore.WebUtilities.QueryHelpers.ParseQuery(link.Query)
+            .ToDictionary(part => part.Key, part => part.Value.ToString());
+    }
 }

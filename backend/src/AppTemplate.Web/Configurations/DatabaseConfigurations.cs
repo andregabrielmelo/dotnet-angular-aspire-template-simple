@@ -1,5 +1,5 @@
 ﻿using AppTemplate.Infrastructure.Data;
-using AppTemplate.UseCases.Authentication;
+using AppTemplate.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Web.Configurations;
@@ -69,7 +69,7 @@ public static class DatabaseConfigurations
         {
             logger.LogInformation("Seeding database...");
             var context = services.GetRequiredService<ApplicationDatabaseContext>();
-            await SeedData.InitializeAsync(context, services.GetRequiredService<IPasswordHasher>());
+            await SeedData.InitializeAsync(context, services.GetRequiredService<IdentityService>());
             logger.LogInformation("Database seeded successfully");
         }
         catch (Exception ex)

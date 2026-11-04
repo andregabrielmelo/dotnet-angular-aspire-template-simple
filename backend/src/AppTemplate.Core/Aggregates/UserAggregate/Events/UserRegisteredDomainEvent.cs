@@ -1,4 +1,4 @@
 namespace AppTemplate.Core.Aggregates.UserAggregate.Events;
 
-/// <summary>A new user signed up. Dispatched in-process once the user is saved.</summary>
-public sealed record UserRegisteredDomainEvent(UserId UserId, string Email) : DomainEventBase;
+/// <summary>A new user signed up: their profile and account are saved.</summary>
+public sealed record UserRegisteredDomainEvent(UserId UserId) : DomainEventBase;

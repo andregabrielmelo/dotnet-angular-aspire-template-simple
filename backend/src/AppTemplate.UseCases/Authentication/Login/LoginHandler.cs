@@ -1,13 +1,13 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 
 namespace AppTemplate.UseCases.Authentication.Login;
 
 /// <summary>
-/// Checks the credentials. An unknown email and a wrong password get the same answer, so the
-/// response doesn't reveal who has an account.
+/// Checks the credentials with Identity (lockout included). An unknown email, a wrong password
+/// and a locked-out account get the same answer, so the response doesn't reveal who has an
+/// account; only someone who knows the password learns that it still needs confirming.
 /// </summary>
-public class LoginHandler(IRepository<User> _users, IPasswordHasher _passwordHasher)
+public class LoginHandler(IIdentityService _identity, IRepository<User> _users)
     : ICommandHandler<LoginCommand, Result<AuthenticatedUserDto>>
 {
     public async ValueTask<Result<AuthenticatedUserDto>> Handle(
@@ -15,23 +15,23 @@ public class LoginHandler(IRepository<User> _users, IPasswordHasher _passwordHas
         CancellationToken cancellationToken
     )
     {
-        var user = await _users.FirstOrDefaultAsync(
-            new UserByEmailSpecification(command.Email),
+        var account = await _identity.CheckPasswordAsync(
+            command.Email,
+            command.Password,
             cancellationToken
         );
-
-        if (user is null)
+        if (account.Status == ResultStatus.Forbidden)
         {
-            // Hash anyway, so an unknown email takes as long as a wrong password.
-            _passwordHasher.Hash(command.Password);
-            return Result.Unauthorized();
+            return Result.Forbidden([.. account.Errors]);
         }
-
-        if (!_passwordHasher.Verify(user.PasswordHash, command.Password))
+        if (!account.IsSuccess)
         {
             return Result.Unauthorized();
         }
 
-        return AuthenticatedUserDto.FromEntity(user);
+        var profile = await _users.GetByIdAsync(account.Value.Id, cancellationToken);
+        return profile is null
+            ? Result.Unauthorized()
+            : AuthenticatedUserDto.From(profile, account.Value);
     }
 }

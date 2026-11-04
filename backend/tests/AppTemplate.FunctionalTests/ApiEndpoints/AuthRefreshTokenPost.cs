@@ -77,12 +77,7 @@ public class AuthRefreshTokenPost(CustomWebApplicationFactory<Program> factory)
         var (user, session) = await factory.CreateSignedInSessionAsync();
         (await session.Client.GetAsync("/users")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
-        using (var scope = factory.Services.CreateScope())
-        {
-            var users = scope.ServiceProvider.GetRequiredService<IRepository<User>>();
-            var stored = await users.GetByIdAsync(user.Id);
-            await users.UpdateAsync(stored!.ChangeRole(UserRole.Admin));
-        }
+        await factory.AddToRoleAsync(user, Roles.Admin);
         // The current access token keeps the old permissions until it's replaced.
         (await session.Client.GetAsync("/users")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 

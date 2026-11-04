@@ -12,7 +12,7 @@ public class UserList(CustomWebApplicationFactory<Program> factory)
     public async Task ReturnsAPageOfUsersGivenUsersRead()
     {
         var target = await factory.CreateUserAsync();
-        var (_, admin) = await factory.CreateSignedInSessionAsync(UserRole.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
 
         var page = await admin.Client.GetAndDeserializeAsync<UserPage>(
             "/users?page=1&per_page=100"

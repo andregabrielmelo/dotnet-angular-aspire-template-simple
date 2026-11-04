@@ -1,64 +1,69 @@
-using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.UseCases.Authentication;
 using AppTemplate.UseCases.Authentication.Login;
+using AppTemplate.UseCases.Authorization;
 
 namespace AppTemplate.UnitTests.UseCases.Authentication;
 
 public class LoginHandlerHandle
 {
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
     private readonly IRepository<User> _users = Substitute.For<IRepository<User>>();
-    private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
-    private readonly LoginHandler _handler;
 
-    public LoginHandlerHandle()
-    {
-        _passwordHasher.Verify("hash", "right-password").Returns(true);
-        _handler = new LoginHandler(_users, _passwordHasher);
-    }
+    private void PasswordCheckReturns(Result<AccountDto> result) =>
+        _identity
+            .CheckPasswordAsync(TestUsers.Email, "a-password", Arg.Any<CancellationToken>())
+            .Returns(result);
 
-    private void UserExists(User? user) =>
-        _users
-            .FirstOrDefaultAsync(Arg.Any<UserByEmailSpecification>(), Arg.Any<CancellationToken>())
-            .Returns(user);
-
-    private Task<Result<AuthenticatedUserDto>> Login(string password) =>
-        _handler
+    private Task<Result<AuthenticatedUserDto>> Login() =>
+        new LoginHandler(_identity, _users)
             .Handle(
-                new LoginCommand(TestUsers.Email, password),
+                new LoginCommand(TestUsers.Email, "a-password"),
                 TestContext.Current.CancellationToken
             )
             .AsTask();
 
     [Fact]
-    public async Task ReturnsTheUserGivenTheRightPassword()
+    public async Task ReturnsTheUserWithTheirRolesGivenTheRightPassword()
     {
-        UserExists(TestUsers.Saved(id: 7, role: UserRole.Admin));
+        PasswordCheckReturns(TestUsers.Account(id: 7, role: Roles.Admin));
+        _users
+            .GetByIdAsync(UserId.From(7), Arg.Any<CancellationToken>())
+            .Returns(TestUsers.Saved(7));
 
-        var result = await Login("right-password");
+        var result = await Login();
 
         result.IsSuccess.ShouldBeTrue();
         result.Value.Id.ShouldBe(UserId.From(7));
-        result.Value.Role.ShouldBe(UserRole.Admin);
+        result.Value.Name.ShouldBe(TestUsers.Name);
+        result.Value.Email.ShouldBe(TestUsers.Email);
+        result.Value.Roles.ShouldBe([Roles.Admin]);
     }
 
     [Fact]
-    public async Task ReturnsUnauthorizedGivenAWrongPassword()
+    public async Task ReturnsUnauthorizedWhenTheCredentialsAreRefused()
     {
-        UserExists(TestUsers.Saved());
+        PasswordCheckReturns(Result.Unauthorized());
 
-        var result = await Login("wrong-password");
-
-        result.Status.ShouldBe(ResultStatus.Unauthorized);
+        (await Login()).Status.ShouldBe(ResultStatus.Unauthorized);
     }
 
     [Fact]
-    public async Task ReturnsUnauthorizedGivenAnUnknownEmailAfterHashingAnyway()
+    public async Task PassesOnForbiddenForAnUnconfirmedEmail()
     {
-        UserExists(null);
+        PasswordCheckReturns(Result.Forbidden("Confirm your email address before signing in."));
 
-        var result = await Login("any-password");
+        var result = await Login();
 
-        result.Status.ShouldBe(ResultStatus.Unauthorized);
-        _passwordHasher.Received(1).Hash("any-password");
+        result.Status.ShouldBe(ResultStatus.Forbidden);
+        result.Errors.ShouldContain("Confirm your email address before signing in.");
+    }
+
+    [Fact]
+    public async Task ReturnsUnauthorizedWhenTheProfileIsGone()
+    {
+        PasswordCheckReturns(TestUsers.Account(id: 7));
+        _users.GetByIdAsync(UserId.From(7), Arg.Any<CancellationToken>()).Returns((User?)null);
+
+        (await Login()).Status.ShouldBe(ResultStatus.Unauthorized);
     }
 }

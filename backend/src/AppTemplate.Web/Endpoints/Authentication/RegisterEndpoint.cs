@@ -12,9 +12,12 @@ public sealed class RegisterRequest
     public required string Password { get; set; }
 }
 
-/// <summary>Creates an account and signs it in, like <see cref="LoginEndpoint"/>.</summary>
-public class RegisterEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
-    : Endpoint<RegisterRequest, Results<Created<AccessTokenResponse>, ProblemHttpResult>>
+/// <summary>
+/// Creates an account and emails its confirmation link. It signs in (<see cref="LoginEndpoint"/>)
+/// once the email is confirmed, so registration returns no tokens.
+/// </summary>
+public class RegisterEndpoint(IMediator _mediator)
+    : Endpoint<RegisterRequest, Results<Created, ProblemHttpResult>>
 {
     public override void Configure()
     {
@@ -25,15 +28,15 @@ public class RegisterEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
         {
             s.Summary = "Register";
             s.Description =
-                "Creates an account and signs it in: returns an access token and sets the refresh "
-                + "token cookie. A welcome email is sent to the address.";
+                "Creates an account and emails a link that confirms the address. Sign in "
+                + "(POST /auth/login) once it's confirmed.";
             s.ExampleRequest = new RegisterRequest
             {
                 Name = "Ada Lovelace",
                 Email = "ada@example.com",
                 Password = "correct horse battery staple",
             };
-            s.Responses[201] = "Account created and signed in";
+            s.Responses[201] = "Account created; the confirmation email is on its way";
             s.Responses[400] = "Invalid request data";
             s.Responses[409] = "An account with this email already exists";
         });
@@ -43,15 +46,16 @@ public class RegisterEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
         Description(builder =>
             builder
                 .Accepts<RegisterRequest>()
-                .Produces<AccessTokenResponse>(201, "application/json")
+                .Produces(201)
                 .ProducesProblem(400)
                 .ProducesProblem(409)
         );
     }
 
-    public override async Task<
-        Results<Created<AccessTokenResponse>, ProblemHttpResult>
-    > ExecuteAsync(RegisterRequest request, CancellationToken cancellationToken)
+    public override async Task<Results<Created, ProblemHttpResult>> ExecuteAsync(
+        RegisterRequest request,
+        CancellationToken cancellationToken
+    )
     {
         var result = await _mediator.Send(
             new RegisterUserCommand(
@@ -61,18 +65,7 @@ public class RegisterEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
             ),
             cancellationToken
         );
-        if (!result.IsSuccess)
-        {
-            return result.ToProblem();
-        }
-
-        var tokens = await CreateTokenWith<UserTokenService, IssuedTokens>(
-            result.Value.Id.Value.ToString(),
-            privileges => privileges.AddUser(result.Value)
-        );
-        _cookie.Append(HttpContext, tokens);
-
-        return TypedResults.Created("/users/me", AccessTokenResponse.From(tokens));
+        return result.IsSuccess ? TypedResults.Created("/users/me") : result.ToProblem();
     }
 }
 
@@ -87,11 +80,6 @@ public sealed class RegisterValidator : Validator<RegisterRequest>
             .MaximumLength(UserName.MaxLength)
             .WithMessage($"User name must not exceed {UserName.MaxLength} characters");
         RuleFor(x => x.Email).ValidEmail();
-        RuleFor(x => x.Password)
-            .NotEmpty()
-            .WithMessage("Password is required")
-            .MinimumLength(AuthValidation.PasswordMinLength)
-            .WithMessage($"Password must be at least {AuthValidation.PasswordMinLength} characters")
-            .MaximumLength(AuthValidation.PasswordMaxLength);
+        RuleFor(x => x.Password).NewPassword();
     }
 }

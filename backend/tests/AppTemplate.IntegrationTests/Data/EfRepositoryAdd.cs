@@ -13,7 +13,7 @@ public class EfRepositoryAdd(PostgresDatabaseFixture database) : BaseEfRepoTestF
 
         var saved = await repository.GetByIdAsync(user.Id, cancellationToken);
         saved.ShouldNotBeNull();
-        saved.Email.ShouldBe(user.Email);
+        saved.Name.ShouldBe(user.Name);
         saved.Id.Value.ShouldBeGreaterThan(0);
     }
 
@@ -43,7 +43,7 @@ public class EfRepositoryAdd(PostgresDatabaseFixture database) : BaseEfRepoTestF
         using var scope = NewScope();
         var stored = await scope
             .ServiceProvider.GetRequiredService<ApplicationDatabaseContext>()
-            .Users.AsNoTracking()
+            .UserProfiles.AsNoTracking()
             .SingleAsync(saved => saved.Id == user.Id, cancellationToken);
         stored.CreatedAtUtc.ShouldBeInRange(before, DateTimeOffset.UtcNow.AddMinutes(1));
     }
@@ -60,7 +60,7 @@ public class EfRepositoryAdd(PostgresDatabaseFixture database) : BaseEfRepoTestF
         using var scope = NewScope();
         var stored = await scope
             .ServiceProvider.GetRequiredService<ApplicationDatabaseContext>()
-            .Users.AsNoTracking()
+            .UserProfiles.AsNoTracking()
             .SingleAsync(saved => saved.Id == user.Id, cancellationToken);
         stored.PhoneNumber.ShouldBe(new PhoneNumber("+55", "11 98765 4321", "12"));
     }

@@ -8,8 +8,9 @@ public static class UserPrivilegesExtensions
 {
     /// <summary>
     /// What every access token says about its user, at sign-in, registration and refresh alike:
-    /// who they are, a unique <c>jti</c> (FastEndpoints adds none; logout revokes by it), and the
-    /// permissions their role grants, which <c>Permissions(...)</c> on an endpoint checks.
+    /// who they are, a unique <c>jti</c> (FastEndpoints adds none; logout revokes by it), their
+    /// Identity roles (<c>role</c> claims, for <c>Roles(...)</c>) and the permissions those roles
+    /// grant, which <c>Permissions(...)</c> on an endpoint checks.
     /// </summary>
     public static void AddUser(this UserPrivileges privileges, AuthenticatedUserDto user)
     {
@@ -17,6 +18,7 @@ public static class UserPrivilegesExtensions
         privileges.Claims.Add(new(JwtRegisteredClaimNames.Email, user.Email.Value));
         privileges.Claims.Add(new(JwtRegisteredClaimNames.Name, user.Name.Value));
         privileges.Claims.Add(new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")));
-        privileges.Permissions.AddRange(RolePermissions.For(user.Role));
+        privileges.Roles.AddRange(user.Roles);
+        privileges.Permissions.AddRange(RolePermissions.For(user.Roles));
     }
 }

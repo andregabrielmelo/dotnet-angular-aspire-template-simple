@@ -1,9 +1,8 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication;
 
 namespace AppTemplate.UseCases.Users.Register;
 
-/// <summary>Creates an account; the endpoint then signs it in.</summary>
+/// <summary>Creates an account; it can sign in once its email is confirmed.</summary>
 public record RegisterUserCommand(UserName Name, EmailAddress Email, string Password)
-    : ICommand<Result<AuthenticatedUserDto>>;
+    : ICommand<Result<UserId>>;
