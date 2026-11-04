@@ -16,7 +16,7 @@ Explicit guidelines for projects built from this template, so every project that
 - EF Core: avoid queries in loops (N+1) - eager-load or batch instead. Reach for compiled queries only once a specific query is a measured hot path, not by default.
 - Inject `ILogger<T>`, never call the static `Serilog.Log` directly (it isn't configured). Use message templates (`"{UserId} created", id`), not string interpolation - it's what makes structured log fields searchable. Change log levels in `appsettings.json` (see Logging below).
 - Tests follow Arrange-Act-Assert, one behavior per test. See `AppTemplate.UnitTests` for the current shape.
-- Endpoints require an authenticated user (a valid access token) by default. Only add `AllowAnonymous()` deliberately. Protect administrative operations with a permission policy (`Policies(Permission.X)`), and put rules that depend on the loaded resource (ownership) in the use case via `ICurrentUser` (see [ADR 011]({{< relref "architecture-decisions/adr-011-role-based-permissions" >}})). Read the caller's identity from JWT claim names (`sub`, `email`, `name`), since inbound claim mapping is off. Never store a token in the browser: the Angular app keeps the access token in memory and the refresh token is an HttpOnly cookie (see [ADR 010]({{< relref "architecture-decisions/adr-010-authentication-api-issued-tokens" >}})).
+- Endpoints require an authenticated user (a valid access token) by default. Only add `AllowAnonymous()` deliberately. Protect administrative operations with a permission (`Permissions(Permission.X)`), and put rules that depend on the loaded resource (ownership) in the use case via `ICurrentUser` (see [ADR 011]({{< relref "architecture-decisions/adr-011-role-based-permissions" >}})). Read the caller's identity from JWT claim names (`sub`, `email`, `name`), since inbound claim mapping is off. In the browser, only `AuthService` touches tokens: it keeps the access token in `localStorage`, and the refresh token is an HttpOnly cookie it never sees (see [ADR 012]({{< relref "architecture-decisions/adr-012-jwt-authentication-fastendpoints" >}})). That makes XSS the main risk to the access token, which is why the strict CSP below matters.
 
 ## Angular
 
@@ -28,7 +28,7 @@ Explicit guidelines for projects built from this template, so every project that
 - Tests run on Vitest (already the default here) - keep specs next to the file they test, as `app.spec.ts` already does.
 - **HTTP lives in feature services.** Each feature has a `<feature>.service.ts` that owns its API calls and a `<feature>.model.ts` for the response shapes (see `features/users/`). Components call the service and never inject `HttpClient` - ESLint fails the build if they do.
 - **Guards are UX, not security.** `authGuard` and `permissionGuard` decide what to *show*; the API enforces every permission on its own. Never treat a hidden route as protected data.
-- **Errors are problem details** ([ADR 009]({{< relref "architecture-decisions/adr-009-problem-details-error-contract" >}})). Branch on `HttpErrorResponse.status` for the message, and for a 400 read `error.error.errors` - an object of camelCase field name to messages, matching the form control names - to show each message next to its field. Never render a raw error body.
+- **Errors** ([ADR 009]({{< relref "architecture-decisions/adr-009-problem-details-error-contract" >}})): branch on `HttpErrorResponse.status` for the message, and for a 400 read `error.error.errors` - an object of camelCase field name to messages, matching the form control names - to show each message next to its field. Never render a raw error body.
 - **Strict typing is on** (`strict` and `strictTemplates` in `tsconfig.json`). Don't loosen it per file, and avoid `any`; give API responses an interface in the feature's model file.
 - **Accessibility:** semantic elements, a `<label>` for every control, keyboard operation, and error text linked to its field with `aria-describedby`. `npm run lint` runs Angular's template accessibility rules - fix what it reports rather than disabling the rule.
 
@@ -42,31 +42,32 @@ Explicit guidelines for projects built from this template, so every project that
 
 The AppHost is for local development ([ADR 002]({{< relref "architecture-decisions/adr-002-aspire-orchestration" >}})). Wherever you deploy:
 
-- **Serve the SPA and `/api` from one origin** (the default this template assumes): the host strips `/api` before forwarding to the API, as the dev server proxy does, so the refresh cookie (`SameSite=Strict`, path `/api/auth`) stays first-party and no CORS is needed. Set `Authentication:AllowedOrigins` to that origin.
-  - `app.example.com` with `api.example.com` (same site, different origins) also works: enable CORS on the API for exactly the app's origin with credentials, send requests `withCredentials`, and set the cookie path to the API's own `/auth`.
+- **Serve the SPA and `/api` from one origin** (the default this template assumes): the host strips `/api` before forwarding to the API, as the dev server proxy does, so the refresh cookie (`SameSite=Strict`, path `/api/auth/refresh-token`) stays first-party and no CORS is needed.
+  - `app.example.com` with `api.example.com` (same site, different origins) also works: enable CORS on the API for exactly the app's origin with credentials, send requests `withCredentials`, and set `Jwt:RefreshCookiePath` to the API's own `/auth/refresh-token`.
   - A fully cross-site SPA and API needs a `SameSite=None; Secure` cookie and is not supported as is.
 - **Security headers from the host:** `Content-Security-Policy` (as above), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` (or `frame-ancestors 'none'`), and `Strict-Transport-Security` over HTTPS.
-- **Trust your proxy, and only it:** list it in `ForwardedHeaders:KnownProxies`/`KnownNetworks`, or every caller shares one rate limit partition (and `X-Forwarded-Proto` is ignored).
-- **A secret signing key:** `jwt-signing-key` (`Jwt:SigningKey`) is base64 of at least 32 random bytes (`openssl rand -base64 64`), one per environment, never committed. Changing it signs every user out within 15 minutes, when their access tokens expire; refresh tokens don't depend on it.
-- **The rate limiter is in memory, so per instance.** With several instances, add a distributed limiter (or account-level throttling) for sign-in.
-- **Clean up refresh tokens** whose family has expired (`family_expires_at_utc < now()`), for example with a scheduled job. Don't delete revoked tokens earlier: reuse detection needs them while their family is alive.
+- **Behind a proxy that terminates TLS,** add ASP.NET Core's forwarded headers middleware with that proxy as the only known one, so `X-Forwarded-Proto` is honored; the template leaves it out.
+- **A secret signing key:** `Jwt__SigningKey` is a random string of at least 32 characters (`openssl rand -base64 48`), one per environment, never committed; the one in `appsettings.Development.json` is for local tokens only. Startup fails without it. Changing it signs every user out within 15 minutes, when their access tokens expire; refresh tokens don't depend on it.
+- **Revoked access tokens are remembered in memory, so per instance** ([ADR 012]({{< relref "architecture-decisions/adr-012-jwt-authentication-fastendpoints" >}})). With several instances, back `RevokedAccessTokens` with `IDistributedCache`.
+- **Limit sign-in attempts.** The template has no rate limiting or lockout; add ASP.NET Core's rate limiter on login and registration before exposing public sign-up.
+- **Expired refresh tokens** are deleted whenever their user gets a new one. A user who never comes back leaves theirs behind; delete rows with `expires_at_utc < now()` with a scheduled job if that matters.
 
 ## Logging
 
 - **Two providers, one set of events.** `LoggerConfigs` (Web) adds Serilog, which writes the console; `AddServiceDefaults()` adds OpenTelemetry's logging provider, which exports the same events to the Aspire dashboard when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire sets it). That's the shape of [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture)'s `LoggerConfigs`.
 - **Levels:** the console's come from the `Serilog` section (Serilog ignores `Logging` for its own output), the dashboard's from `Logging:LogLevel`; keep them in step. ASP.NET Core, EF Core (every SQL command) and `System.Net.Http.HttpClient` (full URLs, query strings included) log at Warning and above. Lower one while debugging; don't commit it.
-- **Nothing is redacted, so don't log what must not be read.** **What may be logged:** ids (`UserId`, `sub`), names of operations, counts, durations, status codes and error codes. **What must not be logged:** emails, phone numbers, addresses, passwords, tokens (access, refresh, antiforgery), API keys, cookies, request bodies, and whole commands, queries or DTOs (`{@Command}`, or a record's `ToString()`, prints every property). The full template has a redaction pipeline if a project needs one.
+- **Nothing is redacted, so don't log what must not be read.** **What may be logged:** ids (`UserId`, `sub`), names of operations, counts, durations, status codes and error codes. **What must not be logged:** emails, phone numbers, addresses, passwords, tokens (access and refresh), API keys, cookies, request bodies, and whole commands, queries or DTOs (`{@Command}`, or a record's `ToString()`, prints every property). The full template has a redaction pipeline if a project needs one.
 - `LoggingBehavior` logs every command and query by name, and how long it took, never its contents: registration and sign-in commands carry passwords, and a session carries tokens.
 - **Diagnosing a failed request in the Aspire dashboard:**
-  1. The client gets a problem details body with a `traceId` (ADR 009).
-  2. In the dashboard, open **Traces** and search for that trace id, or open **Structured logs** and filter on `TraceId`.
+  1. Note the failing request's route and time (error bodies carry no trace id, ADR 009).
+  2. In the dashboard, open **Traces** and find the request by its route and time, or open **Structured logs** and filter on the request path.
   3. The trace shows every span: the API request, EF Core queries and outbound HTTP calls, with the failing one marked. Its logs, including any exception, are attached to the same trace.
 
 ## Rate limiting
 
-- **A global limiter, plus named policies when needed.** ASP.NET Core's rate limiter (`RateLimitingConfigurations`) has a **global** limiter for overall traffic (600 requests a minute per signed-in user, 120 per anonymous address, set under `RateLimiting`). A sensitive or expensive endpoint (an anonymous form that sends email, an upload) gets a stricter **named policy**, added with `options.AddPolicy` next to the global one and applied with `Options(x => x.RequireRateLimiting(name))`. Sign-in and registration already have one, `AuthenticationPolicy` (5 attempts a minute per client, `RateLimiting:AuthenticationPermitLimit`), against password guessing; the template has no account lockout. Every rejection is a 429 problem details response with `Retry-After`. Health endpoints are never limited.
-- **Partitions are never client-controlled.** A signed-in caller counts against `user:{sub}`, read only after JWT validation. Anyone else counts against `ip:{address}`, and that address comes from `X-Forwarded-For` only when the connection is from a proxy listed in `ForwardedHeaders:KnownProxies`/`KnownNetworks`. The list is empty by default; `appsettings.Development.json` trusts loopback for the Angular dev server's proxy. In production, list your load balancer or reverse proxy, or every caller behind it shares one anonymous partition.
-- **Don't use FastEndpoints' `Throttle(...)`.** It keys on the raw `X-Forwarded-For` header, so a client can rotate it to get a fresh limit, and its 429 is plain text, not problem details.
+- **There is none.** Add ASP.NET Core's rate limiter (`AddRateLimiter`, `UseRateLimiter` after authentication) when a project goes public: a global limiter partitioned by the validated `sub` or the client address, and a stricter named policy on login and registration (the template has no account lockout), applied with `Options(x => x.RequireRateLimiting(name))`. The full template has one to copy.
+- **Partitions are never client-controlled.** Read `sub` only after JWT validation, and the client address from `X-Forwarded-For` only when the connection comes from a known proxy.
+- **Don't use FastEndpoints' `Throttle(...)`.** It keys on the raw `X-Forwarded-For` header, so a client can rotate it to get a fresh limit.
 - **No request timeout.** The template sets none; pass the `CancellationToken` through to EF Core and HttpClient calls so work stops when the client goes away. The full template has a global timeout if a project needs one.
 
 ## Metrics
@@ -79,12 +80,14 @@ The AppHost is for local development ([ADR 002]({{< relref "architecture-decisio
 ## Health checks
 
 - **Policy: Postgres is required.** Without it an instance can't serve anything.
-- **Two probes**, mapped by `MapDefaultEndpoints()` in every environment, anonymous, excluded from rate limiting and tracing. They answer only with `Healthy`/`Unhealthy`:
+- **Two probes**, mapped by `MapDefaultEndpoints()` in **Development only**, as Aspire's template does (the AppHost's `WithHttpHealthCheck("/health")` uses `/health`). They answer only with `Healthy`/`Unhealthy`:
 
   | Probe | Checks (tag) | Fails with | Use it for |
   |---|---|---|---|
   | `/alive` | the process itself (`live`) | 503 | liveness: restart the instance |
-  | `/health` | required dependencies (`ready`): Postgres | 503 | readiness: stop sending traffic |
+  | `/health` | every check: the process and Postgres (`ready`) | 503 | readiness: stop sending traffic |
+
+- **In production,** map them deliberately (read [Aspire's note](https://aka.ms/dotnet/aspire/healthchecks) first), mark them `AllowAnonymous()`, and add them to `EndpointAuthorization`'s anonymous routes. Until then the fallback policy answers an anonymous request to them with 401.
 
 - **Adding a dependency:** tag its check `ready` only if the app truly can't serve without it. An optional dependency (a cache, file storage) must not gate readiness, and the code that uses it must fail open; the full template reports those on a separate `/health/dependencies` probe. Never put a dependency in `live`: a database outage would restart every instance and make things worse.
 - Give each check a short timeout (Postgres has 5 seconds), so a hanging dependency can't hang the probe.

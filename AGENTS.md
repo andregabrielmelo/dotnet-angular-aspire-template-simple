@@ -11,7 +11,7 @@ Commands, project layout and the full architecture overview are in [`CLAUDE.md`]
 - For *how* to build things, follow the guides in [`docs/content/guides/`](docs/content/guides/): the [project map](docs/content/guides/project-map.md) (layout, a request's path, vocabulary), [adding a feature](docs/content/guides/adding-a-feature.md) (a complete worked example through every layer) and [common tasks](docs/content/guides/cookbook.md). This file holds the rules they follow.
 - Search before assuming something is missing. The template already has authentication, permissions, email and Postgres-backed tests.
 - This is the simple variant of [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template). When a task needs background jobs, a transactional outbox, auditing, caching, file storage, ETags or API versioning, copy the shape from there (code, tests and ADR) instead of designing it from scratch.
-- Copy the shape of the `User` feature: `Core/Aggregates/UserAggregate`, then `UseCases/Users/<UseCase>/`, then `Web/Features/UserFeatures/`. It is the executable reference for every layer.
+- Copy the shape of the `User` feature: `Core/Aggregates/UserAggregate`, then `UseCases/Users/<UseCase>/`, then `Web/Endpoints/Users/`. It is the executable reference for every layer.
 - Look at the related tests, DI registrations (`Web/Configurations/`, `Infrastructure/InfrastructureServiceExtensions.cs`) and configuration before creating something new.
 - Keep changes small and focused. Don't refactor unrelated code while implementing a feature.
 
@@ -23,9 +23,9 @@ Dependencies point inward:
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
 | `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports to external resources in `Core/Interfaces` (`IEmailSender`, ...) | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; pipeline behaviors (`UseCases/Behaviors`); list query-service interfaces (`IListUsersQueryService`), request context (`ICurrentUser`) and authentication ports (`IPasswordHasher`, `ITokenIssuer`) | Core, SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), request context (`ICurrentUser`) and authentication ports (`IPasswordHasher`) | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, password hashing | Core, UseCases, SharedKernel |
-| `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, JWT issuance and validation, the refresh cookie, composition root | everything above |
+| `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`), JWT issuance, validation and revocation (FastEndpoints.Security), the refresh cookie, composition root | everything above |
 
 - Core never references UseCases, Infrastructure, Web, EF Core or ASP.NET Core.
 - UseCases never references Infrastructure, Web or EF Core. Data access goes through `IRepository<T>` or a query-service interface defined in UseCases.
@@ -37,14 +37,15 @@ Dependencies point inward:
 ## 3. API endpoints ([ADR 003](docs/content/architecture-decisions/adr-003-fastendpoints-mediator.md))
 
 - FastEndpoints with the REPR pattern only. No MVC controllers and no Minimal API handlers for feature endpoints.
-- One endpoint class per HTTP operation, under `Web/Features/<Feature>Features/`. The request DTO, the FluentValidation `Validator<T>` and the `Mapper` live in the same file as the endpoint (see `GetByIdEndpoint.cs`).
+- One endpoint class per HTTP operation, under `Web/Endpoints/<Feature>/`, in the namespace `AppTemplate.Web.<Feature>`. The request DTO, the FluentValidation `Validator<T>` and the `Mapper` live in the same file as the endpoint (see `GetByIdEndpoint.cs`).
 - Endpoints are thin: translate the request into a command or query, `await mediator.Send(..., cancellationToken)`, and map the `Result` with `Web/Extensions/ResultExtensions.cs` (`ToOkResult`, `ToCreatedResult`, `ToNoContentResult`, `ToAcceptedResult`). The return type is `Results<Ok<T>, ProblemHttpResult>` (or `Created`, `NoContent`, `Accepted`). No business logic, EF Core or external SDKs in endpoints.
-- Every error is an RFC 9457 problem details response with a `traceId` ([ADR 009](docs/content/architecture-decisions/adr-009-problem-details-error-contract.md)). Never build an error response by hand or `switch` on `ResultStatus` in an endpoint.
+- Use case failures become RFC 9457 problem details through `ResultExtensions`; request validation failures are FastEndpoints' `ErrorResponse`, with the same `errors` field map ([ADR 009](docs/content/architecture-decisions/adr-009-problem-details-error-contract.md)). Never build an error response by hand or `switch` on `ResultStatus` in an endpoint.
 - Request and response types are dedicated DTOs. Never expose an entity, aggregate or value object.
-- Every endpoint is authenticated by default, and a fallback policy covers routes that declare nothing. Declare either `AllowAnonymous()` (deliberately) or `Policies(Permission.X)` explicitly ([ADR 011](docs/content/architecture-decisions/adr-011-role-based-permissions.md)). A new anonymous route must be added to `EndpointAuthorizationTests`.
+- Every endpoint is authenticated by default, and a fallback policy covers routes that declare nothing. Declare either `AllowAnonymous()` (deliberately) or `Permissions(Permission.X)` explicitly ([ADR 011](docs/content/architecture-decisions/adr-011-role-based-permissions.md)). A new anonymous route must be added to `EndpointAuthorization` (functional tests).
 - Never put Data Annotations attributes (`[Required]` and so on) on request DTOs. FastEndpoints ignores them; use the validator.
 - Declare `Summary`, `Tags` and `Description(... .Produces...)` so the OpenAPI document stays accurate.
-- A sensitive or expensive operation gets a named rate-limit policy, added in `RateLimitingConfigurations` and applied with `Options(x => x.RequireRateLimiting(name))`. Don't use FastEndpoints' `Throttle(...)`: it keys on the raw `X-Forwarded-For` header, which any client can set, and its 429 isn't a problem details response.
+- Authentication follows FastEndpoints.Security ([ADR 012](docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md)): tokens are created only by `UserTokenService` (`CreateTokenWith<UserTokenService, IssuedTokens>`), with claims from `UserPrivilegesExtensions.AddUser`. Never return a refresh token in a body.
+- There is no rate limiting. If you add it, use ASP.NET Core's rate limiter, not FastEndpoints' `Throttle(...)`: it keys on the raw `X-Forwarded-For` header, which any client can set.
 
 ## 4. Use cases
 
@@ -64,23 +65,24 @@ Dependencies point inward:
 
 - Domain logic is independent of HTTP, EF Core, Angular and providers.
 - Aggregates protect their own invariants. No public setters that bypass them.
-- IDs and primitives with a real invariant are Vogen value objects with a `Validate` method. Register EF conversions centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. New entity IDs also need `HasValueGenerator<VogenIdValueGenerator<...>>()` in their `IEntityTypeConfiguration`.
+- IDs and primitives with a real invariant are Vogen value objects with a `Validate` method. Register EF conversions centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. Entity IDs are database identities: `ValueGeneratedOnAdd().HasVogenConversion()` in their `IEntityTypeConfiguration`, with `deserializationStrictness: DeserializationStrictness.AllowAnything` on the ID, since EF's temporary keys are negative.
 - Plain DTOs and projections (`UserDto`, `UserRecord`) stay plain. Don't wrap everything.
-- Domain events are for meaningful domain occurrences (`UserRegisteredDomainEvent`). They are dispatched in-process after `SaveChanges` succeeds (`EventDispatchInterceptor`), or by the use case right after saving when the event needs a database-assigned id (`RegisterUserHandler`); a failing handler is logged and never fails the request. They are not a reliable delivery mechanism: work that must happen needs a transactional outbox (see [Transactions and side effects](docs/content/design-decisions.md#transactions-and-side-effects)).
+- Domain events are for meaningful domain occurrences (`UserRegisteredDomainEvent`). They are dispatched in-process after `SaveChanges` succeeds (`EventDispatchInterceptor`), or by the use case right after saving when the event needs a database-assigned id (`RegisterUserHandler`, through `IMediator.Publish`). After `SaveChanges`, a failing handler is logged and never fails the request; one the use case publishes itself fails it. They are not a reliable delivery mechanism: work that must happen needs a transactional outbox (see [Transactions and side effects](docs/content/design-decisions.md#transactions-and-side-effects)).
 
 ## 6. Persistence ([ADR 004](docs/content/architecture-decisions/adr-004-postgresql.md))
 
 - EF Core, Npgsql, SQL and provider configuration stay in Infrastructure.
 - Postgres uses snake_case names (`EFCore.NamingConventions`). Raw SQL must use snake_case columns, and must be parameterized. Never interpolate input into SQL.
 - Async I/O everywhere, passing the request's `CancellationToken`. Avoid N+1 queries, unbounded result sets and unnecessary materialization. List endpoints page with a stable order.
-- Schema changes need a migration (`dotnet ef migrations add ... -o Data/Migrations`, see CLAUDE.md). Review the generated code, then run `dotnet csharpier format .`. A model change without a migration fails CI (`MigrationDriftTests`), and so does a migration whose schema doesn't match the model. Adding a non-null column to an existing table makes EF add a `defaultValue` to fill the existing rows: drop that default in the same migration unless the model declares it.
+- Schema changes need a migration (`dotnet ef migrations add ... -o Data/Migrations`, see CLAUDE.md). Review the generated code, then run `dotnet csharpier format .`. A model change without a migration fails CI (`MigrationDrift`, integration tests), and so does a migration whose schema doesn't match the model. Adding a non-null column to an existing table makes EF add a `defaultValue` to fill the existing rows: drop that default in the same migration unless the model declares it.
 
 ## 7. Configuration and dependency injection
 
 - Register options before using them: `AddOptions<T>().Bind(...)` with explicit validation rules and `ValidateOnStart()`. `ValidateOnStart` alone makes nothing required; the rules do.
 - Never invent configuration at the call site: no `GetSection(...).Get<T>() ?? new T()`, no `configuration["Key"] ?? "literal"`. Read options through `IOptions<T>` when the service or framework options are built (`AddOptions<TFramework>().Configure<IOptions<T>>(...)`, DI factories), not at registration. A required value is validated with `ValidateOnStart`, so a missing value fails startup, not the first request.
+  - The one exception is `JwtSettings`, which `AuthConfigurations` reads at registration because FastEndpoints' `AddAuthenticationJwtBearer` takes the key and validation parameters there, as its docs show. `ValidateOnStart` still rejects a bad value before the app serves anything.
 - Three kinds of settings: **required** (validated as present), **optional feature** (empty means off; when on, every setting is validated so a partial configuration fails), and **safe defaults** (defaults live in the options class, never in `appsettings*.json`, which keeps only values we set).
-- A new options type joins the explicit list in its composition root's tests (`OptionsRegistrationTests` for Web). Why: `docs/content/best-practices.md`, Options.
+- A new options type joins the explicit list in its composition root's tests (`OptionsRegistration` in the functional tests for Web). Why: `docs/content/best-practices.md`, Options.
 - Never hardcode secrets, credentials or environment-specific URLs. Local services are wired by Aspire (`WithReference`/`WaitFor` in `AppHost.cs`); secrets are AppHost parameters or user secrets.
 - Never inject a scoped service into a singleton.
 - Document any new configuration key, environment variable or AppHost parameter.
@@ -92,11 +94,13 @@ Dependencies point inward:
 
 ## 9. Testing ([ADR 006](docs/content/architecture-decisions/adr-006-testing-strategy.md))
 
+- Follow ardalis/CleanArchitecture's test conventions: xUnit v3, Shouldly, NSubstitute, one class per member or behavior named `<Type><Member>` (`UserCreate`, `LoginHandlerHandle`, `UserGetById`), methods named for the behavior, and `TestContext.Current.CancellationToken`.
 - **Unit tests** (`AppTemplate.UnitTests`) cover domain rules and handler behavior with NSubstitute and no I/O.
-- **Functional tests** (`AppTemplate.FunctionalTests`) cover HTTP contracts, validation, authorization, status codes and serialization through `AppTemplateWebApplicationFactory`, against a real Postgres (Testcontainers):
-  - Mark every class that uses the factory with `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
-  - Authenticate with `factory.CreateAuthenticatedClient(userId, Permission.X, ...)` (the user needn't exist; `factory.CreateUserAsync()` saves one). Drive real sign-in, refresh and cookies with `BrowserSession`.
-  - Emails go to `factory.EmailSender`, a fake that records them.
+- **Integration tests** (`AppTemplate.IntegrationTests`) cover Infrastructure against a real Postgres (Testcontainers): repositories, constraints, query services and migrations, on `BaseEfRepoTestFixture`.
+- **Functional tests** (`AppTemplate.FunctionalTests`) cover HTTP contracts, validation, authorization, status codes and serialization through `CustomWebApplicationFactory<Program>`, against a real Postgres, one class per route and verb in `ApiEndpoints/`:
+  - Mark every class that needs Postgres with `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
+  - Sign in for real: `factory.CreateSignedInSessionAsync(role)` returns the user and a `TestSession` whose `Client` sends the access token; `TestSession` also drives login, register, refresh and logout with its own cookie jar. There is no test authentication handler.
+  - Assert status codes with `Ardalis.HttpClientTestExtensions` (`GetAndEnsureNotFoundAsync`, ...). Emails go to `factory.EmailSender`, a fake that records them.
 - **Architecture tests** (`AppTemplate.ArchitectureTests`) enforce section 2 and the placement rules in sections 3 and 4. If one fails, fix the code, not the rule. Only change a rule together with the ADR that justifies it.
 - Tests follow Arrange-Act-Assert, one behavior per test. Change tests whenever observable behavior changes.
 
@@ -107,7 +111,7 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 - HTTP calls live in feature services, not components.
 - Guards are UX, not authorization.
 - The SPA must run under a strict CSP, sent by the production host: no inline scripts, inline event handlers or `eval` (`npm run csp:check`). New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Production deployment).
-- The access token lives in memory only, never in Web Storage; the refresh token is an HttpOnly cookie the app never reads ([ADR 010](docs/content/architecture-decisions/adr-010-authentication-api-issued-tokens.md)).
+- `AuthService` keeps the access token and its expiry in `localStorage`; the refresh token is an HttpOnly cookie the app never reads, sent only to `api/auth/refresh-token` ([ADR 012](docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md)). Never store a token anywhere else.
 
 ## 11. Code style
 

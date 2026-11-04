@@ -24,7 +24,7 @@ Write down the operations and who may call each before you write code:
 The browser calls these as `/api/projects/...`. The Angular dev server's proxy strips `/api`, and `auth-interceptor.ts` adds the access token.
 
 Two kinds of authorization show up here, and both are normal:
-- **Permission policies** decide by *who you are*. Declare them on the endpoint with `Policies(Permission.X)`.
+- **Permissions** decide by *who you are*. Declare them on the endpoint with `Permissions(Permission.X)`.
 - **Resource rules** decide by *what you're touching*, such as "only the owner". They need the loaded data, so they live in the handler, using `ICurrentUser`, and return `Result.Forbidden()`.
 
 ## 2. Core: the domain model
@@ -37,7 +37,9 @@ Everything here lives in `backend/src/AppTemplate.Core/Aggregates/ProjectAggrega
 // ProjectId.cs
 namespace AppTemplate.Core.Aggregates.ProjectAggregate;
 
-[ValueObject<int>]
+// The database generates ids. EF Core hands a new row a negative temporary id and converts it
+// through Vogen's deserialization, so that path skips Validate; ProjectId.From(...) enforces it.
+[ValueObject<int>(deserializationStrictness: DeserializationStrictness.AllowAnything)]
 public readonly partial struct ProjectId
 {
     private static Validation Validate(int value) =>
@@ -143,9 +145,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
     {
         builder
             .Property(entity => entity.Id)
-            .HasValueGenerator<
-                VogenIdValueGenerator<ApplicationDatabaseContext, Project, ProjectId>
-            >()
+            .ValueGeneratedOnAdd()
             .HasVogenConversion()
             .IsRequired();
 
@@ -480,7 +480,7 @@ Handlers never touch HTTP, EF Core or the `DbContext`. They return a `Result` fo
 
 `projects:read` lets an admin read anyone's project. A permission is granted by a role, so it's added in three places:
 
-1. **`UseCases/Authorization/Permission.cs`**: the constant, and add it to `All`. Every name in `All` automatically becomes an ASP.NET Core policy.
+1. **`UseCases/Authorization/Permission.cs`**: the constant, and add it to `All`.
    ```csharp
    /// <summary>Read anyone's project (everyone may read their own).</summary>
    public const string ProjectsRead = "projects:read";
@@ -493,7 +493,7 @@ Handlers never touch HTTP, EF Core or the `DbContext`. They return a `Result` fo
 
 ## 6. Web: the endpoints
 
-One class per operation, in `backend/src/AppTemplate.Web/Features/ProjectFeatures/`. Each file holds the endpoint, its request, and its validator. It mirrors `Web/Features/UserFeatures/`.
+One class per operation, in `backend/src/AppTemplate.Web/Endpoints/Projects/`, in the namespace `AppTemplate.Web.Projects`. Each file holds the endpoint, its request, and its validator. It mirrors `Web/Endpoints/Users/`.
 
 **The response shape**, shared by the endpoints:
 
@@ -501,7 +501,7 @@ One class per operation, in `backend/src/AppTemplate.Web/Features/ProjectFeature
 // ProjectRecord.cs
 using AppTemplate.UseCases.Projects;
 
-namespace AppTemplate.Web.Features.ProjectFeatures;
+namespace AppTemplate.Web.Projects;
 
 /// <summary>A project as the API returns it: plain values, never the aggregate.</summary>
 public record ProjectRecord(int Id, string Name, DateTimeOffset CreatedAtUtc)
@@ -518,7 +518,7 @@ using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.UseCases.Projects.Create;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Features.ProjectFeatures;
+namespace AppTemplate.Web.Projects;
 
 public sealed class CreateProjectRequest
 {
@@ -588,8 +588,8 @@ public sealed class CreateProjectValidator : Validator<CreateProjectRequest>
 ```
 
 **Each part of the endpoint:**
-- **No `Policies(...)`:** any signed-in user may create. The global authorization fallback already rejects anonymous callers. An endpoint for admins only adds `Policies(Permission.X)`; a public one calls `AllowAnonymous()` and is added to `EndpointAuthorizationTests`.
-- **The validator** checks the request's shape, so bad input gets a 400 with an `errors` object keyed by field name. `ProjectName.From` would throw on the same input, but that would be a 500. Validators turn expected bad input into a proper answer.
+- **No `Permissions(...)`:** any signed-in user may create. FastEndpoints already rejects anonymous callers. An endpoint for admins only adds `Permissions(Permission.X)`; a public one calls `AllowAnonymous()` and is added to `EndpointAuthorization`.
+- **The validator** checks the request's shape, so bad input gets a 400 (FastEndpoints' `ErrorResponse`) with an `errors` object keyed by field name. `ProjectName.From` would throw on the same input, but that would be a 500. Validators turn expected bad input into a proper answer.
 - **`ResultExtensions`** is the only place a `Result` becomes HTTP: `ToOkResult` (200), `ToCreatedResult` (201 with `Location`), `ToNoContentResult` (204). `Invalid` becomes 400, `Unauthorized` 401, `Forbidden` 403, `NotFound` 404, `Conflict` 409, and anything else 500, all as problem details ([ADR 009]({{< relref "architecture-decisions/adr-009-problem-details-error-contract" >}})).
 - **`Summary`, `Tags` and `Description`** feed the OpenAPI document, which in turn generates the frontend's types.
 - **`Location`** is the API's path (`/projects/1`). A browser client reaches it as `/api/projects/1`.
@@ -638,7 +638,7 @@ using AppTemplate.UseCases.Projects;
 using AppTemplate.UseCases.Projects.List;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Features.ProjectFeatures;
+namespace AppTemplate.Web.Projects;
 
 public sealed class ListProjectsRequest
 {
@@ -706,7 +706,7 @@ public sealed class ListProjectsValidator : Validator<ListProjectsRequest>
 }
 ```
 
-In Web, write `UseCases.PagedResult<T>` in full: `Ardalis.Result` has a `PagedResult<T>` too, and both namespaces are global usings there, so the short name doesn't compile. The users list also adds a `Link` header with first, previous, next and last URLs; copy `AddLinkHeader` from `Web/Features/UserFeatures/ListEndpoint.cs` if your clients want it.
+In Web, write `UseCases.PagedResult<T>` in full: `Ardalis.Result` has a `PagedResult<T>` too, and both namespaces are global usings there, so the short name doesn't compile. The users list also adds a `Link` header with first, previous, next and last URLs; copy `AddLinkHeader` from `Web/Endpoints/Users/ListEndpoint.cs` if your clients want it.
 
 ## 7. Update the API contract
 
@@ -865,37 +865,37 @@ For a page only some users may open, add `permissionGuard(Permission.X)` next to
 
 ## 9. Tests
 
-**Unit tests** cover domain rules and handler decisions, without a database. `backend/tests/AppTemplate.UnitTests/`, mirroring `Core/UserAggregate/` and `UseCases/Users/`:
+**Unit tests** cover domain rules and handler decisions, without a database. `backend/tests/AppTemplate.UnitTests/`, mirroring `Core/UserAggregate/` and `UseCases/Users/`, with one class per member, named `<Type><Member>`, and Shouldly assertions:
 
 ```csharp
-// Core/ProjectAggregate/ProjectTests.cs (excerpt)
+// Core/ProjectAggregate/ProjectIsOwnedBy.cs (excerpt)
 [Theory]
 [InlineData(1, true)]
 [InlineData(2, false)]
 [InlineData(null, false)]
-public void IsOwnedBy_ComparesTheUserId(int? caller, bool expected)
+public void ComparesTheUserId(int? caller, bool expected)
 {
     var project = Project.Create(UserId.From(1), ProjectName.From("Website"));
 
-    Assert.Equal(expected, project.IsOwnedBy(caller is null ? null : UserId.From(caller.Value)));
+    project.IsOwnedBy(caller is null ? null : UserId.From(caller.Value)).ShouldBe(expected);
 }
 ```
 
 ```csharp
-// UseCases/Projects/RenameProjectHandlerTests.cs (excerpt)
+// UseCases/Projects/RenameProjectHandlerHandle.cs (excerpt)
 private readonly IRepository<Project> _repository = Substitute.For<IRepository<Project>>();
 private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
 private readonly Project _project = Project.Create(UserId.From(1), ProjectName.From("Website"));
 
 [Fact]
-public async Task Handle_SomeoneElse_IsForbiddenAndChangesNothing()
+public async Task ReturnsForbiddenForSomeoneElseAndChangesNothing()
 {
     _currentUser.Id.Returns(UserId.From(2));
 
     var result = await Handle();
 
-    Assert.Equal(ResultStatus.Forbidden, result.Status);
-    Assert.Equal("Website", _project.Name.Value);
+    result.Status.ShouldBe(ResultStatus.Forbidden);
+    _project.Name.Value.ShouldBe("Website");
     await _repository
         .DidNotReceive()
         .UpdateAsync(Arg.Any<Project>(), Arg.Any<CancellationToken>());
@@ -904,15 +904,64 @@ public async Task Handle_SomeoneElse_IsForbiddenAndChangesNothing()
 
 Cover each `Result` a handler can return: success, `NotFound`, `Forbidden`, and the permission that overrides ownership. In a test namespace such as `AppTemplate.UnitTests.UseCases.Projects`, add `using AppTemplate.UseCases.Projects;` rather than writing `UseCases.Projects.ProjectDto`, which resolves against the test namespace.
 
-**Functional tests** send real HTTP requests through the whole API to a real Postgres, in `backend/tests/AppTemplate.FunctionalTests/ProjectFeatures/ProjectEndpointsTests.cs` (mirrors `UserFeatures/UserEndpointsTests.cs`):
+**Integration tests** (`backend/tests/AppTemplate.IntegrationTests/Data/`) are only needed for persistence behavior of your own, such as a new unique index or a raw-SQL query service; mirror `EmailUniqueIndex` and `ListUsersQueryServiceList`. `MigrationDrift` already covers the new migration.
+
+**Functional tests** send real HTTP requests through the whole API to a real Postgres, one class per route and verb in `backend/tests/AppTemplate.FunctionalTests/ApiEndpoints/` (mirrors `UserGetById.cs`). `ProjectsPost.cs` and `ProjectGetById.cs`:
 
 ```csharp
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
-public class ProjectEndpointsTests(AppTemplateWebApplicationFactory factory)
-    : IClassFixture<AppTemplateWebApplicationFactory>
+public class ProjectsPost(CustomWebApplicationFactory<Program> factory)
+    : IClassFixture<CustomWebApplicationFactory<Program>>
 {
-    // Projects don't reference users, so any id works and a fresh one keeps tests apart.
-    private static UserId NewUser() => UserId.From(Random.Shared.Next(1_000_000, int.MaxValue));
+    [Fact]
+    public async Task ReturnsCreatedWithALocationThatResolves()
+    {
+        var (_, session) = await factory.CreateSignedInSessionAsync();
+
+        var response = await session.Client.PostAsJsonAsync(
+            "/projects",
+            new { name = "Website" },
+            TestContext.Current.CancellationToken
+        );
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<ProjectRecord>(
+            TestContext.Current.CancellationToken
+        );
+        var fetched = await session.Client.GetAndDeserializeAsync<ProjectRecord>(
+            response.Headers.Location!.ToString()
+        );
+        fetched.Id.ShouldBe(created!.Id);
+    }
+}
+
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
+public class ProjectGetById(CustomWebApplicationFactory<Program> factory)
+    : IClassFixture<CustomWebApplicationFactory<Program>>
+{
+    [Fact]
+    public async Task ReturnsForbiddenForSomeoneElsesProjectWithoutProjectsRead()
+    {
+        var (_, owner) = await factory.CreateSignedInSessionAsync();
+        var project = await CreateAsync(owner.Client, "Mine");
+        var (_, stranger) = await factory.CreateSignedInSessionAsync();
+
+        await stranger.Client.GetAndEnsureForbiddenAsync($"/projects/{project.Id}");
+    }
+
+    [Fact]
+    public async Task ReturnsSomeoneElsesProjectGivenProjectsRead()
+    {
+        var (_, owner) = await factory.CreateSignedInSessionAsync();
+        var project = await CreateAsync(owner.Client, "Mine");
+        var (_, admin) = await factory.CreateSignedInSessionAsync(UserRole.Admin);
+
+        var fetched = await admin.Client.GetAndDeserializeAsync<ProjectRecord>(
+            $"/projects/{project.Id}"
+        );
+
+        fetched.Name.ShouldBe("Mine");
+    }
 
     private static async Task<ProjectRecord> CreateAsync(HttpClient client, string name)
     {
@@ -920,44 +969,16 @@ public class ProjectEndpointsTests(AppTemplateWebApplicationFactory factory)
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<ProjectRecord>())!;
     }
-
-    [Fact]
-    public async Task Create_ReturnsCreatedWithALocationThatResolves()
-    {
-        var client = factory.CreateAuthenticatedClient(NewUser());
-
-        var response = await client.PostAsJsonAsync("/projects", new { name = "Website" });
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var created = await response.Content.ReadFromJsonAsync<ProjectRecord>();
-        var fetched = await client.GetFromJsonAsync<ProjectRecord>(response.Headers.Location);
-        Assert.Equal(created!.Id, fetched!.Id);
-    }
-
-    [Fact]
-    public async Task Get_SomeoneElsesProject_IsForbiddenWithoutProjectsRead()
-    {
-        var project = await CreateAsync(factory.CreateAuthenticatedClient(NewUser()), "Mine");
-
-        var stranger = await factory
-            .CreateAuthenticatedClient(NewUser())
-            .GetAsync($"/projects/{project.Id}");
-        var admin = await factory
-            .CreateAuthenticatedClient(NewUser(), Permission.ProjectsRead)
-            .GetAsync($"/projects/{project.Id}");
-
-        Assert.Equal(HttpStatusCode.Forbidden, stranger.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, admin.StatusCode);
-    }
 }
 ```
 
 **How the functional tests work:**
-- `CreateAuthenticatedClient(userId, permissions...)` signs a request in as that user, with those permissions, as if their access token said so. A fresh user per test keeps tests independent, because they share one database per class. When the user must exist (for `/users/me`, say), save one with `factory.CreateUserAsync()`.
+- `factory.CreateSignedInSessionAsync(role)` saves a user with that role and signs them in through the real `POST /auth/login`. Its `TestSession.Client` sends their access token, whose permissions come from the role (`Admin` has every permission, including the new `projects:read`). A fresh user per test keeps tests independent, because they share one database per class.
+- `Ardalis.HttpClientTestExtensions` (`GetAndDeserializeAsync`, `GetAndEnsureForbiddenAsync`, ...) asserts status codes in one line; Shouldly asserts the rest.
 - Cover, for every endpoint:
   - success, including the `Location` header for a create
   - invalid input (400, with the field in `errors`)
-  - no session (401)
+  - no session (401: `factory.CreateClient()` has no token)
   - someone else's resource (403)
   - a missing id (404)
   - for lists: paging, and that callers see only their own rows
@@ -965,8 +986,8 @@ public class ProjectEndpointsTests(AppTemplateWebApplicationFactory factory)
 **Frontend specs** live next to their files: `projects.service.spec.ts` checks URLs, methods and bodies with `HttpTestingController`; `projects-page.spec.ts` checks the rendered list, creating a project, and showing a 400's field message. Mirror `users.service.spec.ts` and `users-page.spec.ts`.
 
 Some tests need no changes:
-- The **architecture tests** check that the new endpoints live under `Web.Features`, that the handlers live in UseCases, and that the names end in `Command` or `Query`.
-- **`EndpointAuthorizationTests`** still passes, because none of the new routes is anonymous.
+- The **architecture tests** check that the new endpoints live in a feature namespace under `AppTemplate.Web`, that the handlers live in UseCases, and that the names end in `Command` or `Query`.
+- **`EndpointAuthorization`** still passes, because none of the new routes is anonymous.
 
 ## 10. Finish
 
@@ -987,7 +1008,7 @@ Then run the app (`dotnet run --project src/AppTemplate.AppHost`), open the `ang
 ## 11. Later: removing the `User` reference
 
 Once your own features exist, most of the `User` slice is no longer needed as an example. Part of it is how people sign in, though:
-- **Keep** the `User` aggregate (its email and password hash), `RefreshToken`, registration and sign-in (`Web/Features/AuthFeatures/`, `UseCases/Authentication/`, `UseCases/Users/Register/`), and `GET /users/me` (`MeEndpoint`, `GetCurrentUserHandler`): the frontend's `CurrentUserService` uses it for the user's name and permissions.
+- **Keep** the `User` aggregate (its email and password hash), `RefreshToken`, registration, sign-in, refresh and logout (`Web/Endpoints/Authentication/`, `Web/Authentication/`, `UseCases/Authentication/`, `UseCases/Users/Register/`), and `GET /users/me` (`MeEndpoint`, `GetCurrentUserHandler`): the frontend's `CurrentUserService` uses it for the user's name and permissions.
 - **Delete** what's only an example: the update, delete and list endpoints, their use cases and tests, `features/users/`, and the `users:*` permissions you don't need.
 - **Keep** `ICurrentUser`, `Permission` and `RolePermissions`: they are the authorization mechanism, not the example.
 - Moving the profile fields you don't need off `User` (such as the phone number) needs a migration.

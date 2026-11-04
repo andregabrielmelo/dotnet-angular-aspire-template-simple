@@ -8,7 +8,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 
 ## Structure
 
-- `core/`: app-wide singletons. Today this is the session (`core/auth/`): `CurrentUserService`, `authGuard`, `permissionGuard`, `authInterceptor` (adds the access token, refreshes once on a 401) and `REFRESH_LOCK`. The session itself is `AuthService` (`features/auth/`).
+- `core/`: app-wide singletons. Today this is the session (`core/auth/`): `CurrentUserService`, `authGuard`, `permissionGuard`, `authInterceptor` (adds the access token, refreshes it before it expires and once on a 401) and `REFRESH_LOCK`. The session itself is `AuthService` (`features/auth/`).
 - `shared/`: UI and utilities that more than one feature genuinely reuses.
 - `features/<feature>/`: everything a feature owns, meaning its pages, its `<feature>.service.ts` (HTTP), its `<feature>.model.ts` (API types) and its routes. Model new features on `features/users/`.
 - File names are hyphenated, with one concept per file. A component's `.ts`, `.html`, `.css` and `.spec.ts` sit side by side.
@@ -17,7 +17,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 
 - Components never inject `HttpClient` (ESLint enforces this outside `*service.ts`). API calls live in the feature's service, which returns `Observable`s and uses relative `api/...` URLs. The dev server proxies them to the API (`proxy.conf.mjs`), so there is no base URL and no CORS.
 - API request and response types come from the OpenAPI document. Alias them in the feature's model file (`export type UserRow = ApiSchema<'UserRecord'>`) instead of writing interfaces by hand, and never edit `core/api/api-types.ts`; regenerate it with `npm run api:generate`.
-- The access token lives only in `AuthService`'s memory: never put it in `localStorage`, `sessionStorage` or a cookie. The refresh token is an HttpOnly cookie the app can't read; `ensureSession()` exchanges it for an access token after a reload. Profile and permissions come from `CurrentUserService`. Never add the token yourself: `authInterceptor` does, and Angular's XSRF support adds `X-XSRF-TOKEN`.
+- `AuthService` owns the session: the access token and its expiry in `localStorage` (`apptemplate.session`), shared by tabs. Never read or write that key elsewhere, and never store a token anywhere else. The refresh token is an HttpOnly cookie the app can't read, sent by the browser only to `api/auth/refresh-token`; `ensureSession()` and `refresh()` use it. Profile and permissions come from `CurrentUserService`. Never add the token yourself: `authInterceptor` does.
 - `authGuard` and `permissionGuard` only shape the UI. The API enforces every permission itself, so never rely on a guard for security.
 - Never put secrets or environment-specific URLs in frontend code.
 
@@ -30,7 +30,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 ## Forms and errors
 
 - Use reactive forms with explicit types. Client-side validation mirrors the API validator's rules for a better UX, but the server is the authority.
-- Errors are RFC 9457 problem details. For a 400, `error.error.errors` maps camelCase field names (matching the form control names) to messages: show each next to its field. Show expected failures (403, 404, 409) as clear messages. Never show raw error bodies.
+- For a 400, `error.error.errors` maps camelCase field names (matching the form control names) to messages, both for request validation and for a use case's `Invalid` result: show each next to its field. Show expected failures (403, 404, 409) as clear messages. Never show raw error bodies.
 
 ## Accessibility
 

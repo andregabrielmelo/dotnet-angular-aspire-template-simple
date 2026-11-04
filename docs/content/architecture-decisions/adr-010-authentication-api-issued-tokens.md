@@ -6,7 +6,7 @@ weight: 100
 # ADR 010: The API issues access and refresh tokens
 
 ## Status
-Accepted. Supersedes [ADR 007]({{< relref "adr-007-authentication-backend-for-frontend-keycloak" >}}).
+Superseded by [ADR 012]({{< relref "adr-012-jwt-authentication-fastendpoints" >}}), which keeps the credentials, password hashing and one-origin setup and replaces the rest with FastEndpoints.Security. Superseded [ADR 007]({{< relref "adr-007-authentication-backend-for-frontend-keycloak" >}}).
 
 ## Context
 ADR 007 made Keycloak the identity provider and put a backend for frontend (a YARP host owning an HTTP-only session cookie) between the browser and the API. That is the strongest browser setup, but for the *simple* template it is a lot to carry: a Keycloak container and realm file, a second ASP.NET Core host with its own tests, OpenID Connect, token management, and fixed ports tied to redirect URIs. Most projects starting from this template want sign-up and sign-in with an email and a password, and an API they can also call from other clients.

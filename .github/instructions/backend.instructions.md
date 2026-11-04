@@ -8,7 +8,7 @@ These extend [`AGENTS.md`](../../AGENTS.md); read it first. This file covers onl
 
 ## Endpoint shape
 
-Model every endpoint on `backend/src/AppTemplate.Web/Features/UserFeatures/GetByIdEndpoint.cs`:
+Model every endpoint on `backend/src/AppTemplate.Web/Endpoints/Users/GetByIdEndpoint.cs` (namespace `AppTemplate.Web.Users`):
 
 ```csharp
 public sealed class GetUserByIdRequest            // dedicated request DTO, no Data Annotations
@@ -22,7 +22,7 @@ public class GetByIdEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users/{id}");
-        Policies(Permission.UsersRead);           // or AllowAnonymous(), always explicit
+        Permissions(Permission.UsersRead);        // or AllowAnonymous(), always explicit
         Summary(s => { /* summary, examples, one line per status code */ });
         Tags("Users");
         Description(b => b.Produces<UserRecord>(200, "application/json").ProducesProblem(404));
@@ -41,10 +41,10 @@ public sealed class GetByIdUserValidator : Validator<GetUserByIdRequest> { /* re
 public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, UserDto> { /* DTO mapping */ }
 ```
 
-- **Return types:** an endpoint returns `Results<Success, ProblemHttpResult>`, where the success type is `Ok<T>`, `Created<T>`, `NoContent` or `Accepted`. Every failure is a problem details response ([ADR 009](../../docs/content/architecture-decisions/adr-009-problem-details-error-contract.md)), so declare the possible ones with `ProducesProblem(status)` in `Description(...)`.
+- **Return types:** an endpoint returns `Results<Success, ProblemHttpResult>`, where the success type is `Ok<T>`, `Created<T>`, `NoContent` or `Accepted`. Every use case failure is a problem details response ([ADR 009](../../docs/content/architecture-decisions/adr-009-problem-details-error-contract.md)), so declare the possible ones with `ProducesProblem(status)` in `Description(...)`.
 - **Validators** check request shape: required fields, lengths, formats and cross-field rules. Business invariants belong in Core value objects and aggregates, not in validators.
 - **Mapping:** `Ardalis.Result` maps to HTTP only through `Web/Extensions/ResultExtensions.cs`. If a new mapping is needed, add it there.
-- **Rate limiting:** a global limiter covers every endpoint. Sensitive or expensive endpoints add a named policy in `RateLimitingConfigurations` and apply it with `Options(x => x.RequireRateLimiting(...))`. Limits key on the validated `sub`, or on the client address (trusted only from `ForwardedHeaders:KnownProxies`). Never use FastEndpoints' `Throttle(...)`.
+- **Authentication:** see [ADR 012](../../docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md). Endpoints read the caller through `ICurrentUser` (in use cases) or the `sub` claim; they never parse the token themselves.
 
 ## Use case shape
 
@@ -56,21 +56,21 @@ UseCases/<Feature>/<UseCase>/
 
 - **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types.
 - **List query services** (`Infrastructure/Data/Queries/`) read with `FromSqlRaw`: every mapped column in snake_case, `WHERE` with `{n}` parameters only, and `OrderBy`/`Skip`/`Take`/`Select`/`CountAsync` in LINQ on top. See `ListUsersQueryService` and step 3 of [Adding a feature](../../docs/content/guides/adding-a-feature.md#3-infrastructure-the-database).
-- **Unit tests:** put them in `tests/AppTemplate.UnitTests/UseCases/<Feature>/<UseCase>HandlerTests.cs`.
+- **Unit tests:** put them in `tests/AppTemplate.UnitTests/UseCases/<Feature>/<UseCase>HandlerHandle.cs` (class `<UseCase>HandlerHandle`, one method per behavior).
 
 ## Adding a persistent type
 
 1. Define the aggregate in `Core/Aggregates/<Name>Aggregate/`, with a Vogen ID that has a `Validate` method.
 2. Register the converter in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`.
-3. Add the `IEntityTypeConfiguration` with `HasValueGenerator<VogenIdValueGenerator<...>>()`, and a `DbSet` in `ApplicationDatabaseContext`.
+3. Add the `IEntityTypeConfiguration`, with the ID as `ValueGeneratedOnAdd().HasVogenConversion()` (and `deserializationStrictness: DeserializationStrictness.AllowAnything` on the Vogen ID, since EF's temporary keys are negative), and a `DbSet` in `ApplicationDatabaseContext`.
 4. Add the migration (see CLAUDE.md), review it, then run `dotnet csharpier format .`.
-5. Add a functional test that saves and reads the entity through the API, against real Postgres.
+5. Add integration tests for its repository behavior and constraints (`tests/AppTemplate.IntegrationTests/Data/`), and functional tests that save and read it through the API.
 
 ## Functional tests
 
 - **Setup:**
-  - Use `IClassFixture<AppTemplateWebApplicationFactory>`.
-  - Add `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
-  - Create clients with `factory.CreateAuthenticatedClient(sub, Permission.X)`.
-- **What to test:** for each endpoint, cover the success path, invalid input (400), no permission (403), a missing resource (404) and any conflict (409). Errors are problem details, so assert the status code and, where it matters, `errors`/`detail` (see `ProblemDetailsContractTests`).
-- **Replacing services:** use `factory.WithWebHostBuilder(b => b.ConfigureTestServices(...))`, as `DomainEventDispatchTests` does.
+  - One class per route and verb in `tests/AppTemplate.FunctionalTests/ApiEndpoints/`, named like `UserGetById` or `AuthLoginPost`.
+  - Use `IClassFixture<CustomWebApplicationFactory<Program>>`, and add `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
+  - Sign in for real: `var (user, session) = await factory.CreateSignedInSessionAsync(UserRole.Admin);`, then call the API with `session.Client`.
+- **What to test:** for each endpoint, cover the success path, invalid input (400), no permission (403), a missing resource (404) and any conflict (409). Assert status codes with `Ardalis.HttpClientTestExtensions` (`GetAndEnsureNotFoundAsync`, ...), and, where it matters, `errors`/`detail`, with Shouldly.
+- **Replacing services:** subclass `CustomWebApplicationFactory<Program>` and override `ConfigureWebHost`, as `OptionsValidationAtStartup` does; a test that moves the clock (`factory.Time`) gets its own factory class.

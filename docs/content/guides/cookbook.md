@@ -9,24 +9,24 @@ Short recipes for things that come up after the first feature. Each one lists th
 
 ## Add a permission and protect an endpoint
 
-1. Add the constant to `UseCases/Authorization/Permission.cs` and include it in `All`. Every name in `All` becomes an ASP.NET Core policy automatically.
-2. Grant it to the roles that should have it in `UseCases/Authorization/RolePermissions.cs` (`Admin` gets `Permission.All` already). Users get it in their next access token, at the latest on the next refresh.
+1. Add the constant to `UseCases/Authorization/Permission.cs` and include it in `All`.
+2. Grant it to the roles that should have it in `UseCases/Authorization/RolePermissions.cs` (`Admin` gets `Permission.All` already). Users get it in their next access token (`UserPrivilegesExtensions.AddUser` writes it as a `permissions` claim), at the latest on the next refresh.
 3. Protect the endpoint in the way that fits:
-   - **Who you are** decides it: `Policies(Permission.X)` in `Configure()`. See `Web/Features/UserFeatures/ListEndpoint.cs`.
+   - **Who you are** decides it: `Permissions(Permission.X)` in `Configure()`. See `Web/Endpoints/Users/ListEndpoint.cs`.
    - **What you touch** decides it ("the owner, or anyone with X"): check in the handler with `ICurrentUser`, and return `Result.Forbidden()`. See `UseCases/Users/Update/UpdateUserHandler.cs`.
 4. Add it to `frontend/src/app/core/auth/permissions.ts`, so the UI can hide what the user can't do.
-5. In functional tests, grant it with `factory.CreateAuthenticatedClient(userId, Permission.X)`, and test both with and without it. Add a case to `RolePermissionsTests` for the roles that get it.
+5. In functional tests, sign in with a role that has it and one that doesn't (`factory.CreateSignedInSessionAsync(UserRole.Admin)` and `factory.CreateSignedInSessionAsync()`), and test both. Add a case to `RolePermissionsFor` (unit tests) for the roles that get it.
 
 ## Make an endpoint public
 
-1. Call `AllowAnonymous()` in `Configure()`. Without it, the authorization fallback policy requires a signed-in user.
-2. Add the route to `ExpectedAnonymousRoutes` in `FunctionalTests/Authorization/EndpointAuthorizationTests.cs`. The test fails until you do, so making something public is always a reviewed change.
-3. Give it a stricter rate limit if it does anything expensive or sends email ([below](#limit-one-endpoint)), as sign-in and registration have.
+1. Call `AllowAnonymous()` in `Configure()`. Without it, FastEndpoints requires a signed-in user.
+2. Add the route to `ExpectedAnonymousRoutes` in `FunctionalTests/EndpointAuthorization.cs`. The test fails until you do, so making something public is always a reviewed change.
+3. If it does anything expensive or sends email, add a rate limit first ([below](#limit-one-endpoint)); the template has none.
 4. The SPA reaches it like any other `api/...` URL; `authInterceptor` adds an access token only if there is one, and a public endpoint simply ignores it.
 
 ## Filter or sort a list
 
-1. Add the parameters to the request class, with `[BindFrom("snake_case_name")]` (see `ListUsersRequest` in `Web/Features/UserFeatures/ListEndpoint.cs`), and validate them, for example against a fixed set of sort keys.
+1. Add the parameters to the request class, with `[BindFrom("snake_case_name")]` (see `ListUsersRequest` in `Web/Endpoints/Users/ListEndpoint.cs`), and validate them, for example against a fixed set of sort keys.
 2. Pass them through the query record to the query-service interface.
 3. **Filters** go in the query service's `FromSqlRaw` SQL as `WHERE` conditions, with each value as a `{n}` placeholder, which EF sends as a parameter:
    ```csharp
@@ -60,7 +60,7 @@ A domain event lets one part of the system react to something without the aggreg
 // Core/Aggregates/UserAggregate/Events/UserRegisteredDomainEvent.cs
 public sealed record UserRegisteredDomainEvent(UserId UserId, string Email) : DomainEventBase;
 
-// UseCases/Users/Register/UserRegisteredDomainEventHandler.cs
+// Core/Aggregates/UserAggregate/Handlers/UserRegisteredDomainEventHandler.cs
 public sealed class UserRegisteredDomainEventHandler(IEmailSender _emailSender)
     : IDomainEventHandler<UserRegisteredDomainEvent>
 {
@@ -79,12 +79,12 @@ public sealed class UserRegisteredDomainEventHandler(IEmailSender _emailSender)
 }
 ```
 
-`DomainEventDispatchTests` checks that registering sends it, and that a failing email doesn't fail registration; `UserRegisteredDomainEventHandlerTests` covers the handler on its own. To add a second reaction, add another `IDomainEventHandler<UserRegisteredDomainEvent>`.
+`AuthRegisterPost` (functional tests) checks that registering sends it; `UserRegisteredDomainEventHandlerHandle` (unit tests) covers the handler on its own. To add a second reaction, add another `IDomainEventHandler<UserRegisteredDomainEvent>`.
 
 **How this works:**
 - **Registration is automatic.** Mediator's source generator finds every handler.
-- **To raise your own event,** create a record deriving from `DomainEventBase` in the aggregate's `Events/` folder, carrying ids and values rather than the aggregate itself, and call `RegisterDomainEvent(new YourEvent(...))` in the aggregate method where it happens. An event that needs the database-assigned id is raised once the entity is saved, as `User.MarkRegistered()` is.
-- **When the handler runs:** after `SaveChanges` succeeds, in the same request (`EventDispatchInterceptor`), or when the use case dispatches it itself right after saving (`RegisterUserHandler`). If it throws, the error is logged and the request still succeeds. Inside an explicit transaction, it runs before the commit. See [Transactions And Side Effects]({{< relref "design-decisions#transactions-and-side-effects" >}}).
+- **To raise your own event,** create a record deriving from `DomainEventBase` in the aggregate's `Events/` folder, carrying ids and values rather than the aggregate itself, and call `RegisterDomainEvent(new YourEvent(...))` in the aggregate method where it happens. An event that needs the database-assigned id is published by the use case once the entity is saved, as `RegisterUserHandler` does with `IMediator.Publish`.
+- **When the handler runs:** after `SaveChanges` succeeds, in the same request (`EventDispatchInterceptor`); if it throws, the error is logged and the request still succeeds. Or when the use case publishes it itself right after saving (`RegisterUserHandler`); then a throwing handler fails the request, after the user was saved. Inside an explicit transaction, it runs before the commit. See [Transactions And Side Effects]({{< relref "design-decisions#transactions-and-side-effects" >}}).
 - **Keep handlers short.** They add to the request's time.
 
 ## Add a setting
@@ -113,7 +113,7 @@ Settings are classes bound from configuration and validated at startup, never re
        .ValidateOnStart();
    ```
 3. **Use it** by injecting `IOptions<WelcomeEmailOptions>` and reading `.Value`.
-4. **Test it:** add the type to `WebOptions()` in `FunctionalTests/Configuration/OptionsConfigurationTests.cs`, which checks it's registered and validated.
+4. **Test it:** add the type to `WebOptions()` in `FunctionalTests/OptionsRegistration.cs`, which checks it's registered and validated.
 5. **Set values per environment** in `appsettings.{Environment}.json`, environment variables (`WelcomeEmail__Subject`) or, for local secrets, user secrets. A secret never goes in a committed file.
 
 A required value with no sensible default fails startup when missing: validate that it's present. An optional feature is off when its setting is empty, but once turned on, every setting is validated (Options, in [Best Practices]({{< relref "best-practices#options" >}})).
@@ -127,23 +127,31 @@ Anything outside the process, such as an HTTP API, a payment provider or a messa
 3. **Register it** in `Infrastructure/InfrastructureServiceExtensions.cs`. For HTTP, use `services.AddHttpClient<IThing, ThingClient>(...)`; ServiceDefaults adds retries and timeouts to every `HttpClient`. Pass the request's `CancellationToken` through, so the call stops when the client goes away.
 4. **Tests:**
    - Handlers depend on the interface, so unit tests substitute it.
-   - In functional tests, replace it with a fake in `AppTemplateWebApplicationFactory`, as `FakeEmailSender` replaces `IEmailSender`.
+   - In functional tests, replace it with a fake in `CustomWebApplicationFactory`, as `FakeEmailSender` replaces `IEmailSender`.
    - Test the real client against a stub HTTP handler, not the live service.
 5. **Health:** if the app can't serve anything without it, add a health check tagged `ready`; otherwise, make the calling code fail gracefully ([Health checks]({{< relref "best-practices#health-checks" >}})).
 
 ## Limit one endpoint
 
-**A stricter rate limit**, for a public form or an expensive call:
-1. Add a policy in `Web/Configurations/RateLimitingConfigurations.cs`, next to the global limiter and `AuthenticationPolicy` (which sign-in and registration use):
+The template has no rate limiting. To limit a public form, an expensive call, or sign-in:
+1. Register ASP.NET Core's rate limiter in Web, with a named policy partitioned by client address (or by the validated `sub` for signed-in callers):
    ```csharp
-   options.AddPolicy(
-       "newsletter",
-       context => FixedWindow(ClientPartition.Of(context), 5, TimeSpan.FromMinutes(1))
-   );
+   services.AddRateLimiter(options =>
+   {
+       options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+       options.AddPolicy(
+           "newsletter",
+           context => RateLimitPartition.GetFixedWindowLimiter(
+               context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+               _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1) }
+           )
+       );
+   });
    ```
+   and `app.UseRateLimiter()` after `UseAuthentication()` in `MiddlewareConfigurations`.
 2. Apply it: `Options(x => x.RequireRateLimiting("newsletter"))` in the endpoint's `Configure()`. Keep the name in a constant.
 
-Rejections are 429 problem details with `Retry-After`. Don't use FastEndpoints' `Throttle`.
+Behind a proxy, the client address is the proxy's unless you add the forwarded headers middleware with that proxy as a known one. Don't use FastEndpoints' `Throttle`: it trusts the raw `X-Forwarded-For` header. The full template has a complete setup to copy.
 
 ## Change the database schema
 
@@ -156,7 +164,7 @@ Rejections are 429 problem details with `Retry-After`. Don't use FastEndpoints' 
 3. Read the generated migration:
    - **Adding a required column to a table with rows:** EF adds a `defaultValue` to fill the existing rows. Unless the model declares that default, drop it in the same migration, or inserts that forget the column silently get it.
    - **Renames:** EF may generate drop-and-add, which loses data. Change it to `RenameColumn`.
-4. Run the tests. `MigrationDriftTests` fails if the model and the migrations disagree.
+4. Run the tests. `MigrationDrift` (integration tests) fails if the model and the migrations disagree.
 
 In Development, migrations apply on startup. In production, run a migration bundle as a deployment step ([PostgreSQL & migrations]({{< relref "best-practices#postgresql--migrations" >}})).
 
