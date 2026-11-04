@@ -247,8 +247,7 @@ public class ListProjectsQueryService(ApplicationDatabaseContext _db) : IListPro
 services
     .AddScoped(typeof(IRepository<>), typeof(EntityFrameworkRepository<>))
     .AddScoped<IListUsersQueryService, ListUsersQueryService>()
-    .AddScoped<IListProjectsQueryService, ListProjectsQueryService>()
-    .AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
+    .AddScoped<IListProjectsQueryService, ListProjectsQueryService>();
 ```
 
 `IRepository<Project>` needs no registration: the open generic covers every aggregate.
@@ -954,7 +953,7 @@ public class ProjectGetById(CustomWebApplicationFactory<Program> factory)
     {
         var (_, owner) = await factory.CreateSignedInSessionAsync();
         var project = await CreateAsync(owner.Client, "Mine");
-        var (_, admin) = await factory.CreateSignedInSessionAsync(UserRole.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
 
         var fetched = await admin.Client.GetAndDeserializeAsync<ProjectRecord>(
             $"/projects/{project.Id}"

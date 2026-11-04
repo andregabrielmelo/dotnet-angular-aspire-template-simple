@@ -44,7 +44,7 @@ public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, U
 - **Return types:** an endpoint returns `Results<Success, ProblemHttpResult>`, where the success type is `Ok<T>`, `Created<T>`, `NoContent` or `Accepted`. Every use case failure is a problem details response ([ADR 009](../../docs/content/architecture-decisions/adr-009-problem-details-error-contract.md)), so declare the possible ones with `ProducesProblem(status)` in `Description(...)`.
 - **Validators** check request shape: required fields, lengths, formats and cross-field rules. Business invariants belong in Core value objects and aggregates, not in validators.
 - **Mapping:** `Ardalis.Result` maps to HTTP only through `Web/Extensions/ResultExtensions.cs`. If a new mapping is needed, add it there.
-- **Authentication:** see [ADR 012](../../docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md). Endpoints read the caller through `ICurrentUser` (in use cases) or the `sub` claim; they never parse the token themselves.
+- **Authentication:** see [ADR 012](../../docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md) (tokens) and [ADR 013](../../docs/content/architecture-decisions/adr-013-user-management-aspnetcore-identity.md) (accounts). Endpoints read the caller through `ICurrentUser` (in use cases) or the `sub` claim; they never parse the token themselves. Account operations are use cases over `IIdentityService`; add a method there (implemented in `Infrastructure/Identity/IdentityService` with `UserManager`) rather than using Identity from Web or UseCases. Map Identity's errors to `Invalid` keyed by the request field, as `IdentityService.ToResult` does.
 
 ## Use case shape
 
@@ -71,6 +71,6 @@ UseCases/<Feature>/<UseCase>/
 - **Setup:**
   - One class per route and verb in `tests/AppTemplate.FunctionalTests/ApiEndpoints/`, named like `UserGetById` or `AuthLoginPost`.
   - Use `IClassFixture<CustomWebApplicationFactory<Program>>`, and add `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
-  - Sign in for real: `var (user, session) = await factory.CreateSignedInSessionAsync(UserRole.Admin);`, then call the API with `session.Client`.
+  - Sign in for real: `var (user, session) = await factory.CreateSignedInSessionAsync(Roles.Admin);`, then call the API with `session.Client`.
 - **What to test:** for each endpoint, cover the success path, invalid input (400), no permission (403), a missing resource (404) and any conflict (409). Assert status codes with `Ardalis.HttpClientTestExtensions` (`GetAndEnsureNotFoundAsync`, ...), and, where it matters, `errors`/`detail`, with Shouldly.
 - **Replacing services:** subclass `CustomWebApplicationFactory<Program>` and override `ConfigureWebHost`, as `OptionsValidationAtStartup` does; a test that moves the clock (`factory.Time`) gets its own factory class.

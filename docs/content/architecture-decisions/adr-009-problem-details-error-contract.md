@@ -46,13 +46,13 @@ Both shapes a form cares about carry the same `errors` object, so a client shows
 |---|---|---|
 | `Invalid` | 400 | `errors` by field |
 | `Unauthorized` | 401 | none |
-| `Forbidden` | 403 | generic |
+| `Forbidden` | 403 | the use case's message (such as an unconfirmed email), or a generic one |
 | `NotFound` | 404 | the use case's message, if any |
 | `Conflict` | 409 | the use case's message |
 | `Unavailable` | 503 | generic |
 | `Error`, `CriticalError`, anything else | 500 | generic, never `result.Errors` |
 
-Messages from `Invalid`, `NotFound` and `Conflict` are written by use cases *for the caller*. The others may describe internals, so a use case logs those itself before returning them.
+Messages from `Invalid`, `Forbidden`, `NotFound` and `Conflict` are written by use cases *for the caller*. The others may describe internals, so a use case logs those itself before returning them.
 
 ## Consequences
 - A new endpoint only picks a `To…Result` helper; it never builds an error response by hand. A new result status means one new row in `ToProblem`.

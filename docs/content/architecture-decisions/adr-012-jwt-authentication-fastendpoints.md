@@ -6,7 +6,7 @@ weight: 120
 # ADR 012: JWT authentication with FastEndpoints.Security
 
 ## Status
-Accepted. Supersedes [ADR 010]({{< relref "adr-010-authentication-api-issued-tokens" >}}), keeping its credentials, password hashing and one-origin setup.
+Accepted. Supersedes [ADR 010]({{< relref "adr-010-authentication-api-issued-tokens" >}}), keeping its credentials, password hashing and one-origin setup. Amended by [ADR 013]({{< relref "adr-013-user-management-aspnetcore-identity" >}}): accounts, passwords and roles are now ASP.NET Core Identity's, which adds lockout, email confirmation, password reset and ending sessions on a password change.
 
 ## Context
 ADR 010 had the API issue its own tokens, but built everything by hand: a token issuer, plain `AddJwtBearer`, token families with sliding and absolute expiry, `xmin`-guarded rotation with a 10-second reuse window and 409s, an `Origin` allow-list, antiforgery cookies and a sign-in rate limit. Each piece had a reason, but together they were more than a *simple* template should ask a new project to understand and own.

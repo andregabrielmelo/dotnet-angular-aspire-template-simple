@@ -23,11 +23,12 @@ Dependencies point inward:
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
 | `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports to external resources in `Core/Interfaces` (`IEmailSender`, ...) | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), request context (`ICurrentUser`) and authentication ports (`IPasswordHasher`) | Core, SharedKernel |
-| `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, password hashing | Core, UseCases, SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), request context (`ICurrentUser`) and the accounts port (`IIdentityService`) | Core, SharedKernel |
+| `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, ASP.NET Core Identity (`ApplicationUser`, `IdentityService`) | Core, UseCases, SharedKernel |
 | `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`), JWT issuance, validation and revocation (FastEndpoints.Security), the refresh cookie, composition root | everything above |
 
 - Core never references UseCases, Infrastructure, Web, EF Core or ASP.NET Core.
+- Only Infrastructure uses ASP.NET Core Identity (`UserManager`, `SignInManager`, `ApplicationUser`); everything else goes through `IIdentityService` ([ADR 013](docs/content/architecture-decisions/adr-013-user-management-aspnetcore-identity.md)).
 - UseCases never references Infrastructure, Web or EF Core. Data access goes through `IRepository<T>` or a query-service interface defined in UseCases.
 - A dependency on an external resource (SMTP, an HTTP API, or our own Postgres beyond `IRepository<T>`) is an Infrastructure class behind an interface in `Core/Interfaces`; the doc comment names the implementation and its consumers. List query services, which return use-case DTOs, and `ICurrentUser`, which Web implements from the request, stay in UseCases.
 - Don't move a class to another layer to avoid writing the right abstraction.
@@ -45,6 +46,7 @@ Dependencies point inward:
 - Never put Data Annotations attributes (`[Required]` and so on) on request DTOs. FastEndpoints ignores them; use the validator.
 - Declare `Summary`, `Tags` and `Description(... .Produces...)` so the OpenAPI document stays accurate.
 - Authentication follows FastEndpoints.Security ([ADR 012](docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md)): tokens are created only by `UserTokenService` (`CreateTokenWith<UserTokenService, IssuedTokens>`), with claims from `UserPrivilegesExtensions.AddUser`. Never return a refresh token in a body.
+- Accounts are ASP.NET Core Identity's ([ADR 013](docs/content/architecture-decisions/adr-013-user-management-aspnetcore-identity.md)). Use Identity for anything about credentials (passwords, codes, lockout, roles, the security stamp) through `IIdentityService`; never hash, compare or store passwords or codes yourself. Endpoints that send account emails or take their codes are anonymous, answer the same whether or not the email has an account, and never log the links.
 - There is no rate limiting. If you add it, use ASP.NET Core's rate limiter, not FastEndpoints' `Throttle(...)`: it keys on the raw `X-Forwarded-For` header, which any client can set.
 
 ## 4. Use cases
@@ -65,7 +67,7 @@ Dependencies point inward:
 
 - Domain logic is independent of HTTP, EF Core, Angular and providers.
 - Aggregates protect their own invariants. No public setters that bypass them.
-- IDs and primitives with a real invariant are Vogen value objects with a `Validate` method. Register EF conversions centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. Entity IDs are database identities: `ValueGeneratedOnAdd().HasVogenConversion()` in their `IEntityTypeConfiguration`, with `deserializationStrictness: DeserializationStrictness.AllowAnything` on the ID, since EF's temporary keys are negative.
+- IDs and primitives with a real invariant are Vogen value objects with a `Validate` method. Register EF conversions centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. Entity IDs are database identities: `ValueGeneratedOnAdd().HasVogenConversion()` in their `IEntityTypeConfiguration`, with `deserializationStrictness: DeserializationStrictness.AllowAnything` on the ID, since EF's temporary keys are negative. The domain `User` is the profile; credentials belong to its Identity account, never on the aggregate.
 - Plain DTOs and projections (`UserDto`, `UserRecord`) stay plain. Don't wrap everything.
 - Domain events are for meaningful domain occurrences (`UserRegisteredDomainEvent`). They are dispatched in-process after `SaveChanges` succeeds (`EventDispatchInterceptor`), or by the use case right after saving when the event needs a database-assigned id (`RegisterUserHandler`, through `IMediator.Publish`). After `SaveChanges`, a failing handler is logged and never fails the request; one the use case publishes itself fails it. They are not a reliable delivery mechanism: work that must happen needs a transactional outbox (see [Transactions and side effects](docs/content/design-decisions.md#transactions-and-side-effects)).
 
@@ -99,7 +101,7 @@ Dependencies point inward:
 - **Integration tests** (`AppTemplate.IntegrationTests`) cover Infrastructure against a real Postgres (Testcontainers): repositories, constraints, query services and migrations, on `BaseEfRepoTestFixture`.
 - **Functional tests** (`AppTemplate.FunctionalTests`) cover HTTP contracts, validation, authorization, status codes and serialization through `CustomWebApplicationFactory<Program>`, against a real Postgres, one class per route and verb in `ApiEndpoints/`:
   - Mark every class that needs Postgres with `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
-  - Sign in for real: `factory.CreateSignedInSessionAsync(role)` returns the user and a `TestSession` whose `Client` sends the access token; `TestSession` also drives login, register, refresh and logout with its own cookie jar. There is no test authentication handler.
+  - Sign in for real: `factory.CreateSignedInSessionAsync(role)` (a `Roles` constant) returns the user and a `TestSession` whose `Client` sends the access token; `TestSession` also drives login, register, refresh, change password and logout with its own cookie jar. `factory.CreateUserAsync(role)` creates a confirmed account, and `factory.EmailSender.LastLinkQueryTo(email)` reads an emailed link. There is no test authentication handler.
   - Assert status codes with `Ardalis.HttpClientTestExtensions` (`GetAndEnsureNotFoundAsync`, ...). Emails go to `factory.EmailSender`, a fake that records them.
 - **Architecture tests** (`AppTemplate.ArchitectureTests`) enforce section 2 and the placement rules in sections 3 and 4. If one fails, fix the code, not the rule. Only change a rule together with the ADR that justifies it.
 - Tests follow Arrange-Act-Assert, one behavior per test. Change tests whenever observable behavior changes.

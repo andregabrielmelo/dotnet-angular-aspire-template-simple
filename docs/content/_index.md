@@ -9,7 +9,7 @@ A GitHub template repository for starting new full-stack projects with a Clean A
 
 It's not a sample application - it's a skeleton with just enough real code (a `User` feature, wired end-to-end) to show you where things belong. Delete or replace it once you understand the shape of the project.
 
-This is the simple variant, with the features most projects use: JWT sign-in with refresh tokens, permissions, email, logging, health checks and tests. Keycloak with a backend for frontend, background jobs, a transactional outbox, auditing, caching, file storage, ETags and API versioning are in the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template).
+This is the simple variant, with the features most projects use: JWT sign-in with refresh tokens, ASP.NET Core Identity accounts (email confirmation, password reset, lockout), permissions, email, logging, health checks and tests. Keycloak with a backend for frontend, background jobs, a transactional outbox, auditing, caching, file storage, ETags and API versioning are in the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template).
 
 ## Stack
 

@@ -49,7 +49,9 @@ The AppHost is for local development ([ADR 002]({{< relref "architecture-decisio
 - **Behind a proxy that terminates TLS,** add ASP.NET Core's forwarded headers middleware with that proxy as the only known one, so `X-Forwarded-Proto` is honored; the template leaves it out.
 - **A secret signing key:** `Jwt__SigningKey` is a random string of at least 32 characters (`openssl rand -base64 48`), one per environment, never committed; the one in `appsettings.Development.json` is for local tokens only. Startup fails without it. Changing it signs every user out within 15 minutes, when their access tokens expire; refresh tokens don't depend on it.
 - **Revoked access tokens are remembered in memory, so per instance** ([ADR 012]({{< relref "architecture-decisions/adr-012-jwt-authentication-fastendpoints" >}})). With several instances, back `RevokedAccessTokens` with `IDistributedCache`.
-- **Limit sign-in attempts.** The template has no rate limiting or lockout; add ASP.NET Core's rate limiter on login and registration before exposing public sign-up.
+- **Rate limit the anonymous account endpoints.** Identity locks an account out after 5 wrong passwords, but nothing limits requests: add ASP.NET Core's rate limiter to login, registration, `resend-confirmation` and `forgot-password` (which send email) before exposing public sign-up.
+- **Persist the Data Protection key ring** ([ADR 013]({{< relref "architecture-decisions/adr-013-user-management-aspnetcore-identity" >}})). Email confirmation and password reset codes are protected with it. By default the keys live on the machine, so a container restart without persistent storage, or a second instance, invalidates links already sent: store them somewhere shared (`AddDataProtection().PersistKeysTo...`) and protect them at rest.
+- **Set `AccountLinks__ClientUrl`** to the web app's public URL, which the emailed links open.
 - **Expired refresh tokens** are deleted whenever their user gets a new one. A user who never comes back leaves theirs behind; delete rows with `expires_at_utc < now()` with a scheduled job if that matters.
 
 ## Logging

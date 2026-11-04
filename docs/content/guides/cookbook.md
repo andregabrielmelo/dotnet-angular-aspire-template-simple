@@ -15,7 +15,7 @@ Short recipes for things that come up after the first feature. Each one lists th
    - **Who you are** decides it: `Permissions(Permission.X)` in `Configure()`. See `Web/Endpoints/Users/ListEndpoint.cs`.
    - **What you touch** decides it ("the owner, or anyone with X"): check in the handler with `ICurrentUser`, and return `Result.Forbidden()`. See `UseCases/Users/Update/UpdateUserHandler.cs`.
 4. Add it to `frontend/src/app/core/auth/permissions.ts`, so the UI can hide what the user can't do.
-5. In functional tests, sign in with a role that has it and one that doesn't (`factory.CreateSignedInSessionAsync(UserRole.Admin)` and `factory.CreateSignedInSessionAsync()`), and test both. Add a case to `RolePermissionsFor` (unit tests) for the roles that get it.
+5. In functional tests, sign in with a role that has it and one that doesn't (`factory.CreateSignedInSessionAsync(Roles.Admin)` and `factory.CreateSignedInSessionAsync()`), and test both. Add a case to `RolePermissionsFor` (unit tests) for the roles that get it.
 
 ## Make an endpoint public
 
@@ -54,38 +54,47 @@ Sending inside the request adds the SMTP round trip to its time, and a failure i
 
 ## React to a domain event
 
-A domain event lets one part of the system react to something without the aggregate knowing who listens. The template has one, end to end: registering raises `UserRegisteredDomainEvent`, and its handler sends a welcome email.
+A domain event lets one part of the system react to something without the aggregate knowing who listens. The template has one, end to end: registering raises `UserRegisteredDomainEvent`, and its handler emails the confirmation link.
 
 ```csharp
 // Core/Aggregates/UserAggregate/Events/UserRegisteredDomainEvent.cs
-public sealed record UserRegisteredDomainEvent(UserId UserId, string Email) : DomainEventBase;
+public sealed record UserRegisteredDomainEvent(UserId UserId) : DomainEventBase;
 
-// Core/Aggregates/UserAggregate/Handlers/UserRegisteredDomainEventHandler.cs
-public sealed class UserRegisteredDomainEventHandler(IEmailSender _emailSender)
+// UseCases/Users/Register/SendConfirmationOnUserRegistered.cs
+public sealed class SendConfirmationOnUserRegistered(IIdentityService _identity)
     : IDomainEventHandler<UserRegisteredDomainEvent>
 {
     public async ValueTask Handle(
         UserRegisteredDomainEvent domainEvent,
         CancellationToken cancellationToken
-    )
-    {
-        await _emailSender.SendAsync(
-            domainEvent.Email,
-            "Welcome!",
-            "Thanks for registering. We're glad to have you on board.",
-            cancellationToken
-        );
-    }
+    ) => await _identity.SendEmailConfirmationAsync(domainEvent.UserId, cancellationToken);
 }
 ```
 
-`AuthRegisterPost` (functional tests) checks that registering sends it; `UserRegisteredDomainEventHandlerHandle` (unit tests) covers the handler on its own. To add a second reaction, add another `IDomainEventHandler<UserRegisteredDomainEvent>`.
+`AuthRegisterPost` (functional tests) checks that registering sends it; `SendConfirmationOnUserRegisteredHandle` (unit tests) covers the handler on its own. To add a second reaction, such as a welcome email with your own text, add another `IDomainEventHandler<UserRegisteredDomainEvent>`. The handler lives in UseCases because it needs a UseCases port; a handler that only needs Core's ports (`IEmailSender`) can live next to the aggregate.
 
 **How this works:**
 - **Registration is automatic.** Mediator's source generator finds every handler.
 - **To raise your own event,** create a record deriving from `DomainEventBase` in the aggregate's `Events/` folder, carrying ids and values rather than the aggregate itself, and call `RegisterDomainEvent(new YourEvent(...))` in the aggregate method where it happens. An event that needs the database-assigned id is published by the use case once the entity is saved, as `RegisterUserHandler` does with `IMediator.Publish`.
 - **When the handler runs:** after `SaveChanges` succeeds, in the same request (`EventDispatchInterceptor`); if it throws, the error is logged and the request still succeeds. Or when the use case publishes it itself right after saving (`RegisterUserHandler`); then a throwing handler fails the request, after the user was saved. Inside an explicit transaction, it runs before the commit. See [Transactions And Side Effects]({{< relref "design-decisions#transactions-and-side-effects" >}}).
 - **Keep handlers short.** They add to the request's time.
+
+## Add a role
+
+1. Add the constant to `UseCases/Authorization/Roles.cs` and to `All`.
+2. Seed it in `Infrastructure/Data/Configurations/ApplicationRoleConfiguration.cs` with the next id, its upper-case `NormalizedName` and a fixed `ConcurrencyStamp`, then add a migration. Postgres doesn't advance the identity column for seeded ids, so roles are never created at runtime.
+3. Say what it grants in `UseCases/Authorization/RolePermissions.cs`.
+4. To give someone the role, add a method to `IIdentityService` that calls `UserManager.AddToRoleAsync` in `IdentityService`, and a use case and endpoint over it (protected by a permission). It reaches the user in their next access token.
+5. Test it: a case in `RolePermissionsFor`, `factory.CreateSignedInSessionAsync(Roles.YourRole)` in functional tests, and the migrations' seeded roles in `IdentityServiceCreateAccount.TheMigrationsSeedTheRoles`.
+
+## Send an account email
+
+Account emails (confirmation, password reset) carry Identity codes, so they are built in Infrastructure ([ADR 013]({{< relref "architecture-decisions/adr-013-user-management-aspnetcore-identity" >}})):
+1. Generate the code with `UserManager` in `IdentityService` (for example `GenerateChangeEmailTokenAsync`), Base64Url-encode it, and build the link with `Link(...)`, which starts from `AccountLinks:ClientUrl`. Add the page's path to `AccountLinkSettings`.
+2. Send it from `AccountEmailSender` (Identity's `IEmailSender<ApplicationUser>`), or a method of your own next to it.
+3. Add the page that opens the link in `frontend/src/app/features/auth/`, reading the query parameters as component inputs, as `confirm-email-page` does, and a route in `auth.routes.ts`.
+4. Expose a port method and a use case; the endpoint that takes the code is anonymous, so add it to `EndpointAuthorization`. Never log the link or the code.
+5. Test the code round trip in `IntegrationTests/Identity/` (`RecordingEmailSender.LastLinkTo`), and the endpoint with `factory.EmailSender.LastLinkQueryTo(email)`.
 
 ## Add a setting
 

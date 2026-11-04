@@ -54,7 +54,7 @@ Clean Architecture should make change easier. It shouldn't make a simple databas
 | **Interface** | It sits on a layer boundary: UseCases or Core defines it and Infrastructure implements it (`ICurrentUser`, `IEmailSender`), or a real second implementation exists | It only wraps EF Core or another framework API and adds nothing to it, or it exists only so a class can be mocked |
 | **Repository + specification** | The write path loads an aggregate, changes it through domain methods and saves it (`UserByIdSpecification`), or several handlers reuse the same lookup | It's a one-off read. Project straight to a DTO in a query service (`IListUsersQueryService`) instead |
 | **Query service** | It's a read model, a projection, a join, pagination or hand-written SQL | The handler needs the aggregate's behavior, so use the repository |
-| **Domain event** | Another part of the system reacts to something that happened in the domain, and the aggregate shouldn't know who that is | It's only "save a record". The `User` slice raises `UserRegisteredDomainEvent`, whose handler sends the welcome email |
+| **Domain event** | Another part of the system reacts to something that happened in the domain, and the aggregate shouldn't know who that is | It's only "save a record". The `User` slice raises `UserRegisteredDomainEvent`, whose handler sends the confirmation email |
 | **Mediator pipeline behavior** (`UseCases/Behaviors`) | It's a cross-cutting concern for every use case (`LoggingBehavior`), or for every command carrying a marker interface | It's logic for one feature. Put that in its handler |
 
 Every use case still goes through Mediator. That one seam stays uniform on purpose, so endpoints, jobs and tests all dispatch the same way.
@@ -70,7 +70,7 @@ A template should *support* a capability without *requiring* every application t
 - file storage (S3, with Garage locally) and image processing
 - ETags and optimistic concurrency
 - URL-versioned endpoints
-- Keycloak (OpenID Connect) with a backend for frontend, third-party sign-in and password reset
+- Keycloak (OpenID Connect) with a backend for frontend and third-party sign-in
 - log redaction and a global request timeout
 - business metrics and end-to-end browser tests
 
@@ -90,7 +90,7 @@ What happens, and in what order, when a use case changes data and something else
 - **Inside an explicit transaction, handlers run before the commit,** so they also run when it later rolls back. (`DomainEventDispatchTests`)
 - **Nothing retries them,** and a crash right after the commit loses them.
 
-So a domain event handler that sends an email works, but the email can be lost, and it adds its latency to the request. That's acceptable for a welcome email in many apps. When it isn't, or for calls to other systems that must happen, use a transactional outbox: the full template's ADR 016 and its `Infrastructure/Outbox/` are the reference.
+So a domain event handler that sends an email works, but the email can be lost, and it adds its latency to the request. That's acceptable for a welcome or confirmation email in many apps (a lost confirmation can be sent again). When it isn't, or for calls to other systems that must happen, use a transactional outbox: the full template's ADR 016 and its `Infrastructure/Outbox/` are the reference.
 
 # The Frontend
 
@@ -98,7 +98,7 @@ Angular, kept deliberately unopinionated beyond the `auth`, `home`, `profile` an
 
 # Authentication
 
-The API registers and signs in users itself, with passwords hashed by ASP.NET Core's `PasswordHasher`, and issues JWTs with FastEndpoints.Security, following its docs: a 15-minute access token in the response body, and a single-use refresh token in an HttpOnly, `SameSite=Strict` cookie sent only to the refresh route, stored only as a hash. Logout deletes the refresh token and revokes the access token through FastEndpoints' `JwtRevocationMiddleware`. See [ADR 012]({{< relref "architecture-decisions/adr-012-jwt-authentication-fastendpoints" >}}). Permissions come from the user's role and travel in the access token; see [ADR 011]({{< relref "architecture-decisions/adr-011-role-based-permissions" >}}). There's no password reset, email verification, 2FA or sign-in rate limit: Keycloak brings those in the full template.
+The API manages accounts with ASP.NET Core Identity (lockout, email confirmation, password reset, roles) and issues JWTs with FastEndpoints.Security, following its docs and its Jwt-And-Identity-Auth-Demo: a 15-minute access token in the response body, and a single-use refresh token in an HttpOnly, `SameSite=Strict` cookie sent only to the refresh route, stored only as a hash. Logout deletes the refresh token and revokes the access token through FastEndpoints' `JwtRevocationMiddleware`. A password change or reset ends every other session at its next refresh. See [ADR 012]({{< relref "architecture-decisions/adr-012-jwt-authentication-fastendpoints" >}}) and [ADR 013]({{< relref "architecture-decisions/adr-013-user-management-aspnetcore-identity" >}}). Permissions come from the account's Identity roles and travel in the access token; see [ADR 011]({{< relref "architecture-decisions/adr-011-role-based-permissions" >}}). There's no 2FA, external sign-in or rate limit; Identity supports the first two, and Keycloak brings them in the full template.
 
 # Orchestration
 
