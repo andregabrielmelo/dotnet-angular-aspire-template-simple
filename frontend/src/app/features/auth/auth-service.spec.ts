@@ -133,7 +133,7 @@ describe('AuthService', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
 
     expect(clear).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(['/auth']);
+    expect(navigate).toHaveBeenCalledWith(['/auth/login']);
   });
 
   it('logout() forgets the user even if the API fails', () => {
@@ -142,6 +142,6 @@ describe('AuthService', () => {
     httpMock.expectOne('api/auth/logout').flush(null, { status: 500, statusText: 'Server Error' });
 
     expect(clear).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(['/auth']);
+    expect(navigate).toHaveBeenCalledWith(['/auth/login']);
   });
 });

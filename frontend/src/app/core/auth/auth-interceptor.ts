@@ -32,7 +32,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         authService.isAuthenticated()
       ) {
         authService.clearSession();
-        router.navigate(['/auth'], { queryParams: { returnUrl: router.url } });
+        router.navigate(['/auth/login'], { queryParams: { returnUrl: router.url } });
       }
       return throwError(() => error);
     }),

@@ -48,7 +48,7 @@ describe('authInterceptor', () => {
 
     expect(status).toBe(401);
     expect(clearSession).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(['/auth'], {
+    expect(navigate).toHaveBeenCalledWith(['/auth/login'], {
       queryParams: { returnUrl: '/users' },
     });
   });

@@ -2,9 +2,15 @@ import { Routes } from '@angular/router';
 
 /** Public pages: signing in and up, and the pages the account emails link to. */
 export const AUTH_ROUTES: Routes = [
+  // Keeps the query string (returnUrl), so links to /auth still work.
+  { path: '', pathMatch: 'full', redirectTo: 'login' },
   {
-    path: '',
-    loadComponent: () => import('./auth-page/auth-page').then((m) => m.AuthPage),
+    path: 'login',
+    loadComponent: () => import('./login-page/login-page').then((m) => m.LoginPage),
+  },
+  {
+    path: 'register',
+    loadComponent: () => import('./register-page/register-page').then((m) => m.RegisterPage),
   },
   {
     path: 'confirm-email',

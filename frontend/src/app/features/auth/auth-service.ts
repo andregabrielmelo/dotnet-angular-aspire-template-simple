@@ -71,7 +71,7 @@ export class AuthService {
         catchError(() => of(null)),
         finalize(() => {
           this.clearSession();
-          this.router.navigate(['/auth']);
+          this.router.navigate(['/auth/login']);
         }),
       )
       .subscribe();
