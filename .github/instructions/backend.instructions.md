@@ -53,8 +53,8 @@ public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, U
 UseCases/<Feature>/Commands/<UseCase>/   // or Queries/<UseCase>/ for a query
   <UseCase>Command.cs   // or <UseCase>Query.cs: record : ICommand<Result<T>> / IQuery<Result<T>>
   <UseCase>Handler.cs   // ICommandHandler / IQueryHandler, one Handle method
-```
 UseCases/<Feature>/Handlers/   // domain event handlers
+```
 
 - **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types.
 - **List query services** (`Infrastructure/Data/Queries/`) read with `FromSqlRaw`: every mapped column in snake_case, `WHERE` with `{n}` parameters only, and `OrderBy`/`Skip`/`Take`/`Select`/`CountAsync` in LINQ on top. See `ListUsersQueryService` and step 3 of [Adding a feature](../../docs/content/guides/adding-a-feature.md#3-infrastructure-the-database).

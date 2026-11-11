@@ -200,7 +200,7 @@ The full template, [dotnet-angular-aspire-template](https://github.com/andregabr
 | File uploads | `IFileStorage` over S3 (Garage locally), image processing, ADR 018 |
 | Lost-update protection | ETags and `If-Match`, ADR 019 |
 | Versioned URLs (`/v1/...`) | ADR 015 |
-| Keycloak sign-in through a backend for frontend, password reset, external sign-in | `AppTemplate.BackendForFrontend`, the Keycloak realm, ADR 007 |
-| Log redaction, a global request timeout, API security headers | `ServiceDefaults/Logging/`, `RequestTimeoutConfigurations`, `SecurityHeadersConfigurations` |
+| Keycloak sign-in through a backend for frontend, external sign-in | `AppTemplate.BackendForFrontend`, the Keycloak realm, ADR 007 |
+| Log redaction, a global request timeout | `ServiceDefaults/Logging/`, `RequestTimeoutConfigurations` |
 | Business metrics | `UseCases/Telemetry/ApplicationMetrics.cs` |
 | Browser end-to-end tests | `tests/AppTemplate.EndToEndTests` (Playwright) |

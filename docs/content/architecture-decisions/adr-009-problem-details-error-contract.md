@@ -28,9 +28,9 @@ Use case results are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem 
 |---|---|
 | Use case results (`ResultExtensions`) | Problem details, by the table below |
 | FastEndpoints request validation, and `AddError` in the refresh endpoint | FastEndpoints' `ErrorResponse`: `statusCode`, `message`, and `errors`, camelCase field name to messages |
-| No or an invalid access token, a missing permission | An empty 401 or 403 |
-| A revoked access token (`RevokedTokenChecker`, [ADR 012]({{< relref "adr-012-jwt-authentication-fastendpoints" >}})) | A 401 problem details |
-| Unmatched routes | An empty 404, or 401 for an anonymous caller (the fallback policy runs first) |
+| No or an expired session cookie, a missing permission | An empty 401 or 403 |
+| A signed-in request without a valid antiforgery token ([ADR 015]({{< relref "adr-015-cookie-sessions-aspnetcore-identity" >}})) | A 400 problem details |
+| Unmatched routes | An empty 404 |
 | Unhandled exceptions, outside Development | FastEndpoints' `UseDefaultExceptionHandler(useGenericReason: true)`: a 500 JSON body without the exception's message; the exception is logged |
 
 Both shapes a form cares about carry the same `errors` object, so a client shows field messages the same way for request validation and a use case's `Invalid` result:

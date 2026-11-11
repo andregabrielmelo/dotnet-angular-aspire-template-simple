@@ -24,6 +24,15 @@ This is a plain find-and-replace across the repo (not a `dotnet new` template en
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js](https://nodejs.org/) (LTS) and npm
 - [Docker](https://www.docker.com/) or Podman (Aspire runs Postgres and Mailpit in containers)
+- A trusted ASP.NET Core development certificate: every request is HTTPS, development included ([ADR 016]({{< relref "architecture-decisions/adr-016-https-in-development" >}})). Run once, then restart the browser:
+
+  ```bash
+  dotnet dev-certs https --trust
+  ```
+
+  - **In WSL,** the command also trusts the certificate in Windows, so Edge and Firefox there accept it.
+  - **For `curl` in WSL or Linux,** add `export SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs` to your profile.
+  - **`aspire certs trust`** does the same with the Aspire CLI.
 - The [Aspire CLI/workload](https://learn.microsoft.com/dotnet/aspire/fundamentals/setup-tooling), or just run the AppHost project from your IDE
 
 ## 4. Run it
@@ -33,7 +42,7 @@ cd backend
 dotnet run --project src/YourProjectName.AppHost
 ```
 
-The Aspire dashboard opens and starts Postgres (in a container, with a persistent data volume), Mailpit (catching development emails, such as the confirmation and password reset emails), the Web API, and the Angular frontend (via `npm ci` + `npm start`; its dev server proxies `/api` to the API - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). Open the app from the `angular` resource's URL in the dashboard, then register (open the confirmation link from the email in Mailpit, then sign in), or sign in as the development admin, `admin@example.com` / `Admin123!`. On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)). The development JWT signing key is in `appsettings.Development.json`.
+The Aspire dashboard opens and starts Postgres (in a container, with a persistent data volume), Mailpit (catching development emails, such as the confirmation and reset links), the Web API, and the Angular frontend (via `npm ci` + `npm start`; its dev server proxies `/api` to the API - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). Open the app from the `angular` resource's `https://` URL in the dashboard, then register and open the confirmation link from Mailpit (its web UI is the `mailpit` resource's URL), or sign in as the development admin, `admin@example.com` / `Admin123!`. On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)).
 
 ## 5. Add your own feature
 

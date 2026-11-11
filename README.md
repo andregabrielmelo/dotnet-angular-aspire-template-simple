@@ -13,7 +13,7 @@ A GitHub template repository for starting new full-stack projects with:
 
 It's not a sample app - it's a skeleton with one real feature (`User`) wired end-to-end so you can see where things belong. Replace it with your own domain once you understand the shape.
 
-This is the simple variant, with what most projects need: JWT sign-in with refresh tokens, ASP.NET Core Identity accounts (email confirmation, password reset, lockout), permissions, email, logging, health checks and tests. For Keycloak and a backend for frontend, background jobs, a transactional outbox, auditing, caching, file storage, ETags or API versioning, see the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template), and copy what you need from there.
+This is the simple variant, with what most projects need: cookie sign-in with ASP.NET Core Identity, accounts (email confirmation, password reset, lockout), roles and permissions as smart enums, rate limiting, email, logging, health checks and tests. For Keycloak and a backend for frontend, background jobs, a transactional outbox, auditing, caching, file storage, ETags or API versioning, see the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template), and copy what you need from there.
 
 **📖 Full docs: [andregabrielmelo.github.io/dotnet-angular-aspire-template-simple](https://andregabrielmelo.github.io/dotnet-angular-aspire-template-simple/)**
 
@@ -24,7 +24,11 @@ This is the simple variant, with what most projects need: JWT sign-in with refre
    ```bash
    scripts/rename-template.sh YourProjectName
    ```
-3. Run everything via Aspire:
+3. Trust the ASP.NET Core development certificate once (every request is HTTPS, development included):
+   ```bash
+   dotnet dev-certs https --trust
+   ```
+4. Run everything via Aspire:
    ```bash
    cd backend
    dotnet run --project src/YourProjectName.AppHost

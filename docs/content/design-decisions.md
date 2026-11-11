@@ -39,7 +39,7 @@ EF Core + Npgsql implementation of the repositories and query services, plus any
 
 ## Web
 
-The ASP.NET Core entry point. [FastEndpoints](https://fast-endpoints.com/) + the REPR pattern for one-file-per-endpoint API design, [Scalar](https://github.com/scalar/scalar) for interactive API docs, [Serilog](https://serilog.net/) for console logging (`LoggerConfigs`), next to OpenTelemetry's export to the Aspire dashboard, and plain ASP.NET Core JWT bearer authentication for the tokens it issues itself.
+The ASP.NET Core entry point. [FastEndpoints](https://fast-endpoints.com/) + the REPR pattern for one-file-per-endpoint API design, [Scalar](https://github.com/scalar/scalar) for interactive API docs, [Serilog](https://serilog.net/) for console logging (`LoggerConfigs`), next to OpenTelemetry's export to the Aspire dashboard, and ASP.NET Core Identity's cookie for sessions.
 
 ## SharedKernel
 
@@ -90,11 +90,11 @@ What happens, and in what order, when a use case changes data and something else
 - **Inside an explicit transaction, handlers run before the commit,** so they also run when it later rolls back. (`DomainEventDispatchTests`)
 - **Nothing retries them,** and a crash right after the commit loses them.
 
-So a domain event handler that sends an email works, but the email can be lost, and it adds its latency to the request. That's acceptable for a welcome or confirmation email in many apps (a lost confirmation can be sent again). When it isn't, or for calls to other systems that must happen, use a transactional outbox: the full template's ADR 016 and its `Infrastructure/Outbox/` are the reference.
+So a domain event handler that sends an email works, but the email can be lost, and it adds its latency to the request. That's acceptable for a confirmation email, which the user can ask for again (`POST /auth/resend-confirmation`). When it isn't, or for calls to other systems that must happen, use a transactional outbox: the full template's ADR 016 and its `Infrastructure/Outbox/` are the reference.
 
 # The Frontend
 
-Angular, kept deliberately unopinionated beyond the `auth`, `home`, `profile` and `users` features and a `core`/`shared` split. It keeps the access token in `localStorage`, so a reload or a new tab stays signed in; the refresh token is an HttpOnly cookie it never reads. The Angular dev server proxies `/api` to the Web API, so the app has one origin and no CORS. See [ADR 012]({{< relref "architecture-decisions/adr-012-jwt-authentication-fastendpoints" >}}) and the [single-origin notes]({{< relref "notes/cors-and-proxy" >}}).
+Angular, kept deliberately unopinionated beyond the `auth`, `home`, `profile` and `users` features and a `core`/`shared` split. It holds no credential: the session is an HttpOnly cookie the browser sends by itself, so a reload or a new tab stays signed in, and HttpClient echoes the antiforgery cookie as a header. The Angular dev server proxies `/api` to the Web API over HTTPS, so the app has one origin and no CORS. See [ADR 015]({{< relref "architecture-decisions/adr-015-cookie-sessions-aspnetcore-identity" >}}) and the [single-origin notes]({{< relref "notes/cors-and-proxy" >}}).
 
 # Authentication
 
@@ -102,4 +102,4 @@ The API manages accounts with ASP.NET Core Identity (passwords, lockout, roles) 
 
 # Orchestration
 
-[.NET Aspire](https://learn.microsoft.com/dotnet/aspire/) wires up Postgres (containerized, with a persistent data volume), Mailpit (catching development emails), the Web API and the Angular app (via Aspire's JavaScript app hosting, `npm ci` + `npm start`) as one thing you run and observe together in local development, with service discovery and the Aspire dashboard for logs/traces. It's not used for anything in production - deploy the API and the built Angular app however you'd normally deploy them, behind one origin (see [Production deployment]({{< relref "best-practices#production-deployment" >}}), and `PublishAsDockerFile()` on the frontend resource in `AppHost.cs` for one option). Mailpit runs only in the `Development` environment; elsewhere the AppHost expects an SMTP server (the `mailserver-hostname` and `mailserver-port` parameters), and the API needs `Jwt__SigningKey`.
+[.NET Aspire](https://learn.microsoft.com/dotnet/aspire/) wires up Postgres (containerized, with a persistent data volume), Mailpit (catching development emails), the Web API and the Angular app (via Aspire's JavaScript app hosting, `npm ci` + `npm start`) as one thing you run and observe together in local development, with service discovery and the Aspire dashboard for logs/traces. It's not used for anything in production - deploy the API and the built Angular app however you'd normally deploy them, behind one origin (see [Production deployment]({{< relref "best-practices#production-deployment" >}}), and `PublishAsDockerFile()` on the frontend resource in `AppHost.cs` for one option). Mailpit runs only in the `Development` environment; elsewhere the AppHost expects an SMTP server (the `mailserver-hostname` and `mailserver-port` parameters). Every request is HTTPS, development included ([ADR 016]({{< relref "architecture-decisions/adr-016-https-in-development" >}})).
