@@ -1,6 +1,7 @@
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Interfaces;
 using Ardalis.Result;
 
 namespace AppTemplate.IntegrationTests.Identity;
@@ -10,7 +11,7 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
 {
     private const string Password = "correct horse battery staple";
 
-    private IdentityService Identity => Services.GetRequiredService<IdentityService>();
+    private IIdentityService Identity => Services.GetRequiredService<IIdentityService>();
 
     [Fact]
     public async Task CreatesTheProfileAndAnUnconfirmedMemberAccount()
@@ -46,7 +47,7 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
 
         using var scope = NewScope();
         var second = await scope
-            .ServiceProvider.GetRequiredService<IdentityService>()
+            .ServiceProvider.GetRequiredService<IIdentityService>()
             .CreateUserAsync(UserName.From("Grace"), email, Password, cancellationToken);
 
         second.Status.ShouldBe(ResultStatus.Error);
@@ -81,10 +82,10 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
 
         var results = await Task.WhenAll(
             first
-                .ServiceProvider.GetRequiredService<IdentityService>()
+                .ServiceProvider.GetRequiredService<IIdentityService>()
                 .CreateUserAsync(UserName.From("Ada"), email, Password, cancellationToken),
             second
-                .ServiceProvider.GetRequiredService<IdentityService>()
+                .ServiceProvider.GetRequiredService<IIdentityService>()
                 .CreateUserAsync(UserName.From("Ada"), email, Password, cancellationToken)
         );
 
@@ -109,7 +110,7 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
         using var scope = NewScope();
         (
             await scope
-                .ServiceProvider.GetRequiredService<IdentityService>()
+                .ServiceProvider.GetRequiredService<IIdentityService>()
                 .GetUserAsync(created.Value, cancellationToken)
         ).ShouldBeNull();
     }

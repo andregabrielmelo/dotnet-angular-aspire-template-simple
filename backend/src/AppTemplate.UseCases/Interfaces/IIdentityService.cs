@@ -1,6 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Authentication;
+using AppTemplate.UseCases.Authorization;
 
 namespace AppTemplate.UseCases.Interfaces;
 
@@ -8,7 +9,7 @@ namespace AppTemplate.UseCases.Interfaces;
 /// Accounts: credentials, email confirmation, password reset, roles and lockout. Implemented in
 /// Infrastructure over ASP.NET Core Identity (ADR 013); nothing here exposes an Identity type.
 /// An account belongs to one <see cref="User"/> profile and is addressed by its <see cref="UserId"/>.
-/// Field errors come back as <c>Invalid</c>, keyed by the request field they belong to.
+/// Identity's own failures come back as <c>Error</c> (IdentityResultExtensions).
 /// </summary>
 public interface IIdentityService
 {
@@ -16,14 +17,26 @@ public interface IIdentityService
     Task<AccountDto?> GetUserAsync(UserId userId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Creates the profile and its unconfirmed account, in the
-    /// <see cref="Authorization.Role.Member"/> role, in one transaction. <c>Conflict</c> for an
-    /// email already in use; <c>Invalid</c> (<c>password</c>) when the password breaks the rules.
+    /// Creates the profile and its unconfirmed account, in the <see cref="Role.Member"/> role, in
+    /// one transaction: registration. <c>Error</c> when Identity refuses the account (a taken
+    /// email, a password it rejects).
     /// </summary>
     Task<Result<UserId>> CreateUserAsync(
         UserName name,
         EmailAddress email,
         string password,
+        CancellationToken cancellationToken
+    );
+
+    /// <summary>
+    /// The same, in any role and optionally already confirmed: seed data and tests use it.
+    /// </summary>
+    Task<Result<UserId>> CreateUserAsync(
+        UserName name,
+        EmailAddress email,
+        string password,
+        Role role,
+        bool emailConfirmed,
         CancellationToken cancellationToken
     );
 

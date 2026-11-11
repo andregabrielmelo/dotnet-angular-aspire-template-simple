@@ -48,12 +48,9 @@ public static class InfrastructureServiceExtensions
             }
         );
 
-        // Aspire's client integration: health check, logging, traces and metrics for the context.
-        // No retrying execution strategy: IdentityService opens its own transactions, which a
-        // retrying strategy refuses.
-        builder.EnrichNpgsqlDbContext<ApplicationDatabaseContext>(settings =>
-            settings.DisableRetry = true
-        );
+        // Aspire's client integration: health check, logging, traces and metrics for the context,
+        // and a retrying execution strategy (IdentityService runs its own transaction inside it).
+        builder.EnrichNpgsqlDbContext<ApplicationDatabaseContext>();
 
         builder
             .Services.AddScoped(typeof(IRepository<>), typeof(EntityFrameworkRepository<>))
@@ -112,11 +109,7 @@ public static class InfrastructureServiceExtensions
 
         builder
             .Services.AddScoped<IEmailSender<ApplicationUser>, AccountEmailSender>()
-            // The concrete type too: seed data and tests use its CreateUserAsync overload with a role.
-            .AddTransient<IdentityService>()
-            .AddTransient<IIdentityService>(provider =>
-                provider.GetRequiredService<IdentityService>()
-            );
+            .AddTransient<IIdentityService, IdentityService>();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

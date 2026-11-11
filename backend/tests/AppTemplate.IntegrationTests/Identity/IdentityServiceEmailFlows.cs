@@ -1,6 +1,7 @@
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Interfaces;
 using Ardalis.Result;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
@@ -13,7 +14,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
     private const string Password = "correct horse battery staple";
     private const string NewPassword = "an entirely new passphrase";
 
-    private IdentityService Identity => Services.GetRequiredService<IdentityService>();
+    private IIdentityService Identity => Services.GetRequiredService<IIdentityService>();
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
 

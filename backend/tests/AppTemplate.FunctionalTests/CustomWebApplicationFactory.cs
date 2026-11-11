@@ -1,6 +1,7 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.UseCases.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -81,7 +82,7 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
         var address = new EmailAddress(email ?? $"user-{Guid.NewGuid():N}@example.com");
         var name = UserName.From("Ada Lovelace");
         var created = await scope
-            .ServiceProvider.GetRequiredService<IdentityService>()
+            .ServiceProvider.GetRequiredService<IIdentityService>()
             .CreateUserAsync(
                 name,
                 address,

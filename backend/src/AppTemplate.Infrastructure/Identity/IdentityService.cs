@@ -46,11 +46,38 @@ public sealed class IdentityService(
             cancellationToken
         );
 
+    public Task<Result<UserId>> CreateUserAsync(
+        UserName name,
+        EmailAddress email,
+        string password,
+        Role role,
+        bool emailConfirmed,
+        CancellationToken cancellationToken
+    ) =>
+        // The transaction runs inside the execution strategy: Aspire's EF integration retries
+        // transient failures, and a retrying strategy only accepts a transaction it can replay
+        // as a whole.
+        _db
+            .Database.CreateExecutionStrategy()
+            .ExecuteAsync(
+                attemptCancellation =>
+                    CreateInTransactionAsync(
+                        name,
+                        email,
+                        password,
+                        role,
+                        emailConfirmed,
+                        attemptCancellation
+                    ),
+                cancellationToken
+            );
+
     /// <summary>
-    /// An account in any role, optionally already confirmed: registration uses the overload
-    /// above; seed data and tests use this one.
+    /// The profile first, for its id; the account then points at it. One transaction, so a
+    /// failure leaves neither behind. Starts from a clean change tracker, so a retried attempt
+    /// doesn't carry entities from the failed one.
     /// </summary>
-    public async Task<Result<UserId>> CreateUserAsync(
+    private async Task<Result<UserId>> CreateInTransactionAsync(
         UserName name,
         EmailAddress email,
         string password,
@@ -59,8 +86,7 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        // The profile first, for its id; the account then points at it. One transaction, so a
-        // failure leaves neither behind.
+        _db.ChangeTracker.Clear();
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
         {

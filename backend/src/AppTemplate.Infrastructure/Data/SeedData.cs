@@ -2,6 +2,7 @@ using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data;
@@ -23,7 +24,7 @@ public class SeedData
 
     public static async Task InitializeAsync(
         ApplicationDatabaseContext dbContext,
-        IdentityService identity,
+        IIdentityService identity,
         CancellationToken cancellationToken = default
     )
     {
@@ -34,7 +35,7 @@ public class SeedData
     }
 
     public static async Task PopulateTestDataAsync(
-        IdentityService identity,
+        IIdentityService identity,
         CancellationToken cancellationToken = default
     )
     {
@@ -61,7 +62,7 @@ public class SeedData
     }
 
     private static async Task CreateAsync(
-        IdentityService identity,
+        IIdentityService identity,
         string name,
         string email,
         string password,

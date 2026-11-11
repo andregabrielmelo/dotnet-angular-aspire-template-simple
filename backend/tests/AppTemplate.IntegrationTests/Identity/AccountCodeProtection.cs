@@ -1,6 +1,7 @@
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
@@ -20,7 +21,7 @@ public class AccountCodeProtection(PostgresDatabaseFixture database)
         var cancellationToken = TestContext.Current.CancellationToken;
         var email = NewEmail();
         var created = await Services
-            .GetRequiredService<IdentityService>()
+            .GetRequiredService<IIdentityService>()
             .CreateUserAsync(
                 UserName.From("Ada"),
                 email,
@@ -31,7 +32,7 @@ public class AccountCodeProtection(PostgresDatabaseFixture database)
             );
 
         await Services
-            .GetRequiredService<IdentityService>()
+            .GetRequiredService<IIdentityService>()
             .SendEmailConfirmationAsync(created.Value, cancellationToken);
 
         (await DbContext.DataProtectionKeys.CountAsync(cancellationToken)).ShouldBeGreaterThan(0);
@@ -43,7 +44,7 @@ public class AccountCodeProtection(PostgresDatabaseFixture database)
         // Another instance: its own services, the same database and so the same key ring.
         var cancellationToken = TestContext.Current.CancellationToken;
         var email = NewEmail();
-        var identity = Services.GetRequiredService<IdentityService>();
+        var identity = Services.GetRequiredService<IIdentityService>();
         var created = await identity.CreateUserAsync(
             UserName.From("Ada"),
             email,
@@ -61,7 +62,7 @@ public class AccountCodeProtection(PostgresDatabaseFixture database)
         );
         using var scope = otherInstance.CreateScope();
         var confirmed = await scope
-            .ServiceProvider.GetRequiredService<IdentityService>()
+            .ServiceProvider.GetRequiredService<IIdentityService>()
             .ConfirmEmailAsync(created.Value, code, cancellationToken);
 
         confirmed.IsSuccess.ShouldBeTrue();

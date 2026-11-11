@@ -1,6 +1,7 @@
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Interfaces;
 using Ardalis.Result;
 
 namespace AppTemplate.IntegrationTests.Identity;
@@ -10,7 +11,7 @@ public class IdentityServiceCheckPassword(PostgresDatabaseFixture database)
 {
     private const string Password = "correct horse battery staple";
 
-    private IdentityService Identity => Services.GetRequiredService<IdentityService>();
+    private IIdentityService Identity => Services.GetRequiredService<IIdentityService>();
 
     private async Task<EmailAddress> AccountAsync(bool emailConfirmed)
     {
