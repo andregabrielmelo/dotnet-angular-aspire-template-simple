@@ -94,12 +94,14 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 
 | To change... | Look in |
 |---|---|
-| The sign-in, registration, confirmation and password reset pages | `frontend/src/app/features/auth/` (`account.service.ts` for the email flows) |
-| Sign-in, registration, refresh and sign-out | `Web/Endpoints/Authentication/` (`UserTokenService` is the refresh endpoint), `UseCases/Authentication/`, `UseCases/Users/Register/` |
-| Accounts: passwords, lockout, confirmation, reset, roles | `Infrastructure/Identity/` (`IdentityService`, `ApplicationUser`, `AccountEmailSender`), the Identity options in `InfrastructureServiceExtensions.AddIdentity`, `UseCases/Authentication/IIdentityService.cs`, the `AccountLinks` settings |
-| The roles and their seeding | `UseCases/Authorization/Roles.cs`, `Infrastructure/Data/Configurations/ApplicationRoleConfiguration.cs` |
-| Tokens: claims, validation, lifetimes, revocation | `Web/Authentication/` (`UserPrivilegesExtensions`, `RevokedTokenChecker`), `Web/Configurations/AuthConfigurations.cs`, the `Jwt` settings (`JwtSettings`) |
-| The refresh cookie | `Web/Authentication/RefreshTokenCookie.cs`, `Jwt:RefreshCookiePath` |
+| The sign-in and registration pages, and the account pages (confirm email, forgot and reset password) | `frontend/src/app/features/auth/`: `login-page/`, `register-page/`, the account pages, `resend-confirmation/` (shared by both), `auth-messages.ts` (error messages, safe `returnUrl`) and `account.service.ts` for the account flows; the change-password form in `features/profile/` |
+| Sign-in, registration and sign-out | `Web/Endpoints/Authentication/`, `UseCases/Authentication/Commands/`, `UseCases/Users/Commands/Register/` |
+| Email confirmation, password reset and change | the endpoints and use cases above, `Infrastructure/Identity/` (`IdentityService`, `AccountEmailSender`, `AccountLinkSettings`, `IdentityResultExtensions`), `UseCases/Users/Handlers/SendConfirmationOnUserRegistered.cs` |
+| Rate limits | `Web/Configurations/RateLimitingConfigurations.cs` (the `authentication` policy, forwarded headers), the `RateLimiting` and `ForwardedHeaders` settings (`Web/Settings/`), ADR 014 |
+| Accounts: passwords, lockout, roles, the security stamp | `Infrastructure/Identity/` (`IdentityService`, `ApplicationUser`), the Identity options in `InfrastructureServiceExtensions`, `UseCases/Interfaces/IIdentityService.cs`, `UseCases/Constants/PasswordConstants.cs` |
+| The roles, their permissions and their seeding | `UseCases/Authorization/Role.cs` (a smart enum), `Infrastructure/Data/Configurations/IdentityRoleConfiguration.cs` |
+| The session: cookie, claims, lifetime, stamp checks | the `ConfigureApplicationCookie` and `SecurityStampValidatorOptions` settings in `InfrastructureServiceExtensions`, `Infrastructure/Identity/ApplicationClaimsPrincipalFactory.cs`, `UseCases/Authorization/AppClaimTypes.cs`, `Web/Services/CurrentUser.cs`, ADR 015 |
+| CSRF: the antiforgery token | `Web/Configurations/AntiforgeryConfigurations.cs`, `Web/Endpoints/Authentication/AntiforgeryTokenEndpoint.cs`, `withXsrfConfiguration` in `frontend/src/app/app.config.ts` |
 | What's proxied to the API | `frontend/proxy.conf.mjs` |
 | Permissions, and which role has them | `UseCases/Authorization/Permission.cs` and `Role.cs` (smart enums), `frontend/src/app/core/auth/permissions.ts` |
 | Error responses | `Web/Extensions/ResultExtensions.cs`, `Web/Configurations/MiddlewareConfigurations.cs` |

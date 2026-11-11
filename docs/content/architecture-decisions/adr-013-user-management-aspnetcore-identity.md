@@ -6,7 +6,7 @@ weight: 130
 # ADR 013: User management with ASP.NET Core Identity
 
 ## Status
-Accepted. Amends [ADR 012]({{< relref "adr-012-jwt-authentication-fastendpoints" >}}): accounts move to ASP.NET Core Identity, while its JWTs, refresh token cookie and revocation stay as they are. Changes [ADR 011]({{< relref "adr-011-role-based-permissions" >}})'s roles into Identity roles.
+Accepted. Amends [ADR 012]({{< relref "adr-012-jwt-authentication-fastendpoints" >}}): accounts move to ASP.NET Core Identity, while its JWTs, refresh token cookie and revocation stay as they are. Changes [ADR 011]({{< relref "adr-011-role-based-permissions" >}})'s roles into Identity roles; ADR 014 adds rate limits to the account endpoints. Amended by [ADR 015]({{< relref "adr-015-cookie-sessions-aspnetcore-identity" >}}): the JWTs and refresh tokens are gone, and Identity's own cookie is the session, so the parts below about Identity Core without cookies and about ending sessions at refresh describe the earlier setup.
 
 ## Context
 ADR 012 left the API with only the minimum: one hashed password per user, checked by hand. It had no lockout, no email confirmation, no password reset and no way to end sessions after a password change, and ADR 012 listed those as gaps to fill before going to production. Writing them by hand is where account security usually goes wrong: reset tokens that don't expire or can be reused, lockouts that reveal who has an account, password changes that leave old sessions alive.

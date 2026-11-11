@@ -21,8 +21,8 @@ Short recipes for things that come up after the first feature. Each one lists th
 
 1. Call `AllowAnonymous()` in `Configure()`. Without it, FastEndpoints requires a signed-in user.
 2. Add the route to `ExpectedAnonymousRoutes` in `FunctionalTests/EndpointAuthorization.cs`. The test fails until you do, so making something public is always a reviewed change.
-3. If it does anything expensive or sends email, add a rate limit first ([below](#limit-one-endpoint)); the template has none.
-4. The SPA reaches it like any other `api/...` URL; `authInterceptor` adds an access token only if there is one, and a public endpoint simply ignores it.
+3. Give it a rate limit policy ([below](#limit-one-endpoint)), especially if it does anything expensive or sends email.
+4. The SPA reaches it like any other `api/...` URL; the browser sends the session cookie only if there is one, and a public endpoint simply ignores it.
 
 ## Filter or sort a list
 
@@ -51,6 +51,18 @@ Short recipes for things that come up after the first feature. Each one lists th
 4. Don't log the email address or body. They're personal data, and nothing redacts logs.
 
 Sending inside the request adds the SMTP round trip to its time, and a failure isn't retried. For mail that must arrive, use a transactional outbox (see the full template).
+
+## Send an account email
+
+Emails that carry an Identity code (confirmation, password reset, and anything like them you add, such as an email change) go through ASP.NET Core Identity, not straight through `IEmailSender` ([ADR 013]({{< relref "architecture-decisions/adr-013-user-management-aspnetcore-identity" >}})):
+1. **Port:** add a method to `UseCases/Interfaces/IIdentityService.cs`, taking and returning only the application's types (`UserId`, `EmailAddress`, `Result`).
+2. **Code and link:** in `Infrastructure/Identity/IdentityService.cs`, generate the code with `UserManager` (`Generate...TokenAsync`), Base64Url-encode it (`Encode`), and build the link with `Link(path, query...)`, which starts from `AccountLinks:ClientUrl`. Put the path in `AccountLinkSettings`, next to `ConfirmEmailPath` and `ResetPasswordPath`.
+3. **The email:** send it through `AccountEmailSender` (Identity's `IEmailSender<ApplicationUser>`), adding a method for a new kind of email.
+4. **The endpoints:** a use case and an anonymous endpoint that takes the code back, with the `authentication` rate limit policy ([Limit one endpoint](#limit-one-endpoint)). The endpoint that sends answers the same whether or not the address has an account (202), and the one that takes the code answers a wrong or expired one with a 400 on `code` (`InvalidCodeResult`).
+5. **The page:** a route in `frontend/src/app/features/auth/auth.routes.ts` at the link's path, reading its query parameters as inputs, and a call in `account.service.ts`.
+6. **Tests:** `IdentityServiceEmailFlows` (integration, with the fixture's recording sender) and a functional test per endpoint that follows the link (`factory.EmailSender.LastLinkQueryTo(email)`). Add the anonymous route to `EndpointAuthorization`.
+
+Never log the link, the code or the address. The codes are protected with Data Protection keys kept in Postgres, so a link works on every instance and after a restart.
 
 ## React to a domain event
 
@@ -133,25 +145,25 @@ Anything outside the process, such as an HTTP API, a payment provider or a messa
 
 ## Limit one endpoint
 
-The template has no rate limiting. To limit a public form, an expensive call, or sign-in:
-1. Register ASP.NET Core's rate limiter in Web, with a named policy partitioned by client address (or by the validated `sub` for signed-in callers):
+Every request already counts against the global limiter ([ADR 014]({{< relref "architecture-decisions/adr-014-rate-limiting-and-security-headers" >}})). To add a stricter limit to a public form, an expensive call, or anything that sends email:
+1. **The usual case:** reuse the `authentication` policy (5 a minute per client address) in the endpoint's `Configure()`, as `ForgotPasswordEndpoint` does:
    ```csharp
-   services.AddRateLimiter(options =>
-   {
-       options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-       options.AddPolicy(
-           "newsletter",
-           context => RateLimitPartition.GetFixedWindowLimiter(
-               context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-               _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1) }
-           )
-       );
-   });
+   Options(builder => builder.RequireRateLimiting(RateLimitingConfigurations.AuthenticationPolicy));
+   s.Responses[429] = "Too many attempts from this address"; // in Summary()
    ```
-   and `app.UseRateLimiter()` after `UseAuthentication()` in `MiddlewareConfigurations`.
-2. Apply it: `Options(x => x.RequireRateLimiting("newsletter"))` in the endpoint's `Configure()`. Keep the name in a constant.
+2. **A limit of its own:** add a constant and a policy next to `AuthenticationPolicy` in `Configurations/RateLimitingConfigurations.cs`, with its limit in `RateLimitSettings` (validated in `OptionConfigurations`):
+   ```csharp
+   public const string NewsletterPolicy = "newsletter";
 
-Behind a proxy, the client address is the proxy's unless you add the forwarded headers middleware with that proxy as a known one. Don't use FastEndpoints' `Throttle`: it trusts the raw `X-Forwarded-For` header. The full template has a complete setup to copy.
+   options.AddPolicy(
+       NewsletterPolicy,
+       context => FixedWindow($"newsletter:{ClientAddress(context)}", settings.NewsletterPermitLimit)
+   );
+   ```
+   Partition by `ClientAddress(context)` or the session's `user_id`, never by a header the client sends.
+3. **Test it** with a low-limit factory, as `Security/RateLimiting.cs` does (`LowRateLimitsFactory`); the shared factory raises the limits so other tests don't hit them.
+
+The client address comes from `X-Forwarded-For` only when the peer is in `ForwardedHeaders:KnownProxies`. Don't use FastEndpoints' `Throttle`: it trusts the raw header.
 
 ## Change the database schema
 

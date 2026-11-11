@@ -58,7 +58,7 @@ Browser ──(Authorization: Bearer <access token from localStorage>)──► 
 - **Revocation is per instance and in memory.** A restart, or another instance behind a load balancer, doesn't know about a revoked access token. At worst, a logged-out token keeps working until it expires (15 minutes), which is what short-lived JWTs give anyway. Move `RevokedAccessTokens` to `IDistributedCache` when the API runs on several instances.
 - **No sliding or absolute session limit.** Each refresh issues a new 7-day token, so a session used at least once a week never ends on its own. Shorten `RefreshTokenValidity`, or store a session start on the token, if that matters.
 - **No refresh-token reuse detection.** A stolen refresh token used before its owner gets a new pair. The owner's next refresh then fails, and they sign in again; their new session doesn't revoke the thief's. ADR 010's token families detected this; bring them back if a project needs it.
-- **No brute-force limit** on login. Add ASP.NET Core rate limiting, or lockout, before going to production with public sign-up.
+- **No brute-force limit** on login. [ADR 013]({{< relref "adr-013-user-management-aspnetcore-identity" >}}) adds lockout and [ADR 014]({{< relref "adr-014-rate-limiting-and-security-headers" >}}) rate limits.
 - **Web clients only.** The refresh token is only ever in the cookie. A mobile or server client would need a body-based refresh flow, which isn't included.
 - **The refresh request's documented body** is FastEndpoints' `TokenRequest` (`userId`, `refreshToken`). The endpoint ignores both, and the web app posts `{}`.
 - **Development-only key in a committed file.** It signs only local tokens. Every other environment must set `Jwt__SigningKey`, or startup fails.

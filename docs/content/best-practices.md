@@ -34,7 +34,9 @@ Explicit guidelines for projects built from this template, so every project that
 
 ## Security headers
 
-- **The API sets none of its own.** The host that serves the app in production (a reverse proxy, CDN or static host in front of the built SPA and `/api`) sends them; see Production deployment below.
+- **The API sets none of its own** ([ADR 014]({{< relref "architecture-decisions/adr-014-rate-limiting-and-security-headers" >}})). The host that serves the app and `/api` in production (a reverse proxy, CDN or static host) sends them; see Production deployment below.
+- **The Angular dev server sends the SPA's CSP** in development (`angular.json`, `serve.options.headers`), so a violation shows up locally.
+- **No `X-XSS-Protection`.** Browsers removed the filter it controlled, and enabling it could introduce leaks.
 - **Keep the build CSP-compatible.** The SPA must work under a strict `Content-Security-Policy`: scripts only from the same origin, no inline `<script>`, no inline event handlers, no `eval` (styles may allow `'unsafe-inline'`, because Angular injects component styles at runtime). Angular's critical CSS inlining is off in `angular.json`, because it adds an `onload` handler such a CSP blocks, which would leave the page unstyled. If you add a third-party script, font or image host, add its origin to the matching CSP directive instead of loosening `script-src`.
 - **No response compression.** Compressing HTTPS responses that mix secrets with attacker-influenced input enables [BREACH](https://www.breachattack.com/)-style attacks, and the reverse proxy or CDN in front of a real deployment compresses static assets better anyway. Don't add `UseResponseCompression()` to the API.
 
@@ -67,8 +69,9 @@ The AppHost is for local development ([ADR 002]({{< relref "architecture-decisio
 
 ## Rate limiting
 
-- **There is none.** Add ASP.NET Core's rate limiter (`AddRateLimiter`, `UseRateLimiter` after authentication) when a project goes public: a global limiter partitioned by the validated `sub` or the client address, and a stricter named policy on login and registration (the template has no account lockout), applied with `Options(x => x.RequireRateLimiting(name))`. The full template has one to copy.
-- **Partitions are never client-controlled.** Read `sub` only after JWT validation, and the client address from `X-Forwarded-For` only when the connection comes from a known proxy.
+- **ASP.NET Core's rate limiter** ([ADR 014]({{< relref "architecture-decisions/adr-014-rate-limiting-and-security-headers" >}}), `RateLimitingConfigurations`, the `RateLimiting` settings). A global fixed-window limiter counts a signed-in caller by `user_id` (600 a minute) and anyone else by address (120). The `authentication` policy (5 a minute per address) covers login, registration and the anonymous account endpoints, on top of Identity's lockout. A rejection is a 429 problem with `Retry-After`.
+- **New sensitive endpoints get a policy.** Anything anonymous that sends email or is expensive gets the `authentication` policy, or a named one of its own, with `Options(x => x.RequireRateLimiting(name))` (cookbook, Limit one endpoint).
+- **Partitions are never client-controlled.** Read `user_id` only from the validated session, and the client address from `X-Forwarded-For` only when the connection comes from a known proxy.
 - **Don't use FastEndpoints' `Throttle(...)`.** It keys on the raw `X-Forwarded-For` header, so a client can rotate it to get a fresh limit.
 - **No request timeout.** The template sets none; pass the `CancellationToken` through to EF Core and HttpClient calls so work stops when the client goes away. The full template has a global timeout if a project needs one.
 
