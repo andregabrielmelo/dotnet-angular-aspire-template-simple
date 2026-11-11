@@ -1,3 +1,5 @@
+using AppTemplate.Core.Aggregates.UserAggregate.Events;
+
 namespace AppTemplate.Core.Aggregates.UserAggregate;
 
 /// <summary>
@@ -22,7 +24,7 @@ public class User(UserName name) : EntityBase<User, UserId>, IAggregateRoot
         {
             return this;
         }
-
+        this.RegisterDomainEvent(new UserNameUpdatedEvent(this));
         Name = newName;
         return this;
     }
