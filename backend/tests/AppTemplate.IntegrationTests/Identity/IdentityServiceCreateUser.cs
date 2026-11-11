@@ -14,7 +14,7 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
     private IIdentityService Identity => Services.GetRequiredService<IIdentityService>();
 
     [Fact]
-    public async Task CreatesTheProfileAndAnUnconfirmedMemberAccount()
+    public async Task CreatesTheProfileAndAnUnconfirmedAccountWithNoRoles()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var email = NewEmail();
@@ -31,7 +31,7 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
         account.ShouldNotBeNull();
         account.Email.ShouldBe(email);
         account.EmailConfirmed.ShouldBeFalse();
-        account.Roles.ShouldBe([Role.Member.Name]);
+        account.Roles.ShouldBeEmpty();
         (await GetRepository<User>().GetByIdAsync(created.Value, cancellationToken))!.Name.ShouldBe(
             UserName.From("Ada")
         );
@@ -90,7 +90,16 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
         );
 
         results.Count(result => result.IsSuccess).ShouldBe(1);
-        results.Count(result => !result.IsSuccess).ShouldBe(1);
+        // Identity's own check, or the unique index when both passed it at once.
+        results
+            .Single(result => !result.IsSuccess)
+            .Status.ShouldBeOneOf(ResultStatus.Error, ResultStatus.Conflict);
+        (
+            await DbContext.Users.CountAsync(
+                account => account.NormalizedEmail == email.Value.ToUpperInvariant(),
+                cancellationToken
+            )
+        ).ShouldBe(1);
     }
 
     [Fact]
@@ -116,6 +125,84 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
     }
 
     [Fact]
+    public async Task AddToRolesAddsEveryRole()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var id = await CreateAsync(cancellationToken);
+
+        var added = await Identity.AddToRolesAsync(
+            id,
+            [Role.Member, Role.Admin],
+            cancellationToken
+        );
+
+        added.IsSuccess.ShouldBeTrue();
+        (await Identity.GetUserAsync(id, cancellationToken))!.Roles.ShouldBe(
+            [Role.Admin.Name, Role.Member.Name],
+            ignoreOrder: true
+        );
+    }
+
+    [Fact]
+    public async Task AddToRolesSkipsTheRolesTheAccountHas()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var id = await CreateAsync(cancellationToken);
+        await Identity.AddToRolesAsync(id, [Role.Member], cancellationToken);
+
+        var added = await Identity.AddToRolesAsync(
+            id,
+            [Role.Member, Role.Admin, Role.Admin],
+            cancellationToken
+        );
+
+        added.IsSuccess.ShouldBeTrue();
+        (await Identity.GetUserAsync(id, cancellationToken))!.Roles.ShouldBe(
+            [Role.Admin.Name, Role.Member.Name],
+            ignoreOrder: true
+        );
+    }
+
+    [Fact]
+    public async Task AddToRolesIsNotFoundForAnUnknownUser()
+    {
+        var added = await Identity.AddToRolesAsync(
+            UserId.From(int.MaxValue),
+            [Role.Member],
+            TestContext.Current.CancellationToken
+        );
+
+        added.Status.ShouldBe(ResultStatus.NotFound);
+    }
+
+    [Fact]
+    public async Task MarkEmailConfirmedConfirmsWithoutSendingAnything()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var email = NewEmail();
+        var id = (
+            await Identity.CreateUserAsync(UserName.From("Ada"), email, Password, cancellationToken)
+        ).Value;
+
+        var confirmed = await Identity.MarkEmailConfirmedAsync(id, cancellationToken);
+
+        confirmed.IsSuccess.ShouldBeTrue();
+        (await Identity.GetUserAsync(id, cancellationToken))!.EmailConfirmed.ShouldBeTrue();
+        Emails.Sent.ShouldNotContain(sent => sent.To == email.Value);
+    }
+
+    [Fact]
+    public async Task MarkEmailConfirmedIsNotFoundForAnUnknownUser()
+    {
+        var confirmed = await Identity.MarkEmailConfirmedAsync(
+            UserId.From(int.MaxValue),
+            TestContext.Current.CancellationToken
+        );
+
+        confirmed.Status.ShouldBe(ResultStatus.NotFound);
+    }
+
+    [Fact]
     public async Task TheMigrationsSeedTheRoles()
     {
         var roles = await DbContext
@@ -126,5 +213,17 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
             Role.List.Select(role => new { Id = role.Value, Name = (string?)role.Name }),
             ignoreOrder: true
         );
+    }
+
+    private async Task<UserId> CreateAsync(CancellationToken cancellationToken)
+    {
+        var created = await Identity.CreateUserAsync(
+            UserName.From("Ada"),
+            NewEmail(),
+            Password,
+            cancellationToken
+        );
+        created.IsSuccess.ShouldBeTrue();
+        return created.Value;
     }
 }

@@ -24,9 +24,9 @@ ASP.NET Core Identity provides all of them, maintained and tested. The [FastEndp
   - **The account** is `ApplicationUser : IdentityUser<int>` in Infrastructure: email, password hash, lockout, security stamp and roles.
   - **The link:** the account's `ProfileId` is a foreign key to the profile, unique and cascading, so deleting a user through the repository deletes the account and Identity's rows with it.
   - **Why the account points at the profile:** EF Core can't relate the Vogen `UserId` to Identity's `int` key the other way round.
-  - **Creation:** `IdentityService` creates both in one transaction.
+  - **Creation:** `IdentityService.CreateUserAsync` gives the new account its profile through the account's `Profile` navigation, so Identity validates first and then saves both in one `SaveChanges`: a refused account leaves no profile behind. Roles are added separately (`AddToRolesAsync`), and seed data and tests confirm an email without sending one (`MarkEmailConfirmedAsync`).
   - This is jasontaylordev/CleanArchitecture's `ApplicationUser` plus `IIdentityService`, keeping the domain aggregate as ardalis/CleanArchitecture does.
-- **One port.** UseCases reach Identity only through `IIdentityService` (`UseCases/Interfaces`): create an account, check a password, read an account, send and use confirmation and reset codes, and change a password. No Identity type appears in its signatures.
+- **One port.** UseCases reach Identity only through `IIdentityService` (`UseCases/Interfaces`): create an account, add it to roles, check a password, read an account, send and use confirmation and reset codes, and change a password. No Identity type appears in its signatures.
   - `IdentityService` implements it over `UserManager` and `SignInManager`.
   - `LayerDependencyTests` checks that Web doesn't depend on `Microsoft.AspNetCore.Identity`.
 - **Tables:** `ApplicationDatabaseContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`, one database and one transaction. The `asp_net_*` tables are renamed to snake_case like every other table.
@@ -55,5 +55,5 @@ ASP.NET Core Identity provides all of them, maintained and tested. The [FastEndp
 - **Roles in the migrations:** a new role is a new `Role` instance plus its concurrency stamp in `IdentityRoleConfiguration`, then a migration, because Postgres doesn't advance an identity column for seeded ids.
 - **Not included:** two-factor authentication, external sign-in and email changes. Identity supports them (`UserManager`'s authenticator keys, `ExternalLoginSignInAsync`, `ChangeEmailAsync`), so each is an endpoint and a port method away.
 - **Tests:**
-  - The integration tests cover account creation (rollback, conflict, a concurrent race), lockout, codes and the cascade on a real Postgres, and that a code made by one service provider is accepted by another (`AccountCodeProtection`). Identity's token provider reads the system clock, so the one-day code lifespan is checked as configuration, not by moving time.
+  - The integration tests cover account creation (a refused account, a concurrent race), adding roles, confirming without an email, lockout, codes and the cascade on a real Postgres, and that a code made by one service provider is accepted by another (`AccountCodeProtection`). Identity's token provider reads the system clock, so the one-day code lifespan is checked as configuration, not by moving time.
   - The functional tests drive confirmation, reset and change password through the real endpoints. They lower PBKDF2's iteration count to stay fast.

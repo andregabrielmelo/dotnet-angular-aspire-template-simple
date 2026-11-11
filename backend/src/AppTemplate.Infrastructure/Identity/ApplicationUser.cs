@@ -12,4 +12,10 @@ namespace AppTemplate.Infrastructure.Identity;
 public class ApplicationUser : IdentityUser<int>
 {
     public UserId ProfileId { get; set; }
+
+    /// <summary>
+    /// The profile, set only when creating the account: Identity then saves both in one
+    /// <c>SaveChanges</c>. Not loaded otherwise.
+    /// </summary>
+    public User? Profile { get; set; }
 }

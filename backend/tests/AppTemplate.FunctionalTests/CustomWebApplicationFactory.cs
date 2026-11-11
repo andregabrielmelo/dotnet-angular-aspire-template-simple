@@ -81,17 +81,24 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
         using var scope = Services.CreateScope();
         var address = new EmailAddress(email ?? $"user-{Guid.NewGuid():N}@example.com");
         var name = UserName.From("Ada Lovelace");
-        var created = await scope
-            .ServiceProvider.GetRequiredService<IIdentityService>()
-            .CreateUserAsync(
-                name,
-                address,
-                Password,
-                role ?? Role.Member,
-                emailConfirmed: true,
-                CancellationToken.None
-            );
+        var identity = scope.ServiceProvider.GetRequiredService<IIdentityService>();
+        var created = await identity.CreateUserAsync(
+            name,
+            address,
+            Password,
+            CancellationToken.None
+        );
         created.IsSuccess.ShouldBeTrue(string.Join("; ", created.Errors));
+        (
+            await identity.AddToRolesAsync(
+                created.Value,
+                [role ?? Role.Member],
+                CancellationToken.None
+            )
+        ).IsSuccess.ShouldBeTrue();
+        (
+            await identity.MarkEmailConfirmedAsync(created.Value, CancellationToken.None)
+        ).IsSuccess.ShouldBeTrue();
         return new TestUser(created.Value, name, address);
     }
 
@@ -99,9 +106,11 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
     public async Task AddToRoleAsync(TestUser user, Role role)
     {
         using var scope = Services.CreateScope();
-        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var account = await users.Users.SingleAsync(account => account.ProfileId == user.Id);
-        (await users.AddToRoleAsync(account, role.Name)).Succeeded.ShouldBeTrue();
+        (
+            await scope
+                .ServiceProvider.GetRequiredService<IIdentityService>()
+                .AddToRolesAsync(user.Id, [role], CancellationToken.None)
+        ).IsSuccess.ShouldBeTrue();
     }
 }
 

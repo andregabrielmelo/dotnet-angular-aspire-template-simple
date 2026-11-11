@@ -16,7 +16,7 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
         // Deleting a user (their profile) deletes their account, and Identity's own foreign keys
         // take its roles, claims and tokens with it.
         builder
-            .HasOne<User>()
+            .HasOne(account => account.Profile)
             .WithOne()
             .HasForeignKey<ApplicationUser>(account => account.ProfileId)
             .OnDelete(DeleteBehavior.Cascade);

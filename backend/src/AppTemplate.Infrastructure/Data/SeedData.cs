@@ -3,6 +3,7 @@ using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
+using Ardalis.Result;
 using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data;
@@ -74,14 +75,19 @@ public class SeedData
             UserName.From(name),
             new EmailAddress(email),
             password,
-            role,
-            emailConfirmed: true,
             cancellationToken
         );
-        if (!created.IsSuccess)
+        Succeeded(created, email);
+        Succeeded(await identity.AddToRolesAsync(created.Value, [role], cancellationToken), email);
+        Succeeded(await identity.MarkEmailConfirmedAsync(created.Value, cancellationToken), email);
+    }
+
+    private static void Succeeded(IResult result, string email)
+    {
+        if (result.Status != ResultStatus.Ok)
         {
             throw new InvalidOperationException(
-                $"Seeding {email} failed: {string.Join("; ", created.Errors)}"
+                $"Seeding {email} failed: {result.Status} {string.Join("; ", result.Errors)}"
             );
         }
     }

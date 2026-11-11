@@ -20,11 +20,26 @@ public class IdentityServiceCheckPassword(PostgresDatabaseFixture database)
             UserName.From("Ada"),
             email,
             Password,
-            Role.Admin,
-            emailConfirmed,
             TestContext.Current.CancellationToken
         );
         created.IsSuccess.ShouldBeTrue();
+        (
+            await Identity.AddToRolesAsync(
+                created.Value,
+                [Role.Admin],
+                TestContext.Current.CancellationToken
+            )
+        ).IsSuccess.ShouldBeTrue();
+        if (emailConfirmed)
+        {
+            (
+                await Identity.MarkEmailConfirmedAsync(
+                    created.Value,
+                    TestContext.Current.CancellationToken
+                )
+            ).IsSuccess.ShouldBeTrue();
+        }
+
         return email;
     }
 

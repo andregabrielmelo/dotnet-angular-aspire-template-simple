@@ -1,6 +1,5 @@
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
-using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using Ardalis.Result;
 using Microsoft.AspNetCore.Identity;
@@ -35,10 +34,16 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
             UserName.From("Ada"),
             email,
             Password,
-            Role.Member,
-            emailConfirmed,
             Cancellation
         );
+        created.IsSuccess.ShouldBeTrue();
+        if (emailConfirmed)
+        {
+            (
+                await Identity.MarkEmailConfirmedAsync(created.Value, Cancellation)
+            ).IsSuccess.ShouldBeTrue();
+        }
+
         return (created.Value, email);
     }
 

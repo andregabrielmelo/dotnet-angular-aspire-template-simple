@@ -17,9 +17,10 @@ public interface IIdentityService
     Task<AccountDto?> GetUserAsync(UserId userId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Creates the profile and its unconfirmed account, in the <see cref="Role.Member"/> role, in
-    /// one transaction: registration. <c>Error</c> when Identity refuses the account (a taken
-    /// email, a password it rejects).
+    /// Creates the profile and its unconfirmed account, with no roles, in one save: a refused
+    /// account leaves no profile behind. <c>Error</c> when Identity refuses the account (a taken
+    /// email, a password it rejects); <c>Conflict</c> when a concurrent registration took the
+    /// email first. Add roles with <see cref="AddToRolesAsync"/>.
     /// </summary>
     Task<Result<UserId>> CreateUserAsync(
         UserName name,
@@ -29,16 +30,22 @@ public interface IIdentityService
     );
 
     /// <summary>
-    /// The same, in any role and optionally already confirmed: seed data and tests use it.
+    /// Adds the account to <paramref name="roles"/>, skipping those it already has.
+    /// <c>NotFound</c> for an unknown user. The other sessions get the new permissions at their
+    /// next security stamp check.
     /// </summary>
-    Task<Result<UserId>> CreateUserAsync(
-        UserName name,
-        EmailAddress email,
-        string password,
-        Role role,
-        bool emailConfirmed,
+    Task<Result> AddToRolesAsync(
+        UserId userId,
+        IEnumerable<Role> roles,
         CancellationToken cancellationToken
     );
+
+    /// <summary>
+    /// Confirms the account's email without a code and without sending anything: for seed data
+    /// and tests. Never call it while serving a request, since it skips the proof that the user
+    /// reads that address. <c>NotFound</c> for an unknown user.
+    /// </summary>
+    Task<Result> MarkEmailConfirmedAsync(UserId userId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Checks a sign-in attempt, counting failures toward lockout. A wrong password, an unknown

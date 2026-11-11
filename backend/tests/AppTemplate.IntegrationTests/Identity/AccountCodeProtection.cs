@@ -1,6 +1,5 @@
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
-using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
@@ -26,8 +25,6 @@ public class AccountCodeProtection(PostgresDatabaseFixture database)
                 UserName.From("Ada"),
                 email,
                 "correct horse battery staple",
-                Role.Member,
-                emailConfirmed: false,
                 cancellationToken
             );
 
@@ -49,8 +46,6 @@ public class AccountCodeProtection(PostgresDatabaseFixture database)
             UserName.From("Ada"),
             email,
             "correct horse battery staple",
-            Role.Member,
-            emailConfirmed: false,
             cancellationToken
         );
         await identity.SendEmailConfirmationAsync(created.Value, cancellationToken);

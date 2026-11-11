@@ -1,4 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
+using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users.Commands.Register;
 using Mediator;
@@ -15,6 +16,13 @@ public class RegisterUserHandlerHandle
         TestUsers.Email,
         "secret-password"
     );
+
+    public RegisterUserHandlerHandle() => RoleAdditionReturns(Result.Success());
+
+    private void RoleAdditionReturns(Result result) =>
+        _identity
+            .AddToRolesAsync(UserId.From(1), [], CancellationToken.None)
+            .ReturnsForAnyArgs(result);
 
     private void CreationReturns(Result<UserId> result) =>
         _identity
@@ -62,6 +70,36 @@ public class RegisterUserHandlerHandle
     }
 
     [Fact]
+    public async Task AddsTheNewAccountToMember()
+    {
+        CreationReturns(UserId.From(5));
+
+        await Register();
+
+        await _identity
+            .Received(1)
+            .AddToRolesAsync(
+                UserId.From(5),
+                Arg.Is<IEnumerable<Role>>(roles => roles.SequenceEqual(new[] { Role.Member })),
+                Arg.Any<CancellationToken>()
+            );
+    }
+
+    [Fact]
+    public async Task PassesOnAFailedRoleAdditionAndPublishesNothing()
+    {
+        CreationReturns(UserId.From(5));
+        RoleAdditionReturns(Result.Error());
+
+        var result = await Register();
+
+        result.Status.ShouldBe(ResultStatus.Error);
+        await _mediator
+            .DidNotReceive()
+            .Publish(Arg.Any<UserRegisteredDomainEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task PassesOnAConflictAndPublishesNothing()
     {
         CreationReturns(UserErrors.EmailNotUnique);
@@ -69,6 +107,9 @@ public class RegisterUserHandlerHandle
         var result = await Register();
 
         result.Status.ShouldBe(ResultStatus.Conflict);
+        await _identity
+            .DidNotReceiveWithAnyArgs()
+            .AddToRolesAsync(UserId.From(1), [], CancellationToken.None);
         await _mediator
             .DidNotReceive()
             .Publish(Arg.Any<UserRegisteredDomainEvent>(), Arg.Any<CancellationToken>());

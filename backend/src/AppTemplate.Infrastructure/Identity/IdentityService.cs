@@ -10,7 +10,6 @@ using Ardalis.Result;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -31,103 +30,84 @@ public sealed class IdentityService(
     IOptions<AccountLinkSettings> _links
 ) : IIdentityService
 {
-    public Task<Result<UserId>> CreateUserAsync(
+    public async Task<Result<UserId>> CreateUserAsync(
         UserName name,
         EmailAddress email,
         string password,
-        CancellationToken cancellationToken
-    ) =>
-        CreateUserAsync(
-            name,
-            email,
-            password,
-            Role.Member,
-            emailConfirmed: false,
-            cancellationToken
-        );
-
-    public Task<Result<UserId>> CreateUserAsync(
-        UserName name,
-        EmailAddress email,
-        string password,
-        Role role,
-        bool emailConfirmed,
-        CancellationToken cancellationToken
-    ) =>
-        // The transaction runs inside the execution strategy: Aspire's EF integration retries
-        // transient failures, and a retrying strategy only accepts a transaction it can replay
-        // as a whole.
-        _db
-            .Database.CreateExecutionStrategy()
-            .ExecuteAsync(
-                attemptCancellation =>
-                    CreateInTransactionAsync(
-                        name,
-                        email,
-                        password,
-                        role,
-                        emailConfirmed,
-                        attemptCancellation
-                    ),
-                cancellationToken
-            );
-
-    /// <summary>
-    /// The profile first, for its id; the account then points at it. One transaction, so a
-    /// failure leaves neither behind. Starts from a clean change tracker, so a retried attempt
-    /// doesn't carry entities from the failed one.
-    /// </summary>
-    private async Task<Result<UserId>> CreateInTransactionAsync(
-        UserName name,
-        EmailAddress email,
-        string password,
-        Role role,
-        bool emailConfirmed,
         CancellationToken cancellationToken
     )
     {
-        _db.ChangeTracker.Clear();
-        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        // The account carries its profile: Identity validates it first (a taken email, the
+        // password rules), then its store adds both and saves them in one SaveChanges, so a
+        // refused account leaves no profile behind.
+        var profile = User.Create(name);
+        var account = new ApplicationUser
+        {
+            Profile = profile,
+            // The email is the user name, as Identity's own endpoints do; its unique index
+            // stops two concurrent registrations with one address.
+            UserName = email.Value,
+            Email = email.Value,
+        };
+
         try
         {
-            var profile = User.Create(name);
-            _db.UserProfiles.Add(profile);
-            await _db.SaveChangesAsync(cancellationToken);
-
-            var account = new ApplicationUser
-            {
-                ProfileId = profile.Id,
-                // The email is the user name, as Identity's own endpoints do; its unique index
-                // stops two concurrent registrations with one address.
-                UserName = email.Value,
-                Email = email.Value,
-                EmailConfirmed = emailConfirmed,
-            };
             var created = await _userManager.CreateAsync(account, password);
-            if (!created.Succeeded)
-            {
-                return Abandon(created.ToApplicationResult());
-            }
-
-            var inRole = await _userManager.AddToRoleAsync(account, role.Name);
-            if (!inRole.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    $"The new account could not join the '{role.Name}' role: {string.Join(", ", inRole.Errors.Select(error => error.Code))}"
-                );
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-            return profile.Id;
+            return created.Succeeded ? profile.Id : created.ToApplicationResult();
         }
         catch (DbUpdateException exception)
             when (exception.InnerException
                     is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation }
             )
         {
-            // Another registration with this email won the race.
-            return Abandon(UserErrors.EmailNotUnique);
+            // Another registration with this email won the race. Nothing was saved; stop
+            // tracking both, so a later save in this scope doesn't try them again.
+            _db.Entry(account).State = EntityState.Detached;
+            _db.Entry(profile).State = EntityState.Detached;
+            return UserErrors.EmailNotUnique;
         }
+    }
+
+    public async Task<Result> AddToRolesAsync(
+        UserId userId,
+        IEnumerable<Role> roles,
+        CancellationToken cancellationToken
+    )
+    {
+        var account = await FindAsync(userId, cancellationToken);
+        if (account is null)
+        {
+            return Result.NotFound();
+        }
+
+        var current = await _userManager.GetRolesAsync(account);
+        var missing = roles.Select(role => role.Name).Distinct().Except(current).ToList();
+        if (missing.Count == 0)
+        {
+            return Result.Success();
+        }
+
+        var added = await _userManager.AddToRolesAsync(account, missing);
+        return added.ToApplicationResult();
+    }
+
+    // Avoid using this function. Created for seeding data and tests
+    // TODO: Think of a better way to seed data and tests and remove this function
+    public async Task<Result> MarkEmailConfirmedAsync(
+        UserId userId,
+        CancellationToken cancellationToken
+    )
+    {
+        var account = await FindAsync(userId, cancellationToken);
+        if (account is null)
+        {
+            return Result.NotFound();
+        }
+
+        // Identity's own confirmation, with a code made here instead of emailed.
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(account);
+        var confirmed = await _userManager.ConfirmEmailAsync(account, token);
+        return confirmed.ToApplicationResult();
     }
 
     public async Task<Result<AccountDto>> CheckPasswordAsync(
@@ -337,12 +317,5 @@ public sealed class IdentityService(
         );
 
         await _accountEmails.SendConfirmationLinkAsync(account, account.Email!, link);
-    }
-
-    /// <summary>Drops what a failed creation left tracked; the transaction rolls back on dispose.</summary>
-    private Result<UserId> Abandon(Result result)
-    {
-        _db.ChangeTracker.Clear();
-        return result;
     }
 }
