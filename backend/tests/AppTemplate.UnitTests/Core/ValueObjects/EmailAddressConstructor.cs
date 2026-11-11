@@ -23,15 +23,4 @@ public class EmailAddressConstructor
     {
         new EmailAddress(" Ada@Example.COM ").ShouldBe(new EmailAddress("ada@example.com"));
     }
-
-    [Theory]
-    [InlineData("ada@example.com", true)]
-    [InlineData(" Ada@Example.com ", true)]
-    [InlineData("ada@example", false)]
-    [InlineData("", false)]
-    [InlineData(null, false)]
-    public void IsValidMatchesWhatTheConstructorAccepts(string? value, bool expected)
-    {
-        EmailAddress.IsValid(value).ShouldBe(expected);
-    }
 }

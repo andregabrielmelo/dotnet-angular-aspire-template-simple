@@ -8,7 +8,7 @@ import { ApiSchema } from '../api/api-schema';
 export type CurrentUser = ApiSchema<'CurrentUserResponse'>;
 
 /**
- * The signed-in user's application profile and the permissions their access token grants,
+ * The signed-in user's application profile and the permissions their roles grant,
  * from GET /api/users/me. Loaded once and cached until the session changes.
  */
 @Injectable({ providedIn: 'root' })

@@ -1,49 +1,21 @@
-using AppTemplate.Core.Aggregates.RefreshTokenAggregate;
-using AppTemplate.Core.Aggregates.RefreshTokenAggregate.Specifications;
-using AppTemplate.UseCases.Authentication;
-using AppTemplate.UseCases.Authentication.Logout;
+using AppTemplate.UseCases.Authentication.Commands.Logout;
+using AppTemplate.UseCases.Interfaces;
 
 namespace AppTemplate.UnitTests.UseCases.Authentication;
 
 public class LogoutHandlerHandle
 {
-    private readonly IRepository<RefreshToken> _refreshTokens = Substitute.For<
-        IRepository<RefreshToken>
-    >();
-
-    private Task<Result> Logout(string? token) =>
-        new LogoutHandler(_refreshTokens)
-            .Handle(new LogoutCommand(token), TestContext.Current.CancellationToken)
-            .AsTask();
-
     [Fact]
-    public async Task DeletesTheSessionsRefreshToken()
+    public async Task SignsOut()
     {
-        var token = RefreshToken.Create(
-            UserId.From(1),
-            RefreshTokenHash.Of("plain-refresh-token"),
-            TestUsers.SecurityStamp,
-            DateTimeOffset.UtcNow.AddDays(1)
+        var identity = Substitute.For<IIdentityService>();
+
+        var result = await new LogoutHandler(identity).Handle(
+            new LogoutCommand(),
+            TestContext.Current.CancellationToken
         );
-        _refreshTokens
-            .FirstOrDefaultAsync(
-                Arg.Any<RefreshTokenByHashSpecification>(),
-                Arg.Any<CancellationToken>()
-            )
-            .Returns(token);
 
-        (await Logout("plain-refresh-token")).IsSuccess.ShouldBeTrue();
-        await _refreshTokens.Received(1).DeleteAsync(token, Arg.Any<CancellationToken>());
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("unknown-token")]
-    public async Task SucceedsWithNothingToDelete(string? token)
-    {
-        (await Logout(token)).IsSuccess.ShouldBeTrue();
-        await _refreshTokens
-            .DidNotReceive()
-            .DeleteAsync(Arg.Any<RefreshToken>(), Arg.Any<CancellationToken>());
+        result.IsSuccess.ShouldBeTrue();
+        await identity.Received(1).SignOutAsync();
     }
 }

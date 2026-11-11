@@ -1,6 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
-using AppTemplate.UseCases.Authentication;
-using AppTemplate.UseCases.Users.Register;
+using AppTemplate.UseCases.Interfaces;
+using AppTemplate.UseCases.Users.Handlers;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 
@@ -12,7 +12,7 @@ public class SendConfirmationOnUserRegisteredHandle
         var identity = Substitute.For<IIdentityService>();
 
         await new SendConfirmationOnUserRegistered(identity).Handle(
-            new UserRegisteredDomainEvent(UserId.From(5)),
+            new UserRegisteredDomainEvent(UserId.From(5), TestUsers.Name, TestUsers.Email),
             TestContext.Current.CancellationToken
         );
 

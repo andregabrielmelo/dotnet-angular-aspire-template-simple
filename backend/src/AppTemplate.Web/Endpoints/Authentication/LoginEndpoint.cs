@@ -1,8 +1,9 @@
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication.Login;
+using AppTemplate.UseCases.Authentication.Commands.Login;
+using AppTemplate.UseCases.Constants;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Authentication;
+namespace AppTemplate.Web.Endpoints.Authentication;
 
 public sealed class LoginRequest
 {
@@ -11,12 +12,11 @@ public sealed class LoginRequest
 }
 
 /// <summary>
-/// Signs in, as in FastEndpoints' refresh token docs: Identity checks the credentials (with
-/// lockout), then <c>CreateTokenWith&lt;UserTokenService&gt;</c> creates the token pair. The access token goes in
-/// the body; the refresh token only in its HttpOnly cookie.
+/// Signs in: Identity checks the credentials (with lockout) and sets its session cookie, which the
+/// browser then sends with every request (ADR 015).
 /// </summary>
-public class LoginEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
-    : Endpoint<LoginRequest, Results<Ok<AccessTokenResponse>, ProblemHttpResult>>
+public class LoginEndpoint(IMediator _mediator)
+    : Endpoint<LoginRequest, Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
     {
@@ -27,14 +27,14 @@ public class LoginEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
         {
             s.Summary = "Sign in";
             s.Description =
-                "Returns an access token, to send as Authorization: Bearer, and sets the refresh "
-                + "token cookie used by POST /auth/refresh-token.";
+                "Sets the session cookie (HttpOnly, SameSite=Strict), which signs in every later "
+                + "request from this browser.";
             s.ExampleRequest = new LoginRequest
             {
                 Email = "ada@example.com",
                 Password = "correct horse battery staple",
             };
-            s.Responses[200] = "Signed in";
+            s.Responses[204] = "Signed in; the response sets the session cookie";
             s.Responses[400] = "Invalid request data";
             s.Responses[401] = "Wrong email or password, or too many failed attempts";
             s.Responses[403] = "The password is right, but the email isn't confirmed yet";
@@ -45,14 +45,14 @@ public class LoginEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
         Description(builder =>
             builder
                 .Accepts<LoginRequest>()
-                .Produces<AccessTokenResponse>(200, "application/json")
+                .Produces(204)
                 .ProducesProblem(400)
                 .ProducesProblem(401)
                 .ProducesProblem(403)
         );
     }
 
-    public override async Task<Results<Ok<AccessTokenResponse>, ProblemHttpResult>> ExecuteAsync(
+    public override async Task<Results<NoContent, ProblemHttpResult>> ExecuteAsync(
         LoginRequest request,
         CancellationToken cancellationToken
     )
@@ -61,18 +61,7 @@ public class LoginEndpoint(IMediator _mediator, RefreshTokenCookie _cookie)
             new LoginCommand(new EmailAddress(request.Email), request.Password),
             cancellationToken
         );
-        if (!result.IsSuccess)
-        {
-            return result.ToProblem();
-        }
-
-        var tokens = await CreateTokenWith<UserTokenService, IssuedTokens>(
-            result.Value.Id.Value.ToString(),
-            privileges => privileges.AddUser(result.Value)
-        );
-        _cookie.Append(HttpContext, tokens);
-
-        return TypedResults.Ok(AccessTokenResponse.From(tokens));
+        return result.IsSuccess ? TypedResults.NoContent() : result.ToProblem();
     }
 }
 
@@ -80,7 +69,17 @@ public sealed class LoginValidator : Validator<LoginRequest>
 {
     public LoginValidator()
     {
-        RuleFor(x => x.Email).ValidEmail();
-        RuleFor(x => x.Password).ProvidedPassword();
+        RuleFor(x => x.Email).EmailAddress().WithMessage("The email address is invalid.");
+        RuleFor(x => x.Password)
+            .NotEmpty()
+            .WithMessage("The password is required.")
+            .MinimumLength(PasswordConstants.MIN_LENGTH)
+            .WithMessage(
+                $"The password must be at least {PasswordConstants.MIN_LENGTH} characters long."
+            )
+            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .WithMessage(
+                $"The current password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+            );
     }
 }

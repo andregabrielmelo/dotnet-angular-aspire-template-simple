@@ -1,10 +1,15 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Authorization;
+using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data;
 
-/// <summary>Development-only demo data (see DatabaseConfigurations.StartDatabase).</summary>
+/// <summary>
+/// Development-only demo data (see DatabaseConfigurations.StartDatabase). The accounts are created
+/// confirmed, so they can sign in without an email round trip.
+/// </summary>
 public class SeedData
 {
     public const int NUMBER_OF_SEED_USERS = 25;
@@ -28,7 +33,6 @@ public class SeedData
         await PopulateTestDataAsync(identity, cancellationToken);
     }
 
-    /// <summary>Accounts are created confirmed, so they can sign in without an email round trip.</summary>
     public static async Task PopulateTestDataAsync(
         IdentityService identity,
         CancellationToken cancellationToken = default
@@ -39,7 +43,7 @@ public class SeedData
             "Admin",
             AdminEmail,
             AdminPassword,
-            Roles.Admin,
+            Role.Admin,
             cancellationToken
         );
 
@@ -50,7 +54,7 @@ public class SeedData
                 $"User {i}",
                 $"user{i}@example.com",
                 FixturePassword,
-                Roles.Member,
+                Role.Member,
                 cancellationToken
             );
         }
@@ -61,11 +65,11 @@ public class SeedData
         string name,
         string email,
         string password,
-        string role,
+        Role role,
         CancellationToken cancellationToken
     )
     {
-        var created = await identity.CreateAccountAsync(
+        var created = await identity.CreateUserAsync(
             UserName.From(name),
             new EmailAddress(email),
             password,

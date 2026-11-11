@@ -1,4 +1,4 @@
-using AppTemplate.Web.Users;
+using AppTemplate.Web.Endpoints.Users;
 
 namespace AppTemplate.FunctionalTests.ApiEndpoints;
 
@@ -10,7 +10,7 @@ public class UserGetById(CustomWebApplicationFactory<Program> factory)
     public async Task ReturnsTheUserGivenUsersRead()
     {
         var target = await factory.CreateUserAsync();
-        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
 
         var user = await admin.Client.GetAndDeserializeAsync<UserRecord>(
             $"/users/{target.Id.Value}"
@@ -32,7 +32,7 @@ public class UserGetById(CustomWebApplicationFactory<Program> factory)
     [Fact]
     public async Task ReturnsNotFoundGivenAnUnknownId()
     {
-        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
 
         await admin.Client.GetAndEnsureNotFoundAsync("/users/999999");
     }
@@ -40,7 +40,7 @@ public class UserGetById(CustomWebApplicationFactory<Program> factory)
     [Fact]
     public async Task ReturnsBadRequestGivenIdZero()
     {
-        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
 
         await admin.Client.GetAndEnsureBadRequestAsync("/users/0");
     }

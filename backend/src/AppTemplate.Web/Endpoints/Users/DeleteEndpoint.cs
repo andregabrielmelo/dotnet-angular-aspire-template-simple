@@ -1,9 +1,9 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Users.Delete;
+using AppTemplate.UseCases.Users.Commands.Delete;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Users;
+namespace AppTemplate.Web.Endpoints.Users;
 
 public sealed class DeleteUserRequest
 {
@@ -25,7 +25,7 @@ public class DeleteEndpoint(IMediator _mediator)
             s.ExampleRequest = new DeleteUserRequest { UserId = 1 };
 
             s.Responses[400] = "Invalid request data";
-            s.Responses[403] = $"Requires the {Permission.UsersDelete} permission";
+            s.Responses[403] = $"Requires the {Permission.UsersDelete.Value} permission";
             s.Responses[404] = "User not found";
         });
 

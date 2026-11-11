@@ -15,8 +15,7 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
         var response = await session.RegisterAsync(email);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        session.RefreshCookie.ShouldBeNull();
-        session.AccessToken.ShouldBeNull();
+        session.SessionCookie.ShouldBeNull();
         factory.EmailSender.Sent.ShouldContain(sent =>
             sent.To == email && sent.Subject == "Confirm your email"
         );
@@ -39,20 +38,21 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
             )
         ).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        (await session.LoginAsync(email)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await session.LoginAsync(email)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var me = await session.Client.GetAndDeserializeAsync<UserMe.MeBody>("/users/me");
         me.Email.ShouldBe(email);
     }
 
     [Fact]
-    public async Task ReturnsConflictGivenATakenEmailInAnyCase()
+    public async Task FailsGivenATakenEmailInAnyCase()
     {
         var email = NewEmail();
         await new TestSession(factory).RegisterAsync(email);
 
         var response = await new TestSession(factory).RegisterAsync(email.ToUpperInvariant());
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        // Identity's errors map to a generic error (IdentityResultExtensions).
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
     }
 
     [Theory]

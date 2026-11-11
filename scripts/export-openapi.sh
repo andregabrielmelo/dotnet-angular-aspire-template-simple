@@ -17,7 +17,6 @@ dotnet run --project src/AppTemplate.Web --configuration Release --no-launch-pro
   --export-swagger-docs true \
   --urls=http://127.0.0.1:0 \
   "--ConnectionStrings:apptemplate=Host=openapi-export-unused" \
-  --Jwt:SigningKey=openapi-export-placeholder-signing-key-not-a-secret \
   --Mailserver:FromAddress=openapi-export@example.invalid \
   --AccountLinks:ClientUrl=https://openapi-export.invalid
 

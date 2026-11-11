@@ -8,7 +8,7 @@ public class UserDelete(CustomWebApplicationFactory<Program> factory)
     public async Task DeletesTheUserGivenUsersDelete()
     {
         var target = await factory.CreateUserAsync();
-        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
 
         await admin.Client.DeleteAndEnsureNoContentAsync($"/users/{target.Id.Value}");
 

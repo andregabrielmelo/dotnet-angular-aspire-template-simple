@@ -1,6 +1,7 @@
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Update;
+using AppTemplate.UseCases.Users.Commands.Update;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 

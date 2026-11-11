@@ -16,42 +16,19 @@ public class EfRepositoryDelete(PostgresDatabaseFixture database) : BaseEfRepoTe
     }
 
     [Fact]
-    public async Task DeletingAUserDeletesTheirRefreshTokens()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var user = NewUser();
-        await GetRepository<User>().AddAsync(user, cancellationToken);
-        var token = NewRefreshToken(user.Id);
-        await GetRepository<RefreshToken>().AddAsync(token, cancellationToken);
-
-        await GetRepository<User>().DeleteAsync(user, cancellationToken);
-
-        (
-            await DbContext.RefreshTokens.AnyAsync(
-                stored => stored.Id == token.Id,
-                cancellationToken
-            )
-        ).ShouldBeFalse();
-    }
-
-    [Fact]
     public async Task DeletingARowAnotherRequestDeletedFirstIsAConcurrencyConflict()
     {
-        // How a refresh token is used once: of two requests deleting it, only one succeeds.
+        // Of two requests deleting the same user, only one succeeds.
         var cancellationToken = TestContext.Current.CancellationToken;
         var user = NewUser();
         await GetRepository<User>().AddAsync(user, cancellationToken);
-        var token = NewRefreshToken(user.Id);
-        await GetRepository<RefreshToken>().AddAsync(token, cancellationToken);
 
         using var first = NewScope();
         using var second = NewScope();
-        var firstRepository = first.ServiceProvider.GetRequiredService<IRepository<RefreshToken>>();
-        var secondRepository = second.ServiceProvider.GetRequiredService<
-            IRepository<RefreshToken>
-        >();
-        var firstCopy = await firstRepository.GetByIdAsync(token.Id, cancellationToken);
-        var secondCopy = await secondRepository.GetByIdAsync(token.Id, cancellationToken);
+        var firstRepository = first.ServiceProvider.GetRequiredService<IRepository<User>>();
+        var secondRepository = second.ServiceProvider.GetRequiredService<IRepository<User>>();
+        var firstCopy = await firstRepository.GetByIdAsync(user.Id, cancellationToken);
+        var secondCopy = await secondRepository.GetByIdAsync(user.Id, cancellationToken);
 
         await firstRepository.DeleteAsync(firstCopy!, cancellationToken);
 

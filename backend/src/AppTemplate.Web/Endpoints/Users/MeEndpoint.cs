@@ -1,8 +1,9 @@
 ﻿using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Users.GetCurrent;
+using AppTemplate.UseCases.Interfaces;
+using AppTemplate.UseCases.Users.Queries.GetCurrent;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Users;
+namespace AppTemplate.Web.Endpoints.Users;
 
 /// <param name="Permissions">What the caller may do - lets clients show or hide actions. The API still enforces every permission itself.</param>
 public sealed record CurrentUserResponse(
@@ -12,7 +13,7 @@ public sealed record CurrentUserResponse(
     IReadOnlyList<string> Permissions
 );
 
-/// <summary>The caller's own profile, identified by the access token's <c>sub</c>.</summary>
+/// <summary>The caller's own profile, identified by the session cookie.</summary>
 public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
     : EndpointWithoutRequest<Results<Ok<CurrentUserResponse>, ProblemHttpResult>>
 {
@@ -24,16 +25,16 @@ public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
         {
             s.Summary = "Get the current user";
             s.Description =
-                "Returns the authenticated caller's profile and the permissions their access token grants.";
+                "Returns the authenticated caller's profile and the permissions their roles grant.";
             s.ResponseExamples[200] = new CurrentUserResponse(
                 1,
                 "Sample User",
                 "sample@example.com",
-                [Permission.UsersRead]
+                [Permission.UsersRead.Value]
             );
 
             s.Responses[200] = "Current user returned successfully";
-            s.Responses[401] = "Missing or invalid access token";
+            s.Responses[401] = "Not signed in";
             s.Responses[404] = "The user was deleted";
         });
 

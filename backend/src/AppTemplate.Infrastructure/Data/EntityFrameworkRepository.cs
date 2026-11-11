@@ -1,4 +1,5 @@
 using Ardalis.Specification.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace AppTemplate.Infrastructure.Data;
@@ -10,6 +11,7 @@ namespace AppTemplate.Infrastructure.Data;
 /// </summary>
 public class EntityFrameworkRepository<T>(ApplicationDatabaseContext dbContext)
     : RepositoryBase<T>(dbContext),
+        IReadRepository<T>,
         IRepository<T>
     where T : class, IAggregateRoot
 {

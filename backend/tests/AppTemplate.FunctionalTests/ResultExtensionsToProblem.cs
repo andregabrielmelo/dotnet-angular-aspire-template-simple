@@ -2,7 +2,6 @@ using System.Text.Json;
 using AppTemplate.Web.Extensions;
 using Ardalis.Result;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AppTemplate.FunctionalTests;
 

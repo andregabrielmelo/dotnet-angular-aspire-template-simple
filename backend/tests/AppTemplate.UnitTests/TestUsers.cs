@@ -8,7 +8,6 @@ public static class TestUsers
 {
     public static readonly UserName Name = UserName.From("Ada Lovelace");
     public static readonly EmailAddress Email = new("ada@example.com");
-    public const string SecurityStamp = "STAMP-1";
 
     public static User Saved(int id = 1)
     {
@@ -17,10 +16,6 @@ public static class TestUsers
         return user;
     }
 
-    public static AccountDto Account(
-        int id = 1,
-        string role = Roles.Member,
-        string securityStamp = SecurityStamp,
-        bool isLockedOut = false
-    ) => new(UserId.From(id), Email, EmailConfirmed: true, [role], securityStamp, isLockedOut);
+    public static AccountDto Account(int id = 1, Role? role = null) =>
+        new(UserId.From(id), Email, EmailConfirmed: true, [(role ?? Role.Member).Name]);
 }

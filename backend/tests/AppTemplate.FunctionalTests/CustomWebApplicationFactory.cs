@@ -11,16 +11,13 @@ namespace AppTemplate.FunctionalTests;
 /// <summary>
 /// The real API - HTTP -> FastEndpoints -> Mediator -> EF Core -> Postgres - against a fresh
 /// database in the shared Postgres container (<see cref="PostgresTestDatabase"/>), built by the
-/// real migrations. Tests sign in for real (<see cref="TestSession"/>): the access token is a
-/// real JWT, and the refresh token a real cookie. Emails go to <see cref="EmailSender"/>, and
-/// <see cref="Time"/> is the clock token lifetimes are computed with.
+/// real migrations. Tests sign in for real (<see cref="TestSession"/>), with Identity's session
+/// cookie. Emails go to <see cref="EmailSender"/>, and <see cref="Time"/> is the clock the cookie
+/// and its security stamp checks are timed with.
 /// </summary>
 public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProgram>, IAsyncLifetime
     where TProgram : class
 {
-    /// <summary>A test-only key; it signs nothing outside this host.</summary>
-    public const string SigningKey = "functional-tests-signing-key-not-a-real-secret";
-
     /// <summary>The password of users made by <see cref="CreateUserAsync"/>.</summary>
     public const string Password = "correct horse battery staple";
 
@@ -54,7 +51,6 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
                     "The factory is used before InitializeAsync - use it as an xUnit fixture."
                 )
         );
-        builder.UseSetting("Jwt:SigningKey", SigningKey);
         builder.UseSetting("Mailserver:FromAddress", "noreply@app.test");
         builder.UseSetting("AccountLinks:ClientUrl", ClientUrl);
 
@@ -73,20 +69,20 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
 
     /// <summary>
     /// Saves a user (profile and confirmed account, through <see cref="IdentityService"/>) who can
-    /// sign in with <see cref="Password"/>.
+    /// sign in with <see cref="Password"/>; a <see cref="Role.Member"/> unless told otherwise.
     /// </summary>
-    public async Task<TestUser> CreateUserAsync(string role = Roles.Member, string? email = null)
+    public async Task<TestUser> CreateUserAsync(Role? role = null, string? email = null)
     {
         using var scope = Services.CreateScope();
         var address = new EmailAddress(email ?? $"user-{Guid.NewGuid():N}@example.com");
         var name = UserName.From("Ada Lovelace");
         var created = await scope
             .ServiceProvider.GetRequiredService<IdentityService>()
-            .CreateAccountAsync(
+            .CreateUserAsync(
                 name,
                 address,
                 Password,
-                role,
+                role ?? Role.Member,
                 emailConfirmed: true,
                 CancellationToken.None
             );
@@ -95,12 +91,12 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
     }
 
     /// <summary>Gives the user's account another role, as an administrator would.</summary>
-    public async Task AddToRoleAsync(TestUser user, string role)
+    public async Task AddToRoleAsync(TestUser user, Role role)
     {
         using var scope = Services.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var account = await users.Users.SingleAsync(account => account.ProfileId == user.Id);
-        (await users.AddToRoleAsync(account, role)).Succeeded.ShouldBeTrue();
+        (await users.AddToRoleAsync(account, role.Name)).Succeeded.ShouldBeTrue();
     }
 }
 
@@ -109,10 +105,10 @@ public sealed record TestUser(UserId Id, UserName Name, EmailAddress Email);
 
 public static class CustomWebApplicationFactoryExtensions
 {
-    /// <summary>A new user, signed in: the session's client sends their access token.</summary>
+    /// <summary>A new user, signed in: the session's client sends their session cookie.</summary>
     public static async Task<(TestUser User, TestSession Session)> CreateSignedInSessionAsync(
         this CustomWebApplicationFactory<Program> factory,
-        string role = Roles.Member
+        Role? role = null
     )
     {
         var user = await factory.CreateUserAsync(role);

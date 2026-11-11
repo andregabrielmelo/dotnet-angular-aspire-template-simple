@@ -45,6 +45,7 @@ if (builder.Environment.IsDevelopment())
     var smtp = mailpit.GetEndpoint("smtp");
     api.WithEnvironment("Mailserver__Hostname", smtp.Property(EndpointProperty.Host))
         .WithEnvironment("Mailserver__Port", smtp.Property(EndpointProperty.Port))
+        .WithEnvironment("Mailserver__FromAddress", "noreply@apptemplate.local")
         .WaitFor(mailpit);
 }
 else
@@ -52,9 +53,11 @@ else
     // The SMTP server the API's emails (IEmailSender) go to.
     var mailserverHostname = builder.AddParameter("mailserver-hostname");
     var mailserverPort = builder.AddParameter("mailserver-port");
+    var mailserverFromAddress = builder.AddParameter("mailserver-from-address");
 
     api.WithEnvironment("Mailserver__Hostname", mailserverHostname)
-        .WithEnvironment("Mailserver__Port", mailserverPort);
+        .WithEnvironment("Mailserver__Port", mailserverPort)
+        .WithEnvironment("Mailserver__FromAddress", mailserverFromAddress);
 }
 
 builder.Build().Run();

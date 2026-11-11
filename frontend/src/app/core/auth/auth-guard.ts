@@ -3,7 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from '../../features/auth/auth-service';
 
-/** Lets signed-in users through, after restoring the session from the refresh cookie if needed. */
+/** Lets signed-in users through: the API knows the session (its cookie) or answers 401. */
 export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
@@ -11,7 +11,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
   return authService
     .ensureSession()
     .pipe(
-      map((signedIn) =>
+      map((signedIn: boolean) =>
         signedIn
           ? true
           : router.createUrlTree(['/auth'], { queryParams: { returnUrl: state.url } }),

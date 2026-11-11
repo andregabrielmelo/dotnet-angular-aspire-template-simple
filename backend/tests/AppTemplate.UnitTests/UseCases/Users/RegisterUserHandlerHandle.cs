@@ -1,6 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
-using AppTemplate.UseCases.Authentication;
-using AppTemplate.UseCases.Users.Register;
+using AppTemplate.UseCases.Interfaces;
+using AppTemplate.UseCases.Users.Commands.Register;
 using Mediator;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
@@ -18,7 +18,7 @@ public class RegisterUserHandlerHandle
 
     private void CreationReturns(Result<UserId> result) =>
         _identity
-            .CreateAccountAsync(
+            .CreateUserAsync(
                 TestUsers.Name,
                 TestUsers.Email,
                 "secret-password",
@@ -43,7 +43,7 @@ public class RegisterUserHandlerHandle
     }
 
     [Fact]
-    public async Task PublishesUserRegisteredWithTheNewId()
+    public async Task PublishesUserRegisteredWithTheIdNameAndEmail()
     {
         CreationReturns(UserId.From(5));
 
@@ -52,7 +52,11 @@ public class RegisterUserHandlerHandle
         await _mediator
             .Received(1)
             .Publish(
-                Arg.Is<UserRegisteredDomainEvent>(raised => raised.UserId == UserId.From(5)),
+                Arg.Is<UserRegisteredDomainEvent>(raised =>
+                    raised.UserId == UserId.From(5)
+                    && raised.Name == TestUsers.Name
+                    && raised.Email == TestUsers.Email
+                ),
                 Arg.Any<CancellationToken>()
             );
     }
@@ -60,7 +64,7 @@ public class RegisterUserHandlerHandle
     [Fact]
     public async Task PassesOnAConflictAndPublishesNothing()
     {
-        CreationReturns(Result.Conflict("An account with this email already exists"));
+        CreationReturns(UserErrors.EmailNotUnique);
 
         var result = await Register();
 

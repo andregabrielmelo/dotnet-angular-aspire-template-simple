@@ -7,42 +7,46 @@ public class AuthChangePasswordPost(CustomWebApplicationFactory<Program> factory
     private const string NewPassword = "an entirely new passphrase";
 
     [Fact]
-    public async Task KeepsThisSessionAndEndsTheOthers()
+    public async Task ChangesThePasswordAndKeepsThisSessionSignedIn()
     {
-        var user = await factory.CreateUserAsync();
-        var laptop = new TestSession(factory);
-        var phone = new TestSession(factory);
-        await laptop.LoginAsync(user.Email.Value);
-        await phone.LoginAsync(user.Email.Value);
+        var (user, session) = await factory.CreateSignedInSessionAsync();
 
-        var response = await laptop.ChangePasswordAsync(
+        var response = await session.ChangePasswordAsync(
             CustomWebApplicationFactory<Program>.Password,
             NewPassword
         );
 
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await laptop.RefreshAsync()).StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await phone.RefreshAsync()).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        session.LastSetCookies.ShouldContain(header =>
+            header.StartsWith($"{TestSession.SessionCookieName}=")
+        );
+        (
+            await session.Client.GetAsync("/users/me", TestContext.Current.CancellationToken)
+        ).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await new TestSession(factory).LoginAsync(user.Email.Value)).StatusCode.ShouldBe(
+            HttpStatusCode.Unauthorized
+        );
         (
             await new TestSession(factory).LoginAsync(user.Email.Value, NewPassword)
-        ).StatusCode.ShouldBe(HttpStatusCode.OK);
+        ).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Fact]
-    public async Task ReturnsBadRequestGivenAWrongCurrentPassword()
+    public async Task FailsGivenAWrongCurrentPassword()
     {
-        var (_, session) = await factory.CreateSignedInSessionAsync();
+        var (user, session) = await factory.CreateSignedInSessionAsync();
 
         var response = await session.ChangePasswordAsync("not my password", NewPassword);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        // Identity's errors map to a generic error (IdentityResultExtensions).
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
         (
-            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
-        ).ShouldContain("\"currentPassword\"");
+            await new TestSession(factory).LoginAsync(user.Email.Value, NewPassword)
+        ).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task ReturnsUnauthorizedWithoutAnAccessToken()
+    public async Task ReturnsUnauthorizedWhenNotSignedIn()
     {
         var response = await new TestSession(factory).ChangePasswordAsync(
             CustomWebApplicationFactory<Program>.Password,

@@ -11,10 +11,6 @@ public class EmailAddress : ValueObject
     );
     public string Value { get; private set; }
 
-    /// <summary>Whether <paramref name="value"/> makes a valid address; for request validators.</summary>
-    public static bool IsValid(string? value) =>
-        !string.IsNullOrWhiteSpace(value) && EmailRegex.IsMatch(value.Trim());
-
     public EmailAddress(string value)
     {
         if (string.IsNullOrWhiteSpace(value))

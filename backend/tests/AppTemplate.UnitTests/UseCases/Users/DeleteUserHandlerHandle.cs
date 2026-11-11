@@ -1,4 +1,4 @@
-using AppTemplate.UseCases.Users.Delete;
+using AppTemplate.UseCases.Users.Commands.Delete;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 

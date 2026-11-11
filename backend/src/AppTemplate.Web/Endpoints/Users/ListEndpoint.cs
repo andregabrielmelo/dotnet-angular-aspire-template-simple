@@ -1,9 +1,10 @@
 ﻿using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Constants;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.List;
+using AppTemplate.UseCases.Users.Queries.List;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Users;
+namespace AppTemplate.Web.Endpoints.Users;
 
 public sealed class ListUsersRequest
 {
@@ -11,7 +12,7 @@ public sealed class ListUsersRequest
     public int Page { get; init; } = 1;
 
     [BindFrom("per_page")]
-    public int PerPage { get; init; } = Constants.DEFAULT_PAGE_SIZE;
+    public int PerPage { get; init; } = PaginationConstants.DEFAULT_PAGE_SIZE;
 }
 
 public record UserListResponse : UseCases.PagedResult<UserRecord>
@@ -56,10 +57,10 @@ public class ListEndpoint(IMediator mediator)
 
             s.Params["page"] = "1-based page index (default 1)";
             s.Params["per_page"] =
-                $"Page size 1–{Constants.MAX_PAGE_SIZE} (default {Constants.DEFAULT_PAGE_SIZE})";
+                $"Page size 1–{PaginationConstants.MAX_PAGE_SIZE} (default {PaginationConstants.DEFAULT_PAGE_SIZE})";
 
             s.Responses[200] = "Paginated list of users returned successfully";
-            s.Responses[403] = $"Requires the {Permission.UsersRead} permission";
+            s.Responses[403] = $"Requires the {Permission.UsersRead.Value} permission";
             s.Responses[400] = "Invalid pagination parameters";
         });
 
@@ -89,32 +90,15 @@ public class ListEndpoint(IMediator mediator)
         }
 
         var pagedResult = result.Value;
-        AddLinkHeader(pagedResult.Page, pagedResult.PerPage, pagedResult.TotalPages);
+
+        HttpContext.AddPaginationLinks(
+            pagedResult.Page,
+            pagedResult.PerPage,
+            pagedResult.TotalPages
+        );
 
         var response = Map.FromEntity(pagedResult);
         await Send.OkAsync(response, cancellationToken);
-    }
-
-    private void AddLinkHeader(int page, int perPage, int totalPages)
-    {
-        var baseUrl =
-            $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}{HttpContext.Request.Path}";
-        string Link(string rel, int p) => $"<{baseUrl}?page={p}&per_page={perPage}>; rel=\"{rel}\"";
-
-        var parts = new List<string>();
-        if (page > 1)
-        {
-            parts.Add(Link("first", 1));
-            parts.Add(Link("prev", page - 1));
-        }
-        if (page < totalPages)
-        {
-            parts.Add(Link("next", page + 1));
-            parts.Add(Link("last", totalPages));
-        }
-
-        if (parts.Count > 0)
-            HttpContext.Response.Headers["Link"] = string.Join(", ", parts);
     }
 }
 
@@ -125,8 +109,8 @@ public sealed class ListUsersValidator : Validator<ListUsersRequest>
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1).WithMessage("page must be >= 1");
 
         RuleFor(x => x.PerPage)
-            .InclusiveBetween(1, Constants.MAX_PAGE_SIZE)
-            .WithMessage($"per_page must be between 1 and {Constants.MAX_PAGE_SIZE}");
+            .InclusiveBetween(1, PaginationConstants.MAX_PAGE_SIZE)
+            .WithMessage($"per_page must be between 1 and {PaginationConstants.MAX_PAGE_SIZE}");
     }
 }
 

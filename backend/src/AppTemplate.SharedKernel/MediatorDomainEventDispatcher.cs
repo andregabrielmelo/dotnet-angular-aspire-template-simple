@@ -15,6 +15,11 @@ public partial class MediatorDomainEventDispatcher(
     {
         foreach (var entity in entitiesWithEvents)
         {
+            if (entity is not IHasDomainEvents hasDomainEvents)
+            {
+                LogNotHasDomainEvents(logger, entity.GetType().Name);
+            }
+
             IDomainEvent[] events = entity.DomainEvents.ToArray();
             entity.ClearDomainEvents();
 
@@ -41,4 +46,10 @@ public partial class MediatorDomainEventDispatcher(
         Exception exception,
         string domainEvent
     );
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "{EntityType} does not implement IHasDomainEvents, so its domain events can't be cleared"
+    )]
+    private static partial void LogNotHasDomainEvents(ILogger logger, string entityType);
 }

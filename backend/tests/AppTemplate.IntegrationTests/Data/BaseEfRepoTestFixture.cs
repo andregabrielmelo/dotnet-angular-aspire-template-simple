@@ -4,6 +4,7 @@ using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AppTemplate.IntegrationTests.Data;
@@ -24,25 +25,37 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        var configuration = new ConfigurationManager();
-        configuration["ConnectionStrings:apptemplate"] =
-            await PostgresTestDatabase.NewDatabaseConnectionStringAsync();
-
-        var services = new ServiceCollection().AddLogging();
-        services.AddInfrastructureServices(configuration, NullLogger.Instance);
-        services.Replace(ServiceDescriptor.Scoped(_ => Substitute.For<IDomainEventDispatcher>()));
-        // What Web provides: the email sender, account links, and the authentication services
-        // SignInManager is built with (it issues nothing here).
-        services.AddSingleton<IEmailSender>(Emails);
-        services.Configure<AccountLinkSettings>(links => links.ClientUrl = ClientUrl);
-        services.AddAuthentication();
-        services.AddHttpContextAccessor();
-        Services = services.BuildServiceProvider();
+        Services = await ServicesForAsync(
+            await PostgresTestDatabase.NewDatabaseConnectionStringAsync(),
+            Emails
+        );
 
         using var scope = Services.CreateScope();
         await scope
             .ServiceProvider.GetRequiredService<ApplicationDatabaseContext>()
             .Database.MigrateAsync();
+    }
+
+    /// <summary>The Infrastructure services on a database: one per instance of the app.</summary>
+    public static Task<ServiceProvider> ServicesForAsync(
+        string connectionString,
+        RecordingEmailSender emails
+    )
+    {
+        var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings());
+        builder.Configuration["ConnectionStrings:apptemplate"] = connectionString;
+        builder.Services.AddLogging();
+        builder.AddInfrastructureServices(builder.Configuration, NullLogger.Instance);
+
+        var services = builder.Services;
+        services.Replace(ServiceDescriptor.Scoped(_ => Substitute.For<IDomainEventDispatcher>()));
+        // What Web provides: the email sender, account links, and the authentication services
+        // SignInManager is built with (it issues nothing here).
+        services.AddSingleton<IEmailSender>(emails);
+        services.Configure<AccountLinkSettings>(links => links.ClientUrl = ClientUrl);
+        services.AddAuthentication();
+        services.AddHttpContextAccessor();
+        return Task.FromResult(services.BuildServiceProvider());
     }
 
     public async ValueTask DisposeAsync() => await Services.DisposeAsync();
@@ -75,16 +88,6 @@ public abstract class BaseEfRepoTestFixture(PostgresDatabaseFixture database)
     protected static User NewUser() => User.Create(UserName.From("Ada Lovelace"));
 
     protected static EmailAddress NewEmail() => new($"user-{Guid.NewGuid():N}@example.com");
-
-    protected static RefreshToken NewRefreshToken(UserId userId) =>
-        RefreshToken.Create(
-            userId,
-            Convert.ToHexStringLower(
-                Guid.NewGuid().ToByteArray().Concat(Guid.NewGuid().ToByteArray()).ToArray()
-            ),
-            "STAMP",
-            DateTimeOffset.UtcNow.AddDays(7)
-        );
 
     public void Dispose() => _scope.Dispose();
 }

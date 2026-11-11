@@ -1,6 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
-using AppTemplate.UseCases.Authentication;
-using AppTemplate.UseCases.Users.GetCurrent;
+using AppTemplate.UseCases.Interfaces;
+using AppTemplate.UseCases.Users.Queries.GetCurrent;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 
@@ -24,7 +24,7 @@ public class GetCurrentUserHandlerHandle
     {
         ProfileIs(TestUsers.Saved());
         _identity
-            .GetAccountAsync(UserId.From(1), Arg.Any<CancellationToken>())
+            .GetUserAsync(UserId.From(1), Arg.Any<CancellationToken>())
             .Returns(TestUsers.Account());
 
         var result = await Get();

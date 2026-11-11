@@ -1,8 +1,9 @@
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication.ResetPassword;
+using AppTemplate.UseCases.Authentication.Commands.ResetPassword;
+using AppTemplate.UseCases.Constants;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Authentication;
+namespace AppTemplate.Web.Endpoints.Authentication;
 
 public sealed class ResetPasswordRequest
 {
@@ -67,8 +68,20 @@ public sealed class ResetPasswordValidator : Validator<ResetPasswordRequest>
 {
     public ResetPasswordValidator()
     {
-        RuleFor(x => x.Email).ValidEmail();
-        RuleFor(x => x.Code).ValidCode();
-        RuleFor(x => x.NewPassword).NewPassword();
+        RuleFor(x => x.Email).EmailAddress().WithMessage("The email address is invalid.");
+
+        RuleFor(x => x.Code).NotEmpty().WithMessage("The code is required.");
+
+        RuleFor(x => x.NewPassword)
+            .NotEmpty()
+            .WithMessage("The new password is required.")
+            .MinimumLength(PasswordConstants.MIN_LENGTH)
+            .WithMessage(
+                $"The new password must be at least {PasswordConstants.MIN_LENGTH} characters long."
+            )
+            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .WithMessage(
+                $"The new password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+            );
     }
 }

@@ -1,12 +1,11 @@
-using AppTemplate.UseCases.Authentication;
-using AppTemplate.UseCases.Authentication.ChangePassword;
+using AppTemplate.UseCases.Authentication.Commands.ChangePassword;
+using AppTemplate.UseCases.Interfaces;
 
 namespace AppTemplate.UnitTests.UseCases.Authentication;
 
 public class ChangePasswordHandlerHandle
 {
     private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
-    private readonly IRepository<User> _users = Substitute.For<IRepository<User>>();
 
     private void ChangeReturns(Result result) =>
         _identity
@@ -18,8 +17,8 @@ public class ChangePasswordHandlerHandle
             )
             .Returns(result);
 
-    private Task<Result<AuthenticatedUserDto>> Change() =>
-        new ChangePasswordHandler(_identity, _users)
+    private Task<Result> Change() =>
+        new ChangePasswordHandler(_identity)
             .Handle(
                 new ChangePasswordCommand(UserId.From(1), "old-password", "new-password"),
                 TestContext.Current.CancellationToken
@@ -27,24 +26,20 @@ public class ChangePasswordHandlerHandle
             .AsTask();
 
     [Fact]
-    public async Task ReturnsTheUserForTheirNewSession()
+    public async Task KeepsThisSessionSignedIn()
     {
         ChangeReturns(Result.Success());
-        _identity
-            .GetAccountAsync(UserId.From(1), Arg.Any<CancellationToken>())
-            .Returns(TestUsers.Account());
-        _users
-            .GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>())
-            .Returns(TestUsers.Saved());
 
         var result = await Change();
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Id.ShouldBe(UserId.From(1));
+        await _identity
+            .Received(1)
+            .RefreshSignInAsync(UserId.From(1), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task PassesOnAWrongCurrentPassword()
+    public async Task PassesOnAWrongCurrentPasswordWithoutRefreshingTheSession()
     {
         ChangeReturns(
             Result.Invalid(
@@ -60,5 +55,8 @@ public class ChangePasswordHandlerHandle
 
         result.Status.ShouldBe(ResultStatus.Invalid);
         result.ValidationErrors.Single().Identifier.ShouldBe("currentPassword");
+        await _identity
+            .DidNotReceiveWithAnyArgs()
+            .RefreshSignInAsync(UserId.From(1), CancellationToken.None);
     }
 }

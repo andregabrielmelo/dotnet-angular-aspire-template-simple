@@ -1,8 +1,8 @@
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication.ForgotPassword;
+using AppTemplate.UseCases.Authentication.Commands.ForgotPassword;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Authentication;
+namespace AppTemplate.Web.Endpoints.Authentication;
 
 public sealed class ForgotPasswordRequest
 {
@@ -56,6 +56,6 @@ public sealed class ForgotPasswordValidator : Validator<ForgotPasswordRequest>
 {
     public ForgotPasswordValidator()
     {
-        RuleFor(x => x.Email).ValidEmail();
+        RuleFor(x => x.Email).EmailAddress().WithMessage("The email address is invalid.");
     }
 }

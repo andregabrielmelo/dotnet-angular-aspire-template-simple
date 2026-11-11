@@ -1,6 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Users;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AppTemplate.Infrastructure.Data.Configurations;
 

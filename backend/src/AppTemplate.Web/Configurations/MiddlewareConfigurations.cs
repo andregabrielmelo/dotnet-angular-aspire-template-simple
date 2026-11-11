@@ -1,5 +1,4 @@
-﻿using AppTemplate.Web.Authentication;
-using Scalar.AspNetCore;
+﻿using Scalar.AspNetCore;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -18,8 +17,7 @@ public static class MiddlewareConfigurations
             app.UseHsts();
         }
 
-        // FastEndpoints' order (https://fast-endpoints.com/docs/security): revocation before auth.
-        app.UseJwtRevocation<RevokedTokenChecker>().UseAuthentication().UseAuthorization();
+        app.UseAuthentication().UseAuthorization();
 
         app.UseFastEndpoints();
 
@@ -42,10 +40,10 @@ public static class MiddlewareConfigurations
                     options.WithTitle("AppTemplate API");
                     options.WithOpenApiRoutePattern("/openapi/{documentName}.json");
                 })
-                .AllowAnonymous(); // a browser page, not an API call: no bearer token
+                .AllowAnonymous(); // a browser page, open before signing in
         }
 
-        app.UseHttpsRedirection(); // Note this will drop Authorization headers
+        app.UseHttpsRedirection();
 
         return app;
     }

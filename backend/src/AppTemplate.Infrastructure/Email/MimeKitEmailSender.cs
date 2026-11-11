@@ -1,6 +1,7 @@
 ﻿using AppTemplate.Core.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 

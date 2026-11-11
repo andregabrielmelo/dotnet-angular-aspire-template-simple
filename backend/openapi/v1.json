@@ -14,7 +14,7 @@
         ],
         "summary": "Delete a user",
         "description": "Deletes a user with the specified id.",
-        "operationId": "AppTemplateWebUsersDeleteEndpoint",
+        "operationId": "AppTemplateWebEndpointsUsersDeleteEndpoint",
         "parameters": [
           {
             "name": "userId",
@@ -64,12 +64,7 @@
           "401": {
             "description": "Unauthorized"
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/users/{id}": {
@@ -79,7 +74,7 @@
         ],
         "summary": "Get a user by Id",
         "description": "Get a user with the specified Id.",
-        "operationId": "AppTemplateWebUsersGetByIdEndpoint",
+        "operationId": "AppTemplateWebEndpointsUsersGetByIdEndpoint",
         "parameters": [
           {
             "name": "id",
@@ -134,12 +129,7 @@
           "403": {
             "description": "Requires the users:read permission"
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       },
       "put": {
         "tags": [
@@ -147,7 +137,7 @@
         ],
         "summary": "Update a user",
         "description": "Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.",
-        "operationId": "AppTemplateWebUsersUpdateEndpoint",
+        "operationId": "AppTemplateWebEndpointsUsersUpdateEndpoint",
         "parameters": [
           {
             "name": "id",
@@ -224,12 +214,7 @@
           "401": {
             "description": "Unauthorized"
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/users": {
@@ -239,7 +224,7 @@
         ],
         "summary": "List users with pagination",
         "description": "Retrieves a paginated list of all users. Supports GitHub-style pagination with 1-based page indexing and configurable page size.",
-        "operationId": "AppTemplateWebUsersListEndpoint",
+        "operationId": "AppTemplateWebEndpointsUsersListEndpoint",
         "parameters": [
           {
             "name": "page",
@@ -308,12 +293,7 @@
           "403": {
             "description": "Requires the users:read permission"
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/users/me": {
@@ -322,8 +302,8 @@
           "Users"
         ],
         "summary": "Get the current user",
-        "description": "Returns the authenticated caller's profile and the permissions their access token grants.",
-        "operationId": "AppTemplateWebUsersMeEndpoint",
+        "description": "Returns the authenticated caller's profile and the permissions their roles grant.",
+        "operationId": "AppTemplateWebEndpointsUsersMeEndpoint",
         "responses": {
           "200": {
             "description": "Current user returned successfully",
@@ -344,7 +324,7 @@
             }
           },
           "401": {
-            "description": "Missing or invalid access token",
+            "description": "Not signed in",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -363,12 +343,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/auth/change-password": {
@@ -377,8 +352,8 @@
           "Auth"
         ],
         "summary": "Change the password",
-        "description": "Checks the current password and sets the new one. Other sessions end at their next refresh; this one gets a new access token and refresh token cookie.",
-        "operationId": "AppTemplateWebAuthenticationChangePasswordEndpoint",
+        "description": "Checks the current password and sets the new one. Other sessions end within minutes; this one stays signed in.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationChangePasswordEndpoint",
         "requestBody": {
           "x-name": "ChangePasswordRequest",
           "description": "",
@@ -393,15 +368,8 @@
           "x-position": 1
         },
         "responses": {
-          "200": {
-            "description": "Changed; a new session for this device",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessTokenResponse"
-                }
-              }
-            }
+          "204": {
+            "description": "Changed; this session stays signed in"
           },
           "400": {
             "description": "Invalid request data, a wrong current password, or a weak one",
@@ -414,7 +382,7 @@
             }
           },
           "401": {
-            "description": "Missing or invalid access token",
+            "description": "Not signed in",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -423,12 +391,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/auth/confirm-email": {
@@ -438,7 +401,7 @@
         ],
         "summary": "Confirm an email address",
         "description": "Takes the userId and code from the link in the confirmation email. The account can sign in afterwards.",
-        "operationId": "AppTemplateWebAuthenticationConfirmEmailEndpoint",
+        "operationId": "AppTemplateWebEndpointsAuthenticationConfirmEmailEndpoint",
         "requestBody": {
           "x-name": "ConfirmEmailRequest",
           "description": "",
@@ -476,7 +439,7 @@
         ],
         "summary": "Ask for a password reset",
         "description": "Emails a link to POST /auth/reset-password if the address has a confirmed account. Answers 202 either way.",
-        "operationId": "AppTemplateWebAuthenticationForgotPasswordEndpoint",
+        "operationId": "AppTemplateWebEndpointsAuthenticationForgotPasswordEndpoint",
         "requestBody": {
           "x-name": "ForgotPasswordRequest",
           "description": "",
@@ -513,8 +476,8 @@
           "Auth"
         ],
         "summary": "Sign in",
-        "description": "Returns an access token, to send as Authorization: Bearer, and sets the refresh token cookie used by POST /auth/refresh-token.",
-        "operationId": "AppTemplateWebAuthenticationLoginEndpoint",
+        "description": "Sets the session cookie (HttpOnly, SameSite=Strict), which signs in every later request from this browser.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationLoginEndpoint",
         "requestBody": {
           "x-name": "LoginRequest",
           "description": "",
@@ -529,15 +492,8 @@
           "x-position": 1
         },
         "responses": {
-          "200": {
-            "description": "Signed in",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessTokenResponse"
-                }
-              }
-            }
+          "204": {
+            "description": "Signed in; the response sets the session cookie"
           },
           "400": {
             "description": "Invalid request data",
@@ -572,62 +528,24 @@
         }
       }
     },
-    "/auth/refresh-token": {
-      "delete": {
+    "/auth/logout": {
+      "post": {
         "tags": [
           "Auth"
         ],
         "summary": "Sign out",
-        "description": "Deletes the refresh token cookie's session and revokes the access token sent with this request.",
-        "operationId": "AppTemplateWebAuthenticationLogoutEndpoint",
+        "description": "Ends this session by deleting its cookie.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationLogoutEndpoint",
         "responses": {
           "204": {
             "description": "Signed out"
           },
           "401": {
-            "description": "Missing, invalid or already revoked access token",
+            "description": "Not signed in",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Refresh the access token",
-        "description": "Uses the refresh token cookie (sent automatically by the browser), returns a new access token and rotates the cookie. Send {}: the body's userId and refreshToken are ignored.",
-        "operationId": "AppTemplateWebAuthenticationUserTokenService",
-        "requestBody": {
-          "x-name": "TokenRequest",
-          "description": "",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TokenRequest"
-              }
-            }
-          },
-          "required": true,
-          "x-position": 1
-        },
-        "responses": {
-          "200": {
-            "description": "A new access token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessTokenResponse"
                 }
               }
             }
@@ -642,7 +560,7 @@
         ],
         "summary": "Register",
         "description": "Creates an account and emails a link that confirms the address. Sign in (POST /auth/login) once it's confirmed.",
-        "operationId": "AppTemplateWebAuthenticationRegisterEndpoint",
+        "operationId": "AppTemplateWebEndpointsAuthenticationRegisterEndpoint",
         "requestBody": {
           "x-name": "RegisterRequest",
           "description": "",
@@ -690,7 +608,7 @@
         ],
         "summary": "Resend the confirmation email",
         "description": "Emails a new confirmation link if the address has an unconfirmed account. Answers 202 either way.",
-        "operationId": "AppTemplateWebAuthenticationResendConfirmationEndpoint",
+        "operationId": "AppTemplateWebEndpointsAuthenticationResendConfirmationEndpoint",
         "requestBody": {
           "x-name": "ResendConfirmationRequest",
           "description": "",
@@ -728,7 +646,7 @@
         ],
         "summary": "Reset the password",
         "description": "Takes the email and code from the reset link and the new password. Signs out every session at its next refresh, and lifts a lockout.",
-        "operationId": "AppTemplateWebAuthenticationResetPasswordEndpoint",
+        "operationId": "AppTemplateWebEndpointsAuthenticationResetPasswordEndpoint",
         "requestBody": {
           "x-name": "ResetPasswordRequest",
           "description": "",
@@ -947,23 +865,6 @@
           }
         }
       },
-      "AccessTokenResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "accessToken",
-          "accessTokenExpiry"
-        ],
-        "properties": {
-          "accessToken": {
-            "type": "string"
-          },
-          "accessTokenExpiry": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "ChangePasswordRequest": {
         "type": "object",
         "example": {
@@ -979,7 +880,7 @@
           "currentPassword": {
             "type": "string",
             "maxLength": 128,
-            "minLength": 0,
+            "minLength": 8,
             "nullable": false,
             "example": "correct horse battery staple"
           },
@@ -1031,9 +932,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 320,
-            "minLength": 0,
-            "nullable": false,
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
             "example": "ada@example.com"
           }
         }
@@ -1052,15 +952,14 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 320,
-            "minLength": 0,
-            "nullable": false,
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
             "example": "ada@example.com"
           },
           "password": {
             "type": "string",
             "maxLength": 128,
-            "minLength": 0,
+            "minLength": 8,
             "nullable": false,
             "example": "correct horse battery staple"
           }
@@ -1089,9 +988,8 @@
           },
           "email": {
             "type": "string",
-            "maxLength": 320,
-            "minLength": 0,
-            "nullable": false,
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
             "example": "ada@example.com"
           },
           "password": {
@@ -1115,9 +1013,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 320,
-            "minLength": 0,
-            "nullable": false,
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
             "example": "ada@example.com"
           }
         }
@@ -1138,9 +1035,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 320,
-            "minLength": 0,
-            "nullable": false,
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
             "example": "ada@example.com"
           },
           "code": {
@@ -1157,33 +1053,6 @@
             "example": "correct horse battery staple"
           }
         }
-      },
-      "TokenRequest": {
-        "type": "object",
-        "description": "base dto for access/refresh token renewal requests",
-        "additionalProperties": false,
-        "required": [
-          "userId",
-          "refreshToken"
-        ],
-        "properties": {
-          "userId": {
-            "type": "string",
-            "description": "unique identifier of a user"
-          },
-          "refreshToken": {
-            "type": "string",
-            "description": "a single-use refresh token which will be valid for the duration specified by RefreshExpiry"
-          }
-        }
-      }
-    },
-    "securitySchemes": {
-      "JWTBearerAuth": {
-        "type": "http",
-        "description": "Enter a JWT token to authorize the requests...",
-        "scheme": "Bearer",
-        "bearerFormat": "JWT"
       }
     }
   }

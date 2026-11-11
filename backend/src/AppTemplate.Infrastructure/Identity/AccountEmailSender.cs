@@ -1,3 +1,4 @@
+using AppTemplate.Core.Interfaces;
 using Microsoft.AspNetCore.Identity;
 
 namespace AppTemplate.Infrastructure.Identity;

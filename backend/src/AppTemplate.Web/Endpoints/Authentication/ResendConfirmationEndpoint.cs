@@ -1,8 +1,8 @@
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication.ResendConfirmation;
+using AppTemplate.UseCases.Authentication.Commands.ResendConfirmation;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Authentication;
+namespace AppTemplate.Web.Endpoints.Authentication;
 
 public sealed class ResendConfirmationRequest
 {
@@ -56,6 +56,6 @@ public sealed class ResendConfirmationValidator : Validator<ResendConfirmationRe
 {
     public ResendConfirmationValidator()
     {
-        RuleFor(x => x.Email).ValidEmail();
+        RuleFor(x => x.Email).EmailAddress();
     }
 }

@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
-import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { catchError, of, switchMap, throwError } from 'rxjs';
+import { catchError, throwError } from 'rxjs';
 import { API_BASE } from '../api/api-paths';
 import { AUTH_PATH, AuthService } from '../../features/auth/auth-service';
 
@@ -10,11 +10,10 @@ function relativePath(url: string): string {
 }
 
 /**
- * Adds the access token to API requests, refreshing it first when it is about to expire (it
- * lasts 15 minutes). A 401 anyway (the token was revoked, say) refreshes once and retries; if
- * the session can't be refreshed, it sends the user to sign in. The auth endpoints themselves
- * are left alone - their errors are the caller's to handle, and a failing refresh must never
- * trigger another refresh.
+ * Notices a session that ended (it expired, or a password change elsewhere ended it): a 401 from
+ * the API while signed in forgets the user and sends them to sign in. It adds nothing to the
+ * request - the browser sends the session cookie, and HttpClient the antiforgery token. The auth
+ * endpoints are left alone: their errors are the caller's to handle.
  */
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const path = relativePath(request.url);
@@ -24,29 +23,18 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   const authService = inject(AuthService);
   const router = inject(Router);
-  const withToken = (outgoing: HttpRequest<unknown>) => {
-    const token = authService.accessToken();
-    return token ? outgoing.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : outgoing;
-  };
-  const signIn = (error: unknown) => {
-    router.navigate(['/auth'], { queryParams: { returnUrl: router.url } });
-    return throwError(() => error);
-  };
 
-  const ready = authService.isAuthenticated() && authService.isExpiring();
-  return (ready ? authService.refresh() : of(true)).pipe(
-    switchMap(() => next(withToken(request))),
+  return next(request).pipe(
     catchError((error: unknown) => {
-      if (!(error instanceof HttpErrorResponse) || error.status !== 401) {
-        return throwError(() => error);
+      if (
+        error instanceof HttpErrorResponse &&
+        error.status === 401 &&
+        authService.isAuthenticated()
+      ) {
+        authService.clearSession();
+        router.navigate(['/auth'], { queryParams: { returnUrl: router.url } });
       }
-
-      return authService.refresh().pipe(
-        switchMap((refreshed) =>
-          // Straight to `next`, so a second 401 is returned as is, never refreshed again.
-          refreshed ? next(withToken(request)) : signIn(error),
-        ),
-      );
+      return throwError(() => error);
     }),
   );
 };

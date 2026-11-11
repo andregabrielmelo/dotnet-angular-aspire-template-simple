@@ -1,4 +1,4 @@
-using AppTemplate.Web.Users;
+using AppTemplate.Web.Endpoints.Users;
 
 namespace AppTemplate.FunctionalTests.ApiEndpoints;
 
@@ -12,7 +12,7 @@ public class UserList(CustomWebApplicationFactory<Program> factory)
     public async Task ReturnsAPageOfUsersGivenUsersRead()
     {
         var target = await factory.CreateUserAsync();
-        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
 
         var page = await admin.Client.GetAndDeserializeAsync<UserPage>(
             "/users?page=1&per_page=100"
@@ -31,7 +31,7 @@ public class UserList(CustomWebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task ReturnsUnauthorizedWithoutAnAccessToken()
+    public async Task ReturnsUnauthorizedWhenNotSignedIn()
     {
         await new TestSession(factory).Client.GetAndEnsureUnauthorizedAsync("/users");
     }

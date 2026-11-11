@@ -1,9 +1,10 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Users.Register;
+using AppTemplate.UseCases.Constants;
+using AppTemplate.UseCases.Users.Commands.Register;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Authentication;
+namespace AppTemplate.Web.Endpoints.Authentication;
 
 public sealed class RegisterRequest
 {
@@ -79,7 +80,17 @@ public sealed class RegisterValidator : Validator<RegisterRequest>
             .MinimumLength(2)
             .MaximumLength(UserName.MaxLength)
             .WithMessage($"User name must not exceed {UserName.MaxLength} characters");
-        RuleFor(x => x.Email).ValidEmail();
-        RuleFor(x => x.Password).NewPassword();
+        RuleFor(x => x.Email).EmailAddress().WithMessage("The email address is invalid.");
+        RuleFor(x => x.Password)
+            .NotEmpty()
+            .WithMessage("The password is required.")
+            .MinimumLength(PasswordConstants.MIN_LENGTH)
+            .WithMessage(
+                $"The password must be at least {PasswordConstants.MIN_LENGTH} characters long."
+            )
+            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .WithMessage(
+                $"The password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+            );
     }
 }

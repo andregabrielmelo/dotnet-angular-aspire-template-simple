@@ -1,5 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Infrastructure.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AppTemplate.Infrastructure.Data.Configurations;
 

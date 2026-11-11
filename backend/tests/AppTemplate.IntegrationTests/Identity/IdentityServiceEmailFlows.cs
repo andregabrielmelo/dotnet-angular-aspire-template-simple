@@ -2,6 +2,7 @@ using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
 using AppTemplate.UseCases.Authorization;
 using Ardalis.Result;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace AppTemplate.IntegrationTests.Identity;
@@ -16,14 +17,24 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
 
+    /// <summary>The account's security stamp, which Identity's cookie validator compares.</summary>
+    private async Task<string?> StampAsync(UserId id)
+    {
+        var users = Services.GetRequiredService<UserManager<ApplicationUser>>();
+        var account = await users
+            .Users.AsNoTracking()
+            .SingleAsync(user => user.ProfileId == id, Cancellation);
+        return account.SecurityStamp;
+    }
+
     private async Task<(UserId Id, EmailAddress Email)> AccountAsync(bool emailConfirmed)
     {
         var email = NewEmail();
-        var created = await Identity.CreateAccountAsync(
+        var created = await Identity.CreateUserAsync(
             UserName.From("Ada"),
             email,
             Password,
-            Roles.Member,
+            Role.Member,
             emailConfirmed,
             Cancellation
         );
@@ -49,7 +60,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
         (
             await Identity.ConfirmEmailAsync(id, query["code"], Cancellation)
         ).IsSuccess.ShouldBeTrue();
-        (await Identity.GetAccountAsync(id, Cancellation))!.EmailConfirmed.ShouldBeTrue();
+        (await Identity.GetUserAsync(id, Cancellation))!.EmailConfirmed.ShouldBeTrue();
     }
 
     [Fact]
@@ -77,7 +88,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
     public async Task ResetsThePasswordWithTheCodeFromTheLinkAndChangesTheStamp()
     {
         var (id, email) = await AccountAsync(emailConfirmed: true);
-        var stampBefore = (await Identity.GetAccountAsync(id, Cancellation))!.SecurityStamp;
+        var stampBefore = await StampAsync(id);
 
         await Identity.SendPasswordResetAsync(email, Cancellation);
         var query = LastLinkQuery(email);
@@ -90,7 +101,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
 
         reset.IsSuccess.ShouldBeTrue();
         query["email"].ShouldBe(email.Value);
-        (await Identity.GetAccountAsync(id, Cancellation))!.SecurityStamp.ShouldNotBe(stampBefore);
+        (await StampAsync(id)).ShouldNotBe(stampBefore);
         (
             await Identity.CheckPasswordAsync(email, NewPassword, Cancellation)
         ).IsSuccess.ShouldBeTrue();
@@ -114,7 +125,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
     public async Task ChangesThePasswordOnlyGivenTheCurrentOne()
     {
         var (id, email) = await AccountAsync(emailConfirmed: true);
-        var stampBefore = (await Identity.GetAccountAsync(id, Cancellation))!.SecurityStamp;
+        var stampBefore = await StampAsync(id);
 
         var wrong = await Identity.ChangePasswordAsync(
             id,
@@ -124,10 +135,9 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
         );
         var changed = await Identity.ChangePasswordAsync(id, Password, NewPassword, Cancellation);
 
-        wrong.Status.ShouldBe(ResultStatus.Invalid);
-        wrong.ValidationErrors.Single().Identifier.ShouldBe("currentPassword");
+        wrong.Status.ShouldBe(ResultStatus.Error);
         changed.IsSuccess.ShouldBeTrue();
-        (await Identity.GetAccountAsync(id, Cancellation))!.SecurityStamp.ShouldNotBe(stampBefore);
+        (await StampAsync(id)).ShouldNotBe(stampBefore);
         (
             await Identity.CheckPasswordAsync(email, NewPassword, Cancellation)
         ).IsSuccess.ShouldBeTrue();

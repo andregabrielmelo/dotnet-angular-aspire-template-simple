@@ -13,7 +13,7 @@ startupLogger.LogInformation("Starting web host");
 
 builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger);
 builder.Services.AddServiceConfigurations(startupLogger, builder);
-builder.Services.AddAuthConfigurations(startupLogger, builder);
+builder.Services.AddAuthenticationConfigurations(startupLogger);
 
 builder
     .Services.AddFastEndpoints()
@@ -28,8 +28,9 @@ builder
             // Generated clients (the Angular types) get non-optional fields for non-nullable ones.
             s.MarkNonNullablePropsAsRequired();
         };
-        // The "Bearer" security scheme, so Scalar/Swagger can send the access token.
-        o.EnableJWTBearerAuth = true;
+        // No bearer scheme: the reference pages are same-origin, so the browser sends the session
+        // cookie set by POST /auth/login.
+        o.EnableJWTBearerAuth = false;
     });
 
 var app = builder.Build();

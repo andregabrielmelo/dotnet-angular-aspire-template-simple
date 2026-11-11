@@ -37,6 +37,8 @@ describe('authGuard', () => {
     });
 
     expect(await runGuard()).toBe(urlTree);
-    expect(createUrlTree).toHaveBeenCalledWith(['/auth'], { queryParams: { returnUrl: '/users' } });
+    expect(createUrlTree).toHaveBeenCalledWith(['/auth'], {
+      queryParams: { returnUrl: '/users' },
+    });
   });
 });

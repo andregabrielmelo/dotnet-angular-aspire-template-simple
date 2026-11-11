@@ -18,7 +18,7 @@ export interface paths {
      * Delete a user
      * @description Deletes a user with the specified id.
      */
-    delete: operations['AppTemplateWebUsersDeleteEndpoint'];
+    delete: operations['AppTemplateWebEndpointsUsersDeleteEndpoint'];
     options?: never;
     head?: never;
     patch?: never;
@@ -35,12 +35,12 @@ export interface paths {
      * Get a user by Id
      * @description Get a user with the specified Id.
      */
-    get: operations['AppTemplateWebUsersGetByIdEndpoint'];
+    get: operations['AppTemplateWebEndpointsUsersGetByIdEndpoint'];
     /**
      * Update a user
      * @description Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.
      */
-    put: operations['AppTemplateWebUsersUpdateEndpoint'];
+    put: operations['AppTemplateWebEndpointsUsersUpdateEndpoint'];
     post?: never;
     delete?: never;
     options?: never;
@@ -59,7 +59,7 @@ export interface paths {
      * List users with pagination
      * @description Retrieves a paginated list of all users. Supports GitHub-style pagination with 1-based page indexing and configurable page size.
      */
-    get: operations['AppTemplateWebUsersListEndpoint'];
+    get: operations['AppTemplateWebEndpointsUsersListEndpoint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -77,9 +77,9 @@ export interface paths {
     };
     /**
      * Get the current user
-     * @description Returns the authenticated caller's profile and the permissions their access token grants.
+     * @description Returns the authenticated caller's profile and the permissions their roles grant.
      */
-    get: operations['AppTemplateWebUsersMeEndpoint'];
+    get: operations['AppTemplateWebEndpointsUsersMeEndpoint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -99,9 +99,9 @@ export interface paths {
     put?: never;
     /**
      * Change the password
-     * @description Checks the current password and sets the new one. Other sessions end at their next refresh; this one gets a new access token and refresh token cookie.
+     * @description Checks the current password and sets the new one. Other sessions end within minutes; this one stays signed in.
      */
-    post: operations['AppTemplateWebAuthenticationChangePasswordEndpoint'];
+    post: operations['AppTemplateWebEndpointsAuthenticationChangePasswordEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -121,7 +121,7 @@ export interface paths {
      * Confirm an email address
      * @description Takes the userId and code from the link in the confirmation email. The account can sign in afterwards.
      */
-    post: operations['AppTemplateWebAuthenticationConfirmEmailEndpoint'];
+    post: operations['AppTemplateWebEndpointsAuthenticationConfirmEmailEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -141,7 +141,7 @@ export interface paths {
      * Ask for a password reset
      * @description Emails a link to POST /auth/reset-password if the address has a confirmed account. Answers 202 either way.
      */
-    post: operations['AppTemplateWebAuthenticationForgotPasswordEndpoint'];
+    post: operations['AppTemplateWebEndpointsAuthenticationForgotPasswordEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -159,16 +159,16 @@ export interface paths {
     put?: never;
     /**
      * Sign in
-     * @description Returns an access token, to send as Authorization: Bearer, and sets the refresh token cookie used by POST /auth/refresh-token.
+     * @description Sets the session cookie (HttpOnly, SameSite=Strict), which signs in every later request from this browser.
      */
-    post: operations['AppTemplateWebAuthenticationLoginEndpoint'];
+    post: operations['AppTemplateWebEndpointsAuthenticationLoginEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/auth/refresh-token': {
+  '/auth/logout': {
     parameters: {
       query?: never;
       header?: never;
@@ -178,15 +178,11 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Refresh the access token
-     * @description Uses the refresh token cookie (sent automatically by the browser), returns a new access token and rotates the cookie. Send {}: the body's userId and refreshToken are ignored.
-     */
-    post: operations['AppTemplateWebAuthenticationUserTokenService'];
-    /**
      * Sign out
-     * @description Deletes the refresh token cookie's session and revokes the access token sent with this request.
+     * @description Ends this session by deleting its cookie.
      */
-    delete: operations['AppTemplateWebAuthenticationLogoutEndpoint'];
+    post: operations['AppTemplateWebEndpointsAuthenticationLogoutEndpoint'];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -205,7 +201,7 @@ export interface paths {
      * Register
      * @description Creates an account and emails a link that confirms the address. Sign in (POST /auth/login) once it's confirmed.
      */
-    post: operations['AppTemplateWebAuthenticationRegisterEndpoint'];
+    post: operations['AppTemplateWebEndpointsAuthenticationRegisterEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -225,7 +221,7 @@ export interface paths {
      * Resend the confirmation email
      * @description Emails a new confirmation link if the address has an unconfirmed account. Answers 202 either way.
      */
-    post: operations['AppTemplateWebAuthenticationResendConfirmationEndpoint'];
+    post: operations['AppTemplateWebEndpointsAuthenticationResendConfirmationEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -245,7 +241,7 @@ export interface paths {
      * Reset the password
      * @description Takes the email and code from the reset link and the new password. Signs out every session at its next refresh, and lifts a lockout.
      */
-    post: operations['AppTemplateWebAuthenticationResetPasswordEndpoint'];
+    post: operations['AppTemplateWebEndpointsAuthenticationResetPasswordEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -315,11 +311,6 @@ export interface components {
       /** @example null */
       phoneExtension?: string | null;
     };
-    AccessTokenResponse: {
-      accessToken: string;
-      /** Format: date-time */
-      accessTokenExpiry: string;
-    };
     /**
      * @example {
      *       "currentPassword": "correct horse battery staple",
@@ -353,7 +344,10 @@ export interface components {
      *     }
      */
     ForgotPasswordRequest: {
-      /** @example ada@example.com */
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
       email: string;
     };
     /**
@@ -363,7 +357,10 @@ export interface components {
      *     }
      */
     LoginRequest: {
-      /** @example ada@example.com */
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
       email: string;
       /** @example correct horse battery staple */
       password: string;
@@ -378,7 +375,10 @@ export interface components {
     RegisterRequest: {
       /** @example Ada Lovelace */
       name: string;
-      /** @example ada@example.com */
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
       email: string;
       /** @example correct horse battery staple */
       password: string;
@@ -389,7 +389,10 @@ export interface components {
      *     }
      */
     ResendConfirmationRequest: {
-      /** @example ada@example.com */
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
       email: string;
     };
     /**
@@ -400,19 +403,15 @@ export interface components {
      *     }
      */
     ResetPasswordRequest: {
-      /** @example ada@example.com */
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
       email: string;
       /** @example Q2ZESjhB... */
       code: string;
       /** @example correct horse battery staple */
       newPassword: string;
-    };
-    /** @description base dto for access/refresh token renewal requests */
-    TokenRequest: {
-      /** @description unique identifier of a user */
-      userId: string;
-      /** @description a single-use refresh token which will be valid for the duration specified by RefreshExpiry */
-      refreshToken: string;
     };
   };
   responses: never;
@@ -423,7 +422,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  AppTemplateWebUsersDeleteEndpoint: {
+  AppTemplateWebEndpointsUsersDeleteEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -478,7 +477,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebUsersGetByIdEndpoint: {
+  AppTemplateWebEndpointsUsersGetByIdEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -540,7 +539,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebUsersUpdateEndpoint: {
+  AppTemplateWebEndpointsUsersUpdateEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -610,7 +609,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebUsersListEndpoint: {
+  AppTemplateWebEndpointsUsersListEndpoint: {
     parameters: {
       query: {
         /**
@@ -681,7 +680,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebUsersMeEndpoint: {
+  AppTemplateWebEndpointsUsersMeEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -709,7 +708,7 @@ export interface operations {
           'application/json': components['schemas']['CurrentUserResponse'];
         };
       };
-      /** @description Missing or invalid access token */
+      /** @description Not signed in */
       401: {
         headers: {
           [name: string]: unknown;
@@ -729,7 +728,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebAuthenticationChangePasswordEndpoint: {
+  AppTemplateWebEndpointsAuthenticationChangePasswordEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -742,14 +741,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Changed; a new session for this device */
-      200: {
+      /** @description Changed; this session stays signed in */
+      204: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          'application/json': components['schemas']['AccessTokenResponse'];
-        };
+        content?: never;
       };
       /** @description Invalid request data, a wrong current password, or a weak one */
       400: {
@@ -760,7 +757,7 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
-      /** @description Missing or invalid access token */
+      /** @description Not signed in */
       401: {
         headers: {
           [name: string]: unknown;
@@ -771,7 +768,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebAuthenticationConfirmEmailEndpoint: {
+  AppTemplateWebEndpointsAuthenticationConfirmEmailEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -802,7 +799,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebAuthenticationForgotPasswordEndpoint: {
+  AppTemplateWebEndpointsAuthenticationForgotPasswordEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -833,7 +830,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebAuthenticationLoginEndpoint: {
+  AppTemplateWebEndpointsAuthenticationLoginEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -846,14 +843,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Signed in */
-      200: {
+      /** @description Signed in; the response sets the session cookie */
+      204: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          'application/json': components['schemas']['AccessTokenResponse'];
-        };
+        content?: never;
       };
       /** @description Invalid request data */
       400: {
@@ -884,31 +879,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebAuthenticationUserTokenService: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['TokenRequest'];
-      };
-    };
-    responses: {
-      /** @description A new access token */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['AccessTokenResponse'];
-        };
-      };
-    };
-  };
-  AppTemplateWebAuthenticationLogoutEndpoint: {
+  AppTemplateWebEndpointsAuthenticationLogoutEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -924,7 +895,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Missing, invalid or already revoked access token */
+      /** @description Not signed in */
       401: {
         headers: {
           [name: string]: unknown;
@@ -935,7 +906,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebAuthenticationRegisterEndpoint: {
+  AppTemplateWebEndpointsAuthenticationRegisterEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -975,7 +946,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebAuthenticationResendConfirmationEndpoint: {
+  AppTemplateWebEndpointsAuthenticationResendConfirmationEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -1006,7 +977,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebAuthenticationResetPasswordEndpoint: {
+  AppTemplateWebEndpointsAuthenticationResetPasswordEndpoint: {
     parameters: {
       query?: never;
       header?: never;

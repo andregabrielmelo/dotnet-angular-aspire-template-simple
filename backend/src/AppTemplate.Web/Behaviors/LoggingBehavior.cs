@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Ardalis.GuardClauses;
 
 namespace AppTemplate.Web.Behaviors;
 
@@ -18,18 +19,32 @@ public class LoggingBehavior<TRequest, TResponse>(
         CancellationToken cancellationToken
     )
     {
-        ArgumentNullException.ThrowIfNull(request);
+        Guard.Against.Null(request);
 
-        logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
-        var stopwatch = Stopwatch.StartNew();
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "Handling {RequestName} with {@Request}",
+                typeof(TRequest).Name,
+                request
+            );
+        }
+
+        var sw = Stopwatch.StartNew();
 
         var response = await next(request, cancellationToken);
 
-        logger.LogInformation(
-            "Handled {RequestName} in {ElapsedMilliseconds} ms",
-            typeof(TRequest).Name,
-            stopwatch.ElapsedMilliseconds
-        );
+        sw.Stop();
+
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "Handled {RequestName} with {Response} in {ElapsedMilliseconds} ms",
+                typeof(TRequest).Name,
+                response,
+                sw.ElapsedMilliseconds
+            );
+        }
 
         return response;
     }

@@ -7,9 +7,9 @@
     <SwaggerExportPath>../../openapi</SwaggerExportPath>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Ardalis.GuardClauses" />
     <PackageReference Include="Ardalis.Result" />
     <PackageReference Include="FastEndpoints" />
-    <PackageReference Include="FastEndpoints.Security" />
     <PackageReference Include="FastEndpoints.Swagger" />
     <PackageReference Include="Mediator.Abstractions" />
     <PackageReference Include="Mediator.SourceGenerator">

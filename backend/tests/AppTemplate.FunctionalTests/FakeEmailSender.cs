@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using AppTemplate.Core.Interfaces;
 
 namespace AppTemplate.FunctionalTests;
 

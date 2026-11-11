@@ -15,11 +15,11 @@ public class IdentityServiceCheckPassword(PostgresDatabaseFixture database)
     private async Task<EmailAddress> AccountAsync(bool emailConfirmed)
     {
         var email = NewEmail();
-        var created = await Identity.CreateAccountAsync(
+        var created = await Identity.CreateUserAsync(
             UserName.From("Ada"),
             email,
             Password,
-            Roles.Admin,
+            Role.Admin,
             emailConfirmed,
             TestContext.Current.CancellationToken
         );
@@ -40,8 +40,7 @@ public class IdentityServiceCheckPassword(PostgresDatabaseFixture database)
         var result = await Check(email, Password);
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Roles.ShouldBe([Roles.Admin]);
-        result.Value.SecurityStamp.ShouldNotBeNullOrEmpty();
+        result.Value.Roles.ShouldBe([Role.Admin.Name]);
     }
 
     [Fact]

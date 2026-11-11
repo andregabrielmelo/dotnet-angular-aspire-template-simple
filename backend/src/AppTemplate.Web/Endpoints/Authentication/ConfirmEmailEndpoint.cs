@@ -1,8 +1,8 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.UseCases.Authentication.ConfirmEmail;
+using AppTemplate.UseCases.Authentication.Commands.ConfirmEmail;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Authentication;
+namespace AppTemplate.Web.Endpoints.Authentication;
 
 public sealed class ConfirmEmailRequest
 {
@@ -57,6 +57,6 @@ public sealed class ConfirmEmailValidator : Validator<ConfirmEmailRequest>
         RuleFor(x => x.UserId)
             .GreaterThan(0)
             .WithMessage("The link is incomplete. Open it from the email again.");
-        RuleFor(x => x.Code).ValidCode();
+        RuleFor(x => x.Code).NotEmpty().WithMessage("The code is required.");
     }
 }

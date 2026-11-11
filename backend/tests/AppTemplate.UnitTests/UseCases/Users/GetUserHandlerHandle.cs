@@ -1,5 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
-using AppTemplate.UseCases.Users.Get;
+using AppTemplate.UseCases.Users.Queries.Get;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 

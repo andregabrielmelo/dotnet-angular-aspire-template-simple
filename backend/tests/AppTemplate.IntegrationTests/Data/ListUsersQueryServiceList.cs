@@ -1,4 +1,4 @@
-using AppTemplate.UseCases.Users.List;
+using AppTemplate.UseCases.Users.Queries.List;
 
 namespace AppTemplate.IntegrationTests.Data;
 

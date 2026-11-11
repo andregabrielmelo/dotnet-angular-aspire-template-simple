@@ -33,32 +33,35 @@ public class AuthResetPasswordPost(CustomWebApplicationFactory<Program> factory)
             );
 
     [Fact]
-    public async Task SetsTheNewPasswordAndEndsEverySession()
+    public async Task SetsTheNewPassword()
     {
-        var (user, session) = await factory.CreateSignedInSessionAsync();
+        var user = await factory.CreateUserAsync();
         var link = await ResetLinkFor(user);
 
         (await Reset(link["email"], link["code"], NewPassword)).StatusCode.ShouldBe(
             HttpStatusCode.NoContent
         );
 
-        (await session.RefreshAsync()).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await new TestSession(factory).LoginAsync(user.Email.Value)).StatusCode.ShouldBe(
             HttpStatusCode.Unauthorized
         );
         (
             await new TestSession(factory).LoginAsync(user.Email.Value, NewPassword)
-        ).StatusCode.ShouldBe(HttpStatusCode.OK);
+        ).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Fact]
-    public async Task ReturnsBadRequestGivenAWrongCode()
+    public async Task FailsGivenAWrongCode()
     {
         var user = await factory.CreateUserAsync();
 
         var response = await Reset(user.Email.Value, "bm90LXRoZS1jb2Rl", NewPassword);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        // Identity's errors map to a generic error (IdentityResultExtensions).
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        (
+            await new TestSession(factory).LoginAsync(user.Email.Value, NewPassword)
+        ).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

@@ -1,31 +1,20 @@
-using AppTemplate.UseCases.Authentication.Logout;
-using Microsoft.IdentityModel.JsonWebTokens;
+using AppTemplate.UseCases.Authentication.Commands.Logout;
 
-namespace AppTemplate.Web.Authentication;
+namespace AppTemplate.Web.Endpoints.Authentication;
 
-/// <summary>
-/// Signs out: deletes the session's refresh token (from its cookie) and revokes the caller's access
-/// token (<see cref="RevokedAccessTokens"/>), so neither works again. It sits on the refresh route
-/// so the browser sends it the refresh cookie.
-/// </summary>
-public class LogoutEndpoint(
-    IMediator _mediator,
-    RefreshTokenCookie _cookie,
-    RevokedAccessTokens _revokedAccessTokens
-) : EndpointWithoutRequest<Results<NoContent, ProblemHttpResult>>
+/// <summary>Signs out: Identity deletes the session cookie (ADR 015).</summary>
+public class LogoutEndpoint(IMediator _mediator) : EndpointWithoutRequest<NoContent>
 {
     public override void Configure()
     {
-        Delete("/auth/refresh-token");
+        Post("/auth/logout");
 
         Summary(s =>
         {
             s.Summary = "Sign out";
-            s.Description =
-                "Deletes the refresh token cookie's session and revokes the access token sent "
-                + "with this request.";
+            s.Description = "Ends this session by deleting its cookie.";
             s.Responses[204] = "Signed out";
-            s.Responses[401] = "Missing, invalid or already revoked access token";
+            s.Responses[401] = "Not signed in";
         });
 
         Tags("Auth");
@@ -33,22 +22,9 @@ public class LogoutEndpoint(
         Description(builder => builder.Produces(204).ProducesProblem(401));
     }
 
-    public override async Task<Results<NoContent, ProblemHttpResult>> ExecuteAsync(
-        CancellationToken cancellationToken
-    )
+    public override async Task<NoContent> ExecuteAsync(CancellationToken cancellationToken)
     {
-        await _mediator.Send(new LogoutCommand(_cookie.Read(HttpContext)), cancellationToken);
-        _cookie.Delete(HttpContext);
-
-        var jti = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
-        if (
-            jti is not null
-            && long.TryParse(User.FindFirst(JwtRegisteredClaimNames.Exp)?.Value, out var exp)
-        )
-        {
-            _revokedAccessTokens.Revoke(jti, DateTimeOffset.FromUnixTimeSeconds(exp));
-        }
-
+        await _mediator.Send(new LogoutCommand(), cancellationToken);
         return TypedResults.NoContent();
     }
 }

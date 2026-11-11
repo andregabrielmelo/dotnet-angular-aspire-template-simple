@@ -1,11 +1,10 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Update;
+using AppTemplate.UseCases.Users.Commands.Update;
 using AppTemplate.Web.Extensions;
 using AppTemplate.Web.Validation;
 
-namespace AppTemplate.Web.Users;
+namespace AppTemplate.Web.Endpoints.Users;
 
 public sealed class UpdateUserRequest
 {

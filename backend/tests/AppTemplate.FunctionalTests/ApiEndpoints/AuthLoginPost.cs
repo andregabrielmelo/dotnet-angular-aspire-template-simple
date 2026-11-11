@@ -1,6 +1,3 @@
-using System.Text.Json;
-using AppTemplate.Web.Authentication;
-
 namespace AppTemplate.FunctionalTests.ApiEndpoints;
 
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
@@ -8,37 +5,36 @@ public class AuthLoginPost(CustomWebApplicationFactory<Program> factory)
     : IClassFixture<CustomWebApplicationFactory<Program>>
 {
     [Fact]
-    public async Task ReturnsTheAccessTokenAndItsExpiryButNeverTheRefreshToken()
+    public async Task SignsInWithAStrictHttpOnlySecureSessionCookie()
     {
         var user = await factory.CreateUserAsync();
         var session = new TestSession(factory);
 
         var response = await session.LoginAsync(user.Email.Value);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
-        body.EnumerateObject()
-            .Select(property => property.Name)
-            .Order()
-            .ShouldBe(["accessToken", "accessTokenExpiry"]);
-        session.AccessToken.ShouldNotBeNullOrWhiteSpace();
-    }
-
-    [Fact]
-    public async Task SetsTheRefreshTokenAsAStrictHttpOnlyCookieForTheRefreshRoute()
-    {
-        var user = await factory.CreateUserAsync();
-        var session = new TestSession(factory);
-
-        await session.LoginAsync(user.Email.Value);
-
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var setCookie = session.LastSetCookies.Single(header =>
-            header.StartsWith($"{RefreshTokenCookie.Name}=")
+            header.StartsWith($"{TestSession.SessionCookieName}=")
         );
         setCookie.ShouldContain("httponly", Case.Insensitive);
         setCookie.ShouldContain("secure", Case.Insensitive);
         setCookie.ShouldContain("samesite=strict", Case.Insensitive);
-        setCookie.ShouldContain("path=/api/auth/refresh-token", Case.Insensitive);
+        setCookie.ShouldContain("path=/", Case.Insensitive);
+        setCookie.ShouldContain("expires=", Case.Insensitive); // persistent: survives a restart
+        (
+            await session.Client.GetAsync("/users/me", TestContext.Current.CancellationToken)
+        ).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task SetsNoCookieGivenAWrongPassword()
+    {
+        var user = await factory.CreateUserAsync();
+        var session = new TestSession(factory);
+
+        await session.LoginAsync(user.Email.Value, "wrong-password");
+
+        session.SessionCookie.ShouldBeNull();
     }
 
     [Fact]

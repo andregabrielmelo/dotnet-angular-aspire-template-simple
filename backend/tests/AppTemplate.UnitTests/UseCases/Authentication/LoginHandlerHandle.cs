@@ -1,21 +1,20 @@
 using AppTemplate.UseCases.Authentication;
-using AppTemplate.UseCases.Authentication.Login;
-using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Authentication.Commands.Login;
+using AppTemplate.UseCases.Interfaces;
 
 namespace AppTemplate.UnitTests.UseCases.Authentication;
 
 public class LoginHandlerHandle
 {
     private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
-    private readonly IRepository<User> _users = Substitute.For<IRepository<User>>();
 
     private void PasswordCheckReturns(Result<AccountDto> result) =>
         _identity
             .CheckPasswordAsync(TestUsers.Email, "a-password", Arg.Any<CancellationToken>())
             .Returns(result);
 
-    private Task<Result<AuthenticatedUserDto>> Login() =>
-        new LoginHandler(_identity, _users)
+    private Task<Result> Login() =>
+        new LoginHandler(_identity)
             .Handle(
                 new LoginCommand(TestUsers.Email, "a-password"),
                 TestContext.Current.CancellationToken
@@ -23,28 +22,25 @@ public class LoginHandlerHandle
             .AsTask();
 
     [Fact]
-    public async Task ReturnsTheUserWithTheirRolesGivenTheRightPassword()
+    public async Task SignsInGivenTheRightPassword()
     {
-        PasswordCheckReturns(TestUsers.Account(id: 7, role: Roles.Admin));
-        _users
-            .GetByIdAsync(UserId.From(7), Arg.Any<CancellationToken>())
-            .Returns(TestUsers.Saved(7));
+        PasswordCheckReturns(TestUsers.Account(id: 7));
 
         var result = await Login();
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Id.ShouldBe(UserId.From(7));
-        result.Value.Name.ShouldBe(TestUsers.Name);
-        result.Value.Email.ShouldBe(TestUsers.Email);
-        result.Value.Roles.ShouldBe([Roles.Admin]);
+        await _identity.Received(1).SignInAsync(UserId.From(7), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ReturnsUnauthorizedWhenTheCredentialsAreRefused()
+    public async Task ReturnsUnauthorizedWithoutSigningInWhenTheCredentialsAreRefused()
     {
         PasswordCheckReturns(Result.Unauthorized());
 
         (await Login()).Status.ShouldBe(ResultStatus.Unauthorized);
+        await _identity
+            .DidNotReceiveWithAnyArgs()
+            .SignInAsync(UserId.From(1), CancellationToken.None);
     }
 
     [Fact]
@@ -56,14 +52,8 @@ public class LoginHandlerHandle
 
         result.Status.ShouldBe(ResultStatus.Forbidden);
         result.Errors.ShouldContain("Confirm your email address before signing in.");
-    }
-
-    [Fact]
-    public async Task ReturnsUnauthorizedWhenTheProfileIsGone()
-    {
-        PasswordCheckReturns(TestUsers.Account(id: 7));
-        _users.GetByIdAsync(UserId.From(7), Arg.Any<CancellationToken>()).Returns((User?)null);
-
-        (await Login()).Status.ShouldBe(ResultStatus.Unauthorized);
+        await _identity
+            .DidNotReceiveWithAnyArgs()
+            .SignInAsync(UserId.From(1), CancellationToken.None);
     }
 }

@@ -1,4 +1,3 @@
-global using AppTemplate.Core.Aggregates.RefreshTokenAggregate;
 global using AppTemplate.Core.Aggregates.UserAggregate;
 global using AppTemplate.Core.ValueObjects;
 global using AppTemplate.Infrastructure.Data;

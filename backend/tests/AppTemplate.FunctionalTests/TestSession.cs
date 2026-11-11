@@ -1,156 +1,93 @@
-using System.Net.Http.Headers;
-using System.Text.Json;
-using AppTemplate.Web.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 
 namespace AppTemplate.FunctionalTests;
 
 /// <summary>
-/// A web client's side of a session: the browser's cookie jar, where the HttpOnly refresh token
-/// lives, and the access token the SPA keeps and sends as <c>Authorization: Bearer</c>. HTTPS,
-/// because the cookie is Secure outside Development.
-/// <para>
-/// The test server isn't behind the /api proxy, but the cookie is scoped to the browser's path
-/// (<c>/api/auth/refresh-token</c>). So the jar stores cookies against that path, and the refresh
-/// and sign-out requests attach the cookie the way a browser would there.
-/// </para>
+/// A browser's side of a session: a cookie jar on <c>https://localhost</c> (HTTPS, because the
+/// session cookie is Secure outside Development) that every request through <see cref="Client"/>
+/// sends and updates, as a browser does. Signing in sets Identity's session cookie; nothing else
+/// is needed to be signed in.
 /// </summary>
-public sealed class TestSession(WebApplicationFactory<Program> factory)
+public sealed class TestSession
 {
-    private static readonly Uri RefreshPath = new("https://localhost/api/auth/refresh-token");
+    private static readonly Uri Origin = new("https://localhost/");
+
+    /// <summary>Identity's application cookie, with its default name: the session.</summary>
+    public static readonly string SessionCookieName =
+        CookieAuthenticationDefaults.CookiePrefix + IdentityConstants.ApplicationScheme;
     private readonly CookieContainer _cookies = new();
 
-    public HttpClient Client { get; } =
-        factory.CreateClient(
-            new WebApplicationFactoryClientOptions
-            {
-                BaseAddress = new Uri("https://localhost"),
-                HandleCookies = false,
-            }
-        );
+    public TestSession(WebApplicationFactory<Program> factory) =>
+        Client = factory.CreateDefaultClient(Origin, new CookieJar(this));
 
-    public string? AccessToken { get; private set; }
+    public HttpClient Client { get; }
 
     /// <summary>The raw <c>Set-Cookie</c> headers of the last response.</summary>
     public IReadOnlyList<string> LastSetCookies { get; private set; } = [];
 
-    /// <summary>The refresh token cookie, as the browser holds it; <c>null</c> once deleted.</summary>
-    public Cookie? RefreshCookie =>
+    /// <summary>The session cookie, as the browser holds it; <c>null</c> once deleted.</summary>
+    public Cookie? SessionCookie =>
         _cookies
-            .GetCookies(RefreshPath)
-            .FirstOrDefault(cookie => cookie.Name == RefreshTokenCookie.Name && !cookie.Expired);
+            .GetCookies(Origin)
+            .FirstOrDefault(cookie => cookie.Name == SessionCookieName && !cookie.Expired);
+
+    /// <summary>Replaces the session cookie's value, as a client tampering with it would.</summary>
+    public void SetSessionCookie(string value) =>
+        _cookies.Add(Origin, new Cookie(SessionCookieName, value) { Secure = true });
 
     public Task<HttpResponseMessage> LoginAsync(
         string email,
         string password = CustomWebApplicationFactory<Program>.Password
-    ) =>
-        SendAsync(
-            new HttpRequestMessage(HttpMethod.Post, "/auth/login")
-            {
-                Content = JsonContent.Create(new { email, password }),
-            },
-            keepAccessToken: true
-        );
+    ) => Client.PostAsJsonAsync("/auth/login", new { email, password });
 
     public Task<HttpResponseMessage> RegisterAsync(
         string email,
         string password = CustomWebApplicationFactory<Program>.Password,
         string name = "Ada Lovelace"
     ) =>
-        SendAsync(
-            new HttpRequestMessage(HttpMethod.Post, "/auth/register")
+        Client.PostAsJsonAsync(
+            "/auth/register",
+            new
             {
-                Content = JsonContent.Create(
-                    new
-                    {
-                        name,
-                        email,
-                        password,
-                    }
-                ),
-            },
-            keepAccessToken: false
+                name,
+                email,
+                password,
+            }
         );
 
-    /// <summary>POST /auth/change-password; keeps the new session's access token and cookie.</summary>
     public Task<HttpResponseMessage> ChangePasswordAsync(
         string currentPassword,
         string newPassword
-    ) =>
-        SendAsync(
-            new HttpRequestMessage(HttpMethod.Post, "/auth/change-password")
+    ) => Client.PostAsJsonAsync("/auth/change-password", new { currentPassword, newPassword });
+
+    public Task<HttpResponseMessage> LogoutAsync() => Client.PostAsync("/auth/logout", null);
+
+    /// <summary>Sends the jar's cookies with each request and keeps what the response sets.</summary>
+    private sealed class CookieJar(TestSession session) : DelegatingHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        )
+        {
+            var cookies = session._cookies.GetCookieHeader(request.RequestUri!);
+            if (cookies.Length > 0)
             {
-                Content = JsonContent.Create(new { currentPassword, newPassword }),
-            },
-            keepAccessToken: true
-        );
+                request.Headers.Add("Cookie", cookies);
+            }
 
-    /// <summary>POST /auth/refresh-token with <c>{}</c>, sending this jar's refresh cookie, or <paramref name="refreshToken"/>.</summary>
-    public Task<HttpResponseMessage> RefreshAsync(string? refreshToken = null) =>
-        SendAsync(
-            WithRefreshCookie(
-                new HttpRequestMessage(HttpMethod.Post, "/auth/refresh-token")
-                {
-                    Content = JsonContent.Create(new { }),
-                },
-                refreshToken
-            ),
-            keepAccessToken: true
-        );
+            var response = await base.SendAsync(request, cancellationToken);
 
-    /// <summary>DELETE /auth/refresh-token (sign out), with the access token and the refresh cookie.</summary>
-    public Task<HttpResponseMessage> LogoutAsync() =>
-        SendAsync(
-            WithRefreshCookie(
-                new HttpRequestMessage(HttpMethod.Delete, "/auth/refresh-token"),
-                null
-            ),
-            keepAccessToken: false
-        );
+            session.LastSetCookies = response.Headers.TryGetValues("Set-Cookie", out var headers)
+                ? [.. headers]
+                : [];
+            foreach (var header in session.LastSetCookies)
+            {
+                session._cookies.SetCookies(request.RequestUri!, header);
+            }
 
-    /// <summary>Sends <paramref name="accessToken"/> from now on, as the SPA's interceptor does.</summary>
-    public void Authenticate(string? accessToken) =>
-        Client.DefaultRequestHeaders.Authorization = accessToken is null
-            ? null
-            : new AuthenticationHeaderValue("Bearer", accessToken);
-
-    private HttpRequestMessage WithRefreshCookie(HttpRequestMessage request, string? refreshToken)
-    {
-        var value = refreshToken ?? RefreshCookie?.Value;
-        if (value is not null)
-        {
-            request.Headers.Add("Cookie", $"{RefreshTokenCookie.Name}={value}");
+            return response;
         }
-        return request;
     }
-
-    private async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        bool keepAccessToken
-    )
-    {
-        var response = await Client.SendAsync(request);
-
-        LastSetCookies = response.Headers.TryGetValues("Set-Cookie", out var setCookies)
-            ? [.. setCookies]
-            : [];
-        foreach (var header in LastSetCookies)
-        {
-            _cookies.SetCookies(RefreshPath, header);
-        }
-
-        if (keepAccessToken && response.IsSuccessStatusCode)
-        {
-            // As a string, so the test can still read the body itself.
-            var json = await response.Content.ReadAsStringAsync();
-            AccessToken = JsonSerializer
-                .Deserialize<AccessTokenBody>(json, JsonSerializerOptions.Web)!
-                .AccessToken;
-            Authenticate(AccessToken);
-        }
-
-        return response;
-    }
-
-    /// <summary>What a token response body carries; userId and refreshToken never appear.</summary>
-    public sealed record AccessTokenBody(string AccessToken, DateTime AccessTokenExpiry);
 }

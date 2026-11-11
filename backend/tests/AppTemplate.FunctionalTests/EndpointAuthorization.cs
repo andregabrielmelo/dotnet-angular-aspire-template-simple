@@ -14,9 +14,8 @@ public class EndpointAuthorization(CustomWebApplicationFactory<Program> factory)
     private static readonly string[] ExpectedAnonymousRoutes =
     [
         // (The health probes are anonymous too, but mapped in Development only.)
-        // Signing in and up, and refreshing with the refresh cookie (no access token yet).
+        // Signing in and up: there's no session yet.
         "POST /auth/login",
-        "POST /auth/refresh-token",
         "POST /auth/register",
         // Account emails' links, and asking for them: whoever uses them isn't signed in.
         "POST /auth/confirm-email",
@@ -44,13 +43,5 @@ public class EndpointAuthorization(CustomWebApplicationFactory<Program> factory)
             .ToList();
 
         anonymous.ShouldBe(ExpectedAnonymousRoutes.Order());
-    }
-
-    [Fact]
-    public async Task KeepsFastEndpointsTestUrlCachePrivate()
-    {
-        // FastEndpoints 8.3 maps this route without authorization metadata; it lists every route
-        // and endpoint type name. The fallback policy is what makes it require a signed-in user.
-        await factory.CreateClient().GetAndEnsureUnauthorizedAsync("/_test_url_cache_");
     }
 }

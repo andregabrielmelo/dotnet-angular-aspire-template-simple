@@ -64,17 +64,4 @@ public class EfRepositoryAdd(PostgresDatabaseFixture database) : BaseEfRepoTestF
             .SingleAsync(saved => saved.Id == user.Id, cancellationToken);
         stored.PhoneNumber.ShouldBe(new PhoneNumber("+55", "11 98765 4321", "12"));
     }
-
-    [Fact]
-    public async Task AddsARefreshTokenForAUser()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var user = NewUser();
-        await GetRepository<User>().AddAsync(user, cancellationToken);
-        var token = NewRefreshToken(user.Id);
-
-        await GetRepository<RefreshToken>().AddAsync(token, cancellationToken);
-
-        token.Id.Value.ShouldBeGreaterThan(0);
-    }
 }

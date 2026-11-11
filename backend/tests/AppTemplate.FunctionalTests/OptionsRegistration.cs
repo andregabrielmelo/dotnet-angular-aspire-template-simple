@@ -1,6 +1,5 @@
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
-using AppTemplate.Web.Configurations;
 using Microsoft.Extensions.Options;
 
 namespace AppTemplate.FunctionalTests;
@@ -14,7 +13,7 @@ public class OptionsRegistration(CustomWebApplicationFactory<Program> factory)
     : IClassFixture<CustomWebApplicationFactory<Program>>
 {
     public static TheoryData<Type> WebOptions() =>
-        [typeof(MailserverConfiguration), typeof(JwtSettings), typeof(AccountLinkSettings)];
+        [typeof(MailserverConfiguration), typeof(AccountLinkSettings)];
 
     [Theory]
     [MemberData(nameof(WebOptions))]
@@ -33,10 +32,6 @@ public class OptionsRegistration(CustomWebApplicationFactory<Program> factory)
 public class OptionsValidationAtStartup
 {
     [Theory]
-    [InlineData("Jwt:SigningKey", "", "Jwt:SigningKey")]
-    [InlineData("Jwt:SigningKey", "too-short", "Jwt:SigningKey")]
-    [InlineData("Jwt:Issuer", "", "Issuer")]
-    [InlineData("Jwt:RefreshTokenValidity", "00:01:00", "validities")]
     [InlineData("Mailserver:FromAddress", "", "FromAddress")]
     [InlineData("AccountLinks:ClientUrl", "", "AccountLinks:ClientUrl")]
     [InlineData("AccountLinks:ClientUrl", "/relative", "AccountLinks:ClientUrl")]

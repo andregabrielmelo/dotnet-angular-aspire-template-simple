@@ -1,4 +1,4 @@
-using AppTemplate.Web.Users;
+using AppTemplate.Web.Endpoints.Users;
 
 namespace AppTemplate.FunctionalTests.ApiEndpoints;
 
@@ -98,7 +98,7 @@ public class UserUpdate(CustomWebApplicationFactory<Program> factory)
     public async Task UpdatesSomeoneElseGivenUsersWrite()
     {
         var target = await factory.CreateUserAsync();
-        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
 
         var response = await admin.Client.PutAndDeserializeAsync<UpdateUserResponse>(
             $"/users/{target.Id.Value}",
