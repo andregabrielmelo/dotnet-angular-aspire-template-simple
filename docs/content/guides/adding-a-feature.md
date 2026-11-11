@@ -21,7 +21,7 @@ Write down the operations and who may call each before you write code:
 | Rename a project | `PUT /projects/{id}` | `200` | the owner |
 | Delete a project | `DELETE /projects/{id}` | `204` | the owner |
 
-The browser calls these as `/api/projects/...`. The Angular dev server's proxy strips `/api`, and `auth-interceptor.ts` adds the access token.
+The browser calls these as `/api/projects/...`. The Angular dev server's proxy strips `/api`; the browser sends the session cookie, and HttpClient the antiforgery token.
 
 Two kinds of authorization show up here, and both are normal:
 - **Permissions** decide by *who you are*. Declare them on the endpoint with `Permissions(Permission.X)`.
@@ -83,7 +83,7 @@ namespace AppTemplate.Core.Aggregates.ProjectAggregate;
 
 /// <summary>
 /// A project belongs to the user who created it, identified by their <see cref="UserId"/>
-/// (the access token's <c>sub</c>). Only the owner may change it.
+/// (the session's <c>user_id</c>). Only the owner may change it.
 /// </summary>
 public class Project(UserId ownerId, ProjectName name)
     : EntityBase<Project, ProjectId>,
@@ -199,7 +199,7 @@ Read the generated `Data/Migrations/*_AddProjects.cs`: a `projects` table with s
 ```csharp
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Projects;
-using AppTemplate.UseCases.Projects.List;
+using AppTemplate.UseCases.Projects.Queries.List;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
@@ -254,7 +254,7 @@ services
 
 ## 4. UseCases: commands, queries and handlers
 
-Everything here lives in `backend/src/AppTemplate.UseCases/Projects/`, one folder per use case. It mirrors `UseCases/Users/`.
+Everything here lives in `backend/src/AppTemplate.UseCases/Projects/`: one folder per use case, commands under `Commands/` and queries under `Queries/`. It mirrors `UseCases/Users/`.
 
 **Repository or query service?**
 - **Changing something** (load it, call a domain method, save it): use `IRepository<T>`, plus a specification for anything beyond lookup by id.
@@ -284,7 +284,7 @@ public record ProjectDto(ProjectId Id, ProjectName Name, DateTimeOffset CreatedA
 // Create/CreateProjectCommand.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Create;
+namespace AppTemplate.UseCases.Projects.Commands.Create;
 
 public record CreateProjectCommand(ProjectName Name) : ICommand<Result<ProjectDto>>;
 ```
@@ -294,7 +294,7 @@ public record CreateProjectCommand(ProjectName Name) : ICommand<Result<ProjectDt
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Create;
+namespace AppTemplate.UseCases.Projects.Commands.Create;
 
 /// <summary>The caller becomes the project's owner.</summary>
 public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
@@ -326,7 +326,7 @@ public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser
 // Get/GetProjectQuery.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Get;
+namespace AppTemplate.UseCases.Projects.Queries.Get;
 
 public record GetProjectQuery(ProjectId ProjectId) : IQuery<Result<ProjectDto>>;
 ```
@@ -337,7 +337,7 @@ using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.Core.Aggregates.ProjectAggregate.Specifications;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Get;
+namespace AppTemplate.UseCases.Projects.Queries.Get;
 
 /// <summary>
 /// Resource-based authorization: the owner may read their project, and anyone with
@@ -378,7 +378,7 @@ Returning `Forbidden` tells a stranger that the project exists. When that matter
 // List/IListProjectsQueryService.cs
 using AppTemplate.Core.Aggregates.UserAggregate;
 
-namespace AppTemplate.UseCases.Projects.List;
+namespace AppTemplate.UseCases.Projects.Queries.List;
 
 /// <summary>
 /// Reads a page of projects straight into DTOs, without loading aggregates.
@@ -397,7 +397,7 @@ public interface IListProjectsQueryService
 
 ```csharp
 // List/ListProjectsQuery.cs
-namespace AppTemplate.UseCases.Projects.List;
+namespace AppTemplate.UseCases.Projects.Queries.List;
 
 /// <summary>The caller's own projects, a page at a time.</summary>
 public record ListProjectsQuery(int Page = 1, int PerPage = Constants.DEFAULT_PAGE_SIZE)
@@ -408,7 +408,7 @@ public record ListProjectsQuery(int Page = 1, int PerPage = Constants.DEFAULT_PA
 // List/ListProjectsHandler.cs
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.List;
+namespace AppTemplate.UseCases.Projects.Queries.List;
 
 public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser _currentUser)
     : IQueryHandler<ListProjectsQuery, Result<PagedResult<ProjectDto>>>
@@ -434,7 +434,7 @@ The query-service interface lives in UseCases, not Core, because it returns a us
 // Rename/RenameProjectCommand.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Rename;
+namespace AppTemplate.UseCases.Projects.Commands.Rename;
 
 public record RenameProjectCommand(ProjectId ProjectId, ProjectName Name)
     : ICommand<Result<ProjectDto>>;
@@ -445,7 +445,7 @@ public record RenameProjectCommand(ProjectId ProjectId, ProjectName Name)
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Rename;
+namespace AppTemplate.UseCases.Projects.Commands.Rename;
 
 /// <summary>Only the owner may rename a project.</summary>
 public class RenameProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
@@ -479,20 +479,17 @@ Handlers never touch HTTP, EF Core or the `DbContext`. They return a `Result` fo
 
 `projects:read` lets an admin read anyone's project. A permission is granted by a role, so it's added in three places:
 
-1. **`UseCases/Authorization/Permission.cs`**: the constant, and add it to `All`.
+1. **`UseCases/Authorization/Permission.cs`**: a new instance of the `Permission` smart enum; `Permission.List` picks it up.
    ```csharp
    /// <summary>Read anyone's project (everyone may read their own).</summary>
-   public const string ProjectsRead = "projects:read";
-
-   public static IReadOnlyList<string> All { get; } =
-   [UsersRead, UsersWrite, UsersDelete, ProjectsRead];
+   public static readonly Permission ProjectsRead = new(nameof(ProjectsRead), "projects:read");
    ```
-2. **`UseCases/Authorization/RolePermissions.cs`**: nothing to do for `Admin`, which gets `Permission.All`. A role that should have only some permissions lists them there. Users get the new permission in their next access token, at the latest when it's refreshed.
+2. **`UseCases/Authorization/Role.cs`**: nothing to do for `Admin`, which gets `[.. Permission.List]`. A role that should have only some permissions lists them in its instance. Users get the new permission at their next sign-in or security stamp check, within 30 minutes.
 3. **`frontend/src/app/core/auth/permissions.ts`**: `ProjectsRead: 'projects:read'`, so the UI can show or hide things.
 
 ## 6. Web: the endpoints
 
-One class per operation, in `backend/src/AppTemplate.Web/Endpoints/Projects/`, in the namespace `AppTemplate.Web.Projects`. Each file holds the endpoint, its request, and its validator. It mirrors `Web/Endpoints/Users/`.
+One class per operation, in `backend/src/AppTemplate.Web/Endpoints/Projects/`, in the namespace `AppTemplate.Web.Endpoints.Projects`. Each file holds the endpoint, its request, and its validator. It mirrors `Web/Endpoints/Users/`.
 
 **The response shape**, shared by the endpoints:
 
@@ -500,7 +497,7 @@ One class per operation, in `backend/src/AppTemplate.Web/Endpoints/Projects/`, i
 // ProjectRecord.cs
 using AppTemplate.UseCases.Projects;
 
-namespace AppTemplate.Web.Projects;
+namespace AppTemplate.Web.Endpoints.Projects;
 
 /// <summary>A project as the API returns it: plain values, never the aggregate.</summary>
 public record ProjectRecord(int Id, string Name, DateTimeOffset CreatedAtUtc)
@@ -514,10 +511,10 @@ public record ProjectRecord(int Id, string Name, DateTimeOffset CreatedAtUtc)
 
 ```csharp
 using AppTemplate.Core.Aggregates.ProjectAggregate;
-using AppTemplate.UseCases.Projects.Create;
+using AppTemplate.UseCases.Projects.Commands.Create;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Projects;
+namespace AppTemplate.Web.Endpoints.Projects;
 
 public sealed class CreateProjectRequest
 {
@@ -634,10 +631,10 @@ public class DeleteEndpoint(IMediator _mediator)
 
 ```csharp
 using AppTemplate.UseCases.Projects;
-using AppTemplate.UseCases.Projects.List;
+using AppTemplate.UseCases.Projects.Queries.List;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Projects;
+namespace AppTemplate.Web.Endpoints.Projects;
 
 public sealed class ListProjectsRequest
 {
@@ -771,7 +768,7 @@ export class ProjectsService {
 }
 ```
 
-`auth-interceptor.ts` adds the access token for you, and refreshes it once if it has expired.
+The browser sends the session cookie for you, and HttpClient adds the antiforgery token to requests other than GET.
 
 **The page**, `projects-page.ts`. It uses signals for state and a reactive form, and reads validation messages from the problem details `errors` object:
 
@@ -953,7 +950,7 @@ public class ProjectGetById(CustomWebApplicationFactory<Program> factory)
     {
         var (_, owner) = await factory.CreateSignedInSessionAsync();
         var project = await CreateAsync(owner.Client, "Mine");
-        var (_, admin) = await factory.CreateSignedInSessionAsync(Roles.Admin);
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
 
         var fetched = await admin.Client.GetAndDeserializeAsync<ProjectRecord>(
             $"/projects/{project.Id}"
@@ -972,7 +969,7 @@ public class ProjectGetById(CustomWebApplicationFactory<Program> factory)
 ```
 
 **How the functional tests work:**
-- `factory.CreateSignedInSessionAsync(role)` saves a user with that role and signs them in through the real `POST /auth/login`. Its `TestSession.Client` sends their access token, whose permissions come from the role (`Admin` has every permission, including the new `projects:read`). A fresh user per test keeps tests independent, because they share one database per class.
+- `factory.CreateSignedInSessionAsync(role)` saves a user with that role and signs them in through the real `POST /auth/login`. Its `TestSession.Client` sends their session cookie (and the antiforgery token), whose permissions come from the role (`Admin` has every permission, including the new `projects:read`). A fresh user per test keeps tests independent, because they share one database per class.
 - `Ardalis.HttpClientTestExtensions` (`GetAndDeserializeAsync`, `GetAndEnsureForbiddenAsync`, ...) asserts status codes in one line; Shouldly asserts the rest.
 - Cover, for every endpoint:
   - success, including the `Location` header for a create
@@ -1007,7 +1004,7 @@ Then run the app (`dotnet run --project src/AppTemplate.AppHost`), open the `ang
 ## 11. Later: removing the `User` reference
 
 Once your own features exist, most of the `User` slice is no longer needed as an example. Part of it is how people sign in, though:
-- **Keep** the `User` aggregate (its email and password hash), `RefreshToken`, registration, sign-in, refresh and logout (`Web/Endpoints/Authentication/`, `Web/Authentication/`, `UseCases/Authentication/`, `UseCases/Users/Register/`), and `GET /users/me` (`MeEndpoint`, `GetCurrentUserHandler`): the frontend's `CurrentUserService` uses it for the user's name and permissions.
+- **Keep** the `User` aggregate (the profile; the account is Identity's `ApplicationUser`), registration, sign-in and logout (`Web/Endpoints/Authentication/`, `Web/Services/`, `UseCases/Authentication/`, `UseCases/Users/Commands/Register/`, `UseCases/Users/Handlers/`, `Infrastructure/Identity/`), and `GET /users/me` (`MeEndpoint`, `GetCurrentUserHandler`): the frontend's `CurrentUserService` uses it for the user's name and permissions.
 - **Delete** what's only an example: the update, delete and list endpoints, their use cases and tests, `features/users/`, and the `users:*` permissions you don't need.
-- **Keep** `ICurrentUser`, `Permission` and `RolePermissions`: they are the authorization mechanism, not the example.
+- **Keep** `ICurrentUser`, `Permission` and `Role`: they are the authorization mechanism, not the example.
 - Moving the profile fields you don't need off `User` (such as the phone number) needs a migration.

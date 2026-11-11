@@ -46,7 +46,7 @@ Both shapes a form cares about carry the same `errors` object, so a client shows
 |---|---|---|
 | `Invalid` | 400 | `errors` by field |
 | `Unauthorized` | 401 | none |
-| `Forbidden` | 403 | the use case's message (such as an unconfirmed email), or a generic one |
+| `Forbidden` | 403 | the use case's message, or a generic one |
 | `NotFound` | 404 | the use case's message, if any |
 | `Conflict` | 409 | the use case's message |
 | `Unavailable` | 503 | generic |

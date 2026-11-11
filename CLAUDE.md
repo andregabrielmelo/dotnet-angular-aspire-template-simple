@@ -70,7 +70,7 @@ Not run day-to-day, but useful when editing docs: requires the `hugo-book` theme
 Dependencies point inward; nothing below depends on something above it in this list:
 
 - **`AppTemplate.SharedKernel`** - base types shared by every layer: `EntityBase`/`EntityBase<TId>`, domain event interfaces + dispatch, and the persistence exceptions use cases react to (`UniqueConstraintViolationException`, `ConcurrencyConflictException`). Kept in-repo (not a separate NuGet package) since this template is meant to be self-contained.
-- **`AppTemplate.Core`** - the domain model: aggregates (`Aggregates/UserAggregate/`, the user's profile; `Aggregates/RefreshTokenAggregate/`), value objects, specifications, domain events (`UserRegisteredDomainEvent`), and the ports Infrastructure implements against external resources (`Core/Interfaces`, such as `IEmailSender`). Near-zero external dependencies (`Ardalis.Specification`, `Ardalis.Result`, `Vogen`).
+- **`AppTemplate.Core`** - the domain model: aggregates (`Aggregates/UserAggregate/`, the user's profile), value objects, specifications, domain events (`UserRegisteredDomainEvent`), and the ports Infrastructure implements against external resources (`Core/Interfaces`, such as `IEmailSender`). Near-zero external dependencies (`Ardalis.Specification`, `Ardalis.Result`, `Vogen`).
 - **`AppTemplate.UseCases`** - CQRS commands/queries dispatched via `Mediator`, (martinothamar/Mediator, source-generated - **not** MediatR). Depends on Core only; data access goes through `IRepository<T>` (`SharedKernel/IRepository.cs`, an `Ardalis.Specification` repository) and query-service interfaces defined here, implemented in Infrastructure. Accounts go through `Authentication/IIdentityService`.
 - **`AppTemplate.Infrastructure`** - EF Core + Npgsql (`Data/ApplicationDatabaseContext.cs`, an `IdentityDbContext`), ASP.NET Core Identity (`Identity/`: `ApplicationUser`, `IdentityService`, `AccountEmailSender`), email (MailKit), repository/query-service implementations. Anything talking to the outside world lives here.
 - **`AppTemplate.Web`** - the ASP.NET Core entry point and composition root (`Program.cs`, `Configurations/`). One [FastEndpoints](https://fast-endpoints.com/) class per endpoint under `Endpoints/<Feature>/` (namespace `AppTemplate.Web.<Feature>`), following the REPR pattern (Request-Endpoint-Response), with FluentValidation validators colocated in the same file as their endpoint. Mediator's `LoggingBehavior` pipeline behavior is in `Behaviors/`. Endpoints map `Ardalis.Result` only through `Extensions/ResultExtensions.cs` (`ToOkResult` and siblings), which writes RFC 9457 problem details; request validation errors are FastEndpoints' default `ErrorResponse`, with the same `errors` field map (ADR 009).
@@ -96,7 +96,7 @@ Authorization (ADR 011): the API's permissions (`users:read`, `users:write`, `us
 
 ### Email
 
-`IEmailSender` (Core) is implemented by `Infrastructure/Email/MimeKitEmailSender` over MailKit, configured by `Mailserver:Hostname`/`Port`/`FromAddress` (`MailserverConfiguration`). The AppHost points it at Mailpit in Development. `SendConfirmationOnUserRegistered` sends the confirmation email, and `IdentityService` the reset email (through `AccountEmailSender`); read them in Mailpit's web UI. Functional tests replace it with `FakeEmailSender` (`factory.EmailSender`).
+`IEmailSender` (Core) is implemented by `Infrastructure/Email/MimeKitEmailSender` over MailKit, configured by `Mailserver:Hostname`/`Port`/`FromAddress` (`MailserverConfiguration`). The AppHost points it at Mailpit in Development. `SendConfirmationOnUserRegistered` sends the confirmation email, and `IdentityService` the reset email (both through `AccountEmailSender`); read them in Mailpit's web UI. Never log the links or codes. Functional tests replace it with `FakeEmailSender` (`factory.EmailSender`).
 
 ### Domain events
 
@@ -104,7 +104,7 @@ Entities register domain events (`RegisterDomainEvent`); `Infrastructure/Data/Ev
 
 ### Tests
 
-Four test projects under `backend/tests/`, following ardalis/CleanArchitecture's conventions: xUnit v3, Shouldly, NSubstitute, one class per member or behavior named `<Type><Member>` (`UserCreate`, `LoginHandlerHandle`, `AuthRefreshTokenPost`), and `TestContext.Current.CancellationToken` (see ADR 006 for the reasoning):
+Four test projects under `backend/tests/`, following ardalis/CleanArchitecture's conventions: xUnit v3, Shouldly, NSubstitute, one class per member or behavior named `<Type><Member>` (`UserCreate`, `LoginHandlerHandle`, `AuthLoginPost`), and `TestContext.Current.CancellationToken` (see ADR 006 for the reasoning):
 
 - **`AppTemplate.UnitTests`** - Core/UseCases in isolation, `IRepository<T>` substituted with NSubstitute. No I/O.
 - **`AppTemplate.IntegrationTests`** - Infrastructure against a real Postgres: EF repositories, `IdentityService` (`Identity/`: account creation, lockout, codes), `ListUsersQueryService` and `Data/MigrationDrift`. `BaseEfRepoTestFixture` gives each class a fresh database built by the real migrations.
@@ -113,7 +113,7 @@ Four test projects under `backend/tests/`, following ardalis/CleanArchitecture's
 
 `tests/Shared/PostgresTestDatabase.cs` (compiled into the integration and functional projects) starts one real Postgres container per test run (Testcontainers), so **Docker is required** for those two (Podman works via `DOCKER_HOST` with `TESTCONTAINERS_RYUK_DISABLED=true`). Mark every test class that needs it `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`: CI's Windows/macOS jobs run `--filter "Category!=RequiresDocker"`, since they can't run Linux containers.
 
-`EndpointAuthorization` (functional) pins the list of anonymous routes (login, register, `POST /auth/refresh-token` and the account email endpoints), so update it when you deliberately make an endpoint public. Tests that move the clock (`factory.Time`, a `FakeTimeProvider`) get their own factory, as `AuthRefreshTokenPostAfterExpiry` does.
+`EndpointAuthorization` (functional) pins the list of anonymous routes (login, register, `GET /auth/antiforgery-token` and the account email endpoints), so update it when you deliberately make an endpoint public. Tests that move the clock (`factory.Time`, a `FakeTimeProvider`, which the cookie and the stamp validator use) get their own factory, as `SessionStampValidation` does.
 
 ### Cross-cutting concerns
 
@@ -137,14 +137,14 @@ The AppHost wires up these resources for local dev only (not a production deploy
 
 Open the app at the `angular` resource's URL in the Aspire dashboard. Connection strings and service URLs are wired by Aspire (`WithReference`/`WaitFor`), not hardcoded in `appsettings.json`. After pulling a schema change that rewrote `InitialCreate` (as removing Keycloak did), delete the Postgres data volume.
 
-Outside the `Development` environment the AppHost doesn't start Mailpit: it expects the SMTP server as the `mailserver-hostname` and `mailserver-port` parameters. The API then needs `Jwt__SigningKey`, and its health probes aren't mapped, so `WithHttpHealthCheck("/health")` never turns healthy there.
+Outside the `Development` environment the AppHost doesn't start Mailpit: it expects the SMTP server as the `mailserver-hostname` and `mailserver-port` parameters. The API's health probes aren't mapped, so `WithHttpHealthCheck("/health")` never turns healthy there.
 
 ### Frontend (`frontend/src/app/`)
 
 Standalone Angular components, organized as `core/`, `shared/`, and `features/<feature>/` (`auth`, `home`, `profile`, `users`):
-- `AuthService` keeps the session (`accessToken`, `accessTokenExpiry`) in `localStorage` (`apptemplate.session`), so a reload or a new tab stays signed in, and signs in and registers against `api/auth/*`. `refresh()` posts `{}` to `api/auth/refresh-token` (the browser adds the cookie); refreshes are shared within a tab and serialized across tabs (`REFRESH_LOCK`, Web Locks), and inside the lock a tab first adopts a token another tab just stored. A `storage` listener keeps tabs in step. `ensureSession()` refreshes when the stored token is missing or expiring. `logout()` sends `DELETE api/auth/refresh-token` with the Bearer token (refreshing an expired one first) and clears the local session even if the request fails.
-- `core/auth/auth-interceptor.ts` adds `Authorization: Bearer` to API requests, refreshing first when the token is about to expire, and on a 401 refreshes once and retries. It leaves `api/auth/*` alone, so a failing refresh never triggers another.
-- `authGuard` protects routes (sending the user to `/auth?returnUrl=...`), and `permissionGuard` hides pages the user has no permission for.
+- `AuthService` (`features/auth/auth-service.ts`) holds no token: the browser keeps the HttpOnly session cookie and sends it with every same-origin request, in every tab. Whether the user is signed in is whether `CurrentUserService` has loaded a profile (`GET api/users/me`; `ensureSession()`). `login()` posts, then fetches a new antiforgery token (`fetchAntiforgeryToken()`, also run at startup by `provideAppInitializer` in `app.config.ts`); `logout()` posts `api/auth/logout` and forgets the user even if the request fails. `withXsrfConfiguration` makes HttpClient send the `XSRF-TOKEN` cookie as `X-XSRF-TOKEN` on unsafe same-origin requests.
+- `core/auth/auth-interceptor.ts` adds nothing: on a 401 from the API while signed in (the session expired or was ended elsewhere) it forgets the user and sends them to `/auth/login?returnUrl=...`. It leaves `api/auth/*` alone.
+- `authGuard` protects routes (sending the user to `/auth/login?returnUrl=...`), and `permissionGuard` hides pages the user has no permission for.
 
 Relative `api/...` URLs (`API_BASE` in `core/api/api-paths.ts`) reach the Web API through the dev server proxy (`frontend/proxy.conf.mjs`, which strips `/api` and targets `services__web__http__0`). There is no CORS: in production, serve the app and `/api` from one origin.
 

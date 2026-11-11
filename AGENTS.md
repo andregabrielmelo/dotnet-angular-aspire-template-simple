@@ -22,15 +22,15 @@ Dependencies point inward:
 | Project | Contains | May depend on |
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
-| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports to external resources in `Core/Interfaces` (`IEmailSender`, ...) | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), request context (`ICurrentUser`) and the accounts port (`IIdentityService`) | Core, SharedKernel |
+| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events and their handlers, specifications; ports in `Core/Interfaces` (`IEmailSender`, the request context `ICurrentUser`, ...) | SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), the accounts port (`UseCases/Interfaces/IIdentityService`) and the `Role`/`Permission` smart enums | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, ASP.NET Core Identity (`ApplicationUser`, `IdentityService`) | Core, UseCases, SharedKernel |
-| `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`), JWT issuance, validation and revocation (FastEndpoints.Security), the refresh cookie, composition root | everything above |
+| `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`), the antiforgery check, composition root | everything above |
 
 - Core never references UseCases, Infrastructure, Web, EF Core or ASP.NET Core.
 - Only Infrastructure uses ASP.NET Core Identity (`UserManager`, `SignInManager`, `ApplicationUser`); everything else goes through `IIdentityService` ([ADR 013](docs/content/architecture-decisions/adr-013-user-management-aspnetcore-identity.md)).
 - UseCases never references Infrastructure, Web or EF Core. Data access goes through `IRepository<T>` or a query-service interface defined in UseCases.
-- A dependency on an external resource (SMTP, an HTTP API, or our own Postgres beyond `IRepository<T>`) is an Infrastructure class behind an interface in `Core/Interfaces`; the doc comment names the implementation and its consumers. List query services, which return use-case DTOs, and `ICurrentUser`, which Web implements from the request, stay in UseCases.
+- A dependency on an external resource (SMTP, an HTTP API, or our own Postgres beyond `IRepository<T>`) is an Infrastructure class behind an interface in `Core/Interfaces`; the doc comment names the implementation and its consumers. List query services, which return use-case DTOs, and `IIdentityService`, which returns them too, stay in UseCases; `ICurrentUser` (Web implements it from the request) is in Core.
 - Don't move a class to another layer to avoid writing the right abstraction.
 - Don't add projects, base classes, generic frameworks or DDD patterns without a concrete use and a clear benefit.
 - Before adding an interface, specification, domain event or pipeline behavior, check [When To Abstract](docs/content/design-decisions.md#when-to-abstract). Optional capabilities stay opt-in ([Supported vs Required](docs/content/design-decisions.md#supported-vs-required)).
@@ -38,11 +38,11 @@ Dependencies point inward:
 ## 3. API endpoints ([ADR 003](docs/content/architecture-decisions/adr-003-fastendpoints-mediator.md))
 
 - FastEndpoints with the REPR pattern only. No MVC controllers and no Minimal API handlers for feature endpoints.
-- One endpoint class per HTTP operation, under `Web/Endpoints/<Feature>/`, in the namespace `AppTemplate.Web.<Feature>`. The request DTO, the FluentValidation `Validator<T>` and the `Mapper` live in the same file as the endpoint (see `GetByIdEndpoint.cs`).
+- One endpoint class per HTTP operation, under `Web/Endpoints/<Feature>/`, in the namespace `AppTemplate.Web.Endpoints.<Feature>`. The request DTO, the FluentValidation `Validator<T>` and the `Mapper` live in the same file as the endpoint (see `GetByIdEndpoint.cs`).
 - Endpoints are thin: translate the request into a command or query, `await mediator.Send(..., cancellationToken)`, and map the `Result` with `Web/Extensions/ResultExtensions.cs` (`ToOkResult`, `ToCreatedResult`, `ToNoContentResult`, `ToAcceptedResult`). The return type is `Results<Ok<T>, ProblemHttpResult>` (or `Created`, `NoContent`, `Accepted`). No business logic, EF Core or external SDKs in endpoints.
 - Use case failures become RFC 9457 problem details through `ResultExtensions`; request validation failures are FastEndpoints' `ErrorResponse`, with the same `errors` field map ([ADR 009](docs/content/architecture-decisions/adr-009-problem-details-error-contract.md)). Never build an error response by hand or `switch` on `ResultStatus` in an endpoint.
 - Request and response types are dedicated DTOs. Never expose an entity, aggregate or value object.
-- Every endpoint is authenticated by default, and a fallback policy covers routes that declare nothing. Declare either `AllowAnonymous()` (deliberately) or `Permissions(Permission.X)` explicitly ([ADR 011](docs/content/architecture-decisions/adr-011-role-based-permissions.md)). A new anonymous route must be added to `EndpointAuthorization` (functional tests).
+- Every FastEndpoints endpoint is authenticated by default; there is no fallback policy, so never map a route outside FastEndpoints. Declare either `AllowAnonymous()` (deliberately) or `Permissions(Permission.X)` explicitly ([ADR 011](docs/content/architecture-decisions/adr-011-role-based-permissions.md)). A new anonymous route must be added to `EndpointAuthorization` (functional tests).
 - Never put Data Annotations attributes (`[Required]` and so on) on request DTOs. FastEndpoints ignores them; use the validator.
 - Declare `Summary`, `Tags` and `Description(... .Produces...)` so the OpenAPI document stays accurate.
 - Authentication follows FastEndpoints.Security ([ADR 012](docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md)): tokens are created only by `UserTokenService` (`CreateTokenWith<UserTokenService, IssuedTokens>`), with claims from `UserPrivilegesExtensions.AddUser`. Never return a refresh token in a body.
@@ -52,7 +52,8 @@ Dependencies point inward:
 ## 4. Use cases
 
 - Use [Mediator](https://github.com/martinothamar/Mediator) (source-generated). Never MediatR, and never a second dispatch mechanism.
-- One folder per use case: `UseCases/<Feature>/<UseCase>/`. The command or query record has its own file (`UpdateUserCommand.cs`) next to its handler (`UpdateUserHandler.cs`).
+- One folder per use case: commands in `UseCases/<Feature>/Commands/<UseCase>/`, queries in `UseCases/<Feature>/Queries/<UseCase>/`; domain event handlers go in `UseCases/<Feature>/Handlers/`.
+- Guard method arguments and invariants with `Ardalis.GuardClauses` (`Guard.Against.Null`, `NullOrWhiteSpace`, `InvalidInput`, `NotFound`) in SharedKernel, Core and Infrastructure. Value objects keep Vogen's `Validate`, and expected failures stay `Result`s. The command or query record has its own file (`UpdateUserCommand.cs`) next to its handler (`UpdateUserHandler.cs`).
 - Handlers return `Ardalis.Result`. Use `Result.NotFound()`, `Result.Forbidden()`, `Result.Conflict()` or `Result.Invalid(...)` for expected outcomes; their messages reach the caller. `Result.Error()` and `Result.Unavailable()` become a generic 500 or 503, so log the details in the handler. Throw only for unexpected failures.
 - Resource-based authorization ("may update their own profile, or anyone's with `users:write`") lives in the handler, through `ICurrentUser`, and returns `Result.Forbidden()`.
 - **Repository or query service?**
@@ -82,7 +83,6 @@ Dependencies point inward:
 
 - Register options before using them: `AddOptions<T>().Bind(...)` with explicit validation rules and `ValidateOnStart()`. `ValidateOnStart` alone makes nothing required; the rules do.
 - Never invent configuration at the call site: no `GetSection(...).Get<T>() ?? new T()`, no `configuration["Key"] ?? "literal"`. Read options through `IOptions<T>` when the service or framework options are built (`AddOptions<TFramework>().Configure<IOptions<T>>(...)`, DI factories), not at registration. A required value is validated with `ValidateOnStart`, so a missing value fails startup, not the first request.
-  - The one exception is `JwtSettings`, which `AuthConfigurations` reads at registration because FastEndpoints' `AddAuthenticationJwtBearer` takes the key and validation parameters there, as its docs show. `ValidateOnStart` still rejects a bad value before the app serves anything.
 - Three kinds of settings: **required** (validated as present), **optional feature** (empty means off; when on, every setting is validated so a partial configuration fails), and **safe defaults** (defaults live in the options class, never in `appsettings*.json`, which keeps only values we set).
 - A new options type joins the explicit list in its composition root's tests (`OptionsRegistration` in the functional tests for Web). Why: `docs/content/best-practices.md`, Options.
 - Never hardcode secrets, credentials or environment-specific URLs. Local services are wired by Aspire (`WithReference`/`WaitFor` in `AppHost.cs`); secrets are AppHost parameters or user secrets.
@@ -101,7 +101,7 @@ Dependencies point inward:
 - **Integration tests** (`AppTemplate.IntegrationTests`) cover Infrastructure against a real Postgres (Testcontainers): repositories, constraints, query services and migrations, on `BaseEfRepoTestFixture`.
 - **Functional tests** (`AppTemplate.FunctionalTests`) cover HTTP contracts, validation, authorization, status codes and serialization through `CustomWebApplicationFactory<Program>`, against a real Postgres, one class per route and verb in `ApiEndpoints/`:
   - Mark every class that needs Postgres with `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
-  - Sign in for real: `factory.CreateSignedInSessionAsync(role)` (a `Roles` constant) returns the user and a `TestSession` whose `Client` sends the access token; `TestSession` also drives login, register, refresh, change password and logout with its own cookie jar. `factory.CreateUserAsync(role)` creates a confirmed account, and `factory.EmailSender.LastLinkQueryTo(email)` reads an emailed link. There is no test authentication handler.
+  - Sign in for real: `factory.CreateSignedInSessionAsync(role)` (a `Role`, `Member` by default) returns the user and a `TestSession` whose `Client` is a cookie jar holding the session, and sends the antiforgery token as the SPA does; `TestSession` also drives login, register, change password and logout. `factory.CreateUserAsync(role)` creates an account. There is no test authentication handler.
   - Assert status codes with `Ardalis.HttpClientTestExtensions` (`GetAndEnsureNotFoundAsync`, ...). Emails go to `factory.EmailSender`, a fake that records them.
 - **Architecture tests** (`AppTemplate.ArchitectureTests`) enforce section 2 and the placement rules in sections 3 and 4. If one fails, fix the code, not the rule. Only change a rule together with the ADR that justifies it.
 - Tests follow Arrange-Act-Assert, one behavior per test. Change tests whenever observable behavior changes.
@@ -113,7 +113,7 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 - HTTP calls live in feature services, not components.
 - Guards are UX, not authorization.
 - The SPA must run under a strict CSP, sent by the production host: no inline scripts, inline event handlers or `eval`. New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Production deployment).
-- `AuthService` keeps the access token and its expiry in `localStorage`; the refresh token is an HttpOnly cookie the app never reads, sent only to `api/auth/refresh-token` ([ADR 012](docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md)). Never store a token anywhere else.
+- The session is an HttpOnly cookie the app never reads ([ADR 015](docs/content/architecture-decisions/adr-015-cookie-sessions-aspnetcore-identity.md)); `AuthService` only knows whether the API returns a profile. Never store a credential in `localStorage`, add an `Authorization` header, or turn off HttpClient's XSRF support: it sends the antiforgery token. After anything that changes who is signed in, fetch a new token (`fetchAntiforgeryToken()`).
 
 ## 11. Code style
 

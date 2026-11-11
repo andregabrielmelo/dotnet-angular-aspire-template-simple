@@ -26,7 +26,7 @@ Dependencies point inward: each project may use the ones listed above it, never 
 |---|---|---|
 | `AppTemplate.SharedKernel` | Base types every layer uses: `EntityBase`, `IRepository<T>`, domain event plumbing, the persistence exceptions use cases catch | `IRepository.cs` |
 | `AppTemplate.Core` | The domain: aggregates, value objects, specifications, domain events, and interfaces ("ports") for things outside the process | `Aggregates/UserAggregate/User.cs`, `Interfaces/IEmailSender.cs` |
-| `AppTemplate.UseCases` | What the application does: one folder per command or query, with its handler. Also list query-service interfaces, `ICurrentUser`, `Permission`, `Roles` and the accounts port `IIdentityService` | `Users/Update/UpdateUserHandler.cs` |
+| `AppTemplate.UseCases` | What the application does: one folder per command or query, with its handler. Also list query-service interfaces, the `Role` and `Permission` smart enums and the accounts port `IIdentityService` | `Users/Commands/Update/UpdateUserHandler.cs` |
 | `AppTemplate.Infrastructure` | How it's done: EF Core and Postgres, repository and query-service implementations, ASP.NET Core Identity for accounts, email over SMTP | `Data/Queries/ListUsersQueryService.cs` |
 | `AppTemplate.Web` | The HTTP API: endpoints, validation, authentication, error responses, and the composition root (`Program.cs`, `Configurations/`) | `Endpoints/Users/UpdateEndpoint.cs` |
 | `AppTemplate.ServiceDefaults` | Shared by every host: OpenTelemetry (logs, traces, metrics), health checks, service discovery | `Extensions.cs` |
@@ -38,7 +38,7 @@ Dependencies point inward: each project may use the ones listed above it, never 
 |---|---|---|
 | `AppTemplate.UnitTests` | Domain rules and handlers, with fakes (NSubstitute) | nothing |
 | `AppTemplate.IntegrationTests` | Repositories, ASP.NET Core Identity (`IdentityService`), query services and migrations, against a real Postgres | Docker or Podman |
-| `AppTemplate.FunctionalTests` | Real HTTP calls through the whole API (`ApiEndpoints/`), against a real Postgres, signed in for real, including refresh-token rotation and logout | Docker or Podman |
+| `AppTemplate.FunctionalTests` | Real HTTP calls through the whole API (`ApiEndpoints/`), against a real Postgres, signed in for real with the session cookie and antiforgery token, including logout and sessions ending | Docker or Podman |
 | `AppTemplate.ArchitectureTests` | The layering and naming rules | nothing |
 
 ### Frontend (`frontend/src/app/`)
@@ -53,7 +53,7 @@ Dependencies point inward: each project may use the ones listed above it, never 
 
 Saving your name on the profile page sends `PUT /api/users/7` with `{ "name": "Ada" }`. Here's its path, with the file that handles each step:
 
-1. **Angular.** `ProfilePage` calls `UsersService.update` (`features/users/users.service.ts`). `auth-interceptor.ts` adds the access token (kept by `AuthService` in `localStorage`) as `Authorization: Bearer`, refreshing it first if it's about to expire (`AuthService.refresh`, using the refresh cookie); if the API still answers 401, it refreshes once and retries.
+1. **Angular.** `ProfilePage` calls `UsersService.update` (`features/users/users.service.ts`). The browser sends the session cookie by itself, and HttpClient adds the antiforgery token (`X-XSRF-TOKEN`, from the `XSRF-TOKEN` cookie). If the API answers 401 (the session ended), `auth-interceptor.ts` sends the user to sign in.
 2. **Dev server proxy.** `frontend/proxy.conf.mjs` strips `/api` and forwards `PUT /users/7` to the API.
 3. **API middleware** (`Web/Configurations/MiddlewareConfigurations.cs`, in this order): error handling, FastEndpoints' JWT revocation check, JWT authentication, then authorization, which enforces the endpoint's `Permissions(...)`.
 4. **Endpoint.** FastEndpoints routes to `UpdateEndpoint` (`Web/Endpoints/Users/UpdateEndpoint.cs`), binds `UpdateUserRequest`, and runs `UpdateUserValidator`. Invalid input stops here with a 400 (FastEndpoints' `ErrorResponse`). Otherwise the endpoint turns the request into an `UpdateUserCommand` and sends it.
@@ -86,8 +86,8 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 | **Domain event** | Something that happened in the domain, published in-process after the save | `UserRegisteredDomainEvent` |
 | **Profile / account** | A person is a profile, the domain `User` (name, phone), and an ASP.NET Core Identity account, `ApplicationUser` (email, password, roles, lockout), linked by the profile's `UserId` | `User`, `IIdentityService` |
 | **Port** | An interface in `Core/Interfaces` for something outside the process. Infrastructure implements it | `IEmailSender` |
-| **Permission** | Something a role grants, such as `users:read`, carried in the access token's `permissions` claims and checked by FastEndpoints | `Permissions(Permission.UsersRead)` |
-| **`ICurrentUser`** | The caller: their `Id` (the token's `sub`) and permissions. Use it for "only the owner may..." rules | `UpdateUserHandler` |
+| **Permission** | Something a role grants, such as `users:read`, carried in the session's `permissions` claims and checked by FastEndpoints | `Permissions(Permission.UsersRead)` |
+| **`ICurrentUser`** | The caller: their `Id` (the session's `user_id`) and permissions. Use it for "only the owner may..." rules | `UpdateUserHandler` |
 | **Feature service** | The Angular class that makes a feature's HTTP calls. Components never use `HttpClient` directly | `UsersService` |
 
 ## To change X, look in Y
@@ -101,7 +101,7 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 | Tokens: claims, validation, lifetimes, revocation | `Web/Authentication/` (`UserPrivilegesExtensions`, `RevokedTokenChecker`), `Web/Configurations/AuthConfigurations.cs`, the `Jwt` settings (`JwtSettings`) |
 | The refresh cookie | `Web/Authentication/RefreshTokenCookie.cs`, `Jwt:RefreshCookiePath` |
 | What's proxied to the API | `frontend/proxy.conf.mjs` |
-| Permissions, and which role has them | `UseCases/Authorization/Permission.cs`, `RolePermissions.cs`, `frontend/src/app/core/auth/permissions.ts` |
+| Permissions, and which role has them | `UseCases/Authorization/Permission.cs` and `Role.cs` (smart enums), `frontend/src/app/core/auth/permissions.ts` |
 | Error responses | `Web/Extensions/ResultExtensions.cs`, `Web/Configurations/MiddlewareConfigurations.cs` |
 | Logging | `Web/Configurations/LoggerConfigs.cs`, the `Serilog` and `Logging` settings |
 | Settings and their validation | `Web/Configurations/OptionConfigurations.cs`, and the options class next to what uses it |
@@ -120,10 +120,10 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 |---|---|
 | Aggregate | `Core/Aggregates/<Name>Aggregate/<Name>.cs`, with `<Name>Id.cs` and its value objects next to it |
 | Specification | `Core/Aggregates/<Name>Aggregate/Specifications/<Name>By<What>Specification.cs` |
-| Command or query | `UseCases/<Plural>/<UseCase>/<UseCase>Command.cs` or `...Query.cs`, plus `<UseCase>Handler.cs` |
+| Command or query | `UseCases/<Plural>/Commands/<UseCase>/<UseCase>Command.cs` or `UseCases/<Plural>/Queries/<UseCase>/<UseCase>Query.cs`, plus `<UseCase>Handler.cs`; domain event handlers in `UseCases/<Plural>/Handlers/` |
 | DTO | `UseCases/<Plural>/<Name>Dto.cs` |
-| List query service | `UseCases/<Plural>/List/IList<Plural>QueryService.cs`, implemented in `Infrastructure/Data/Queries/` |
-| Endpoint | `Web/Endpoints/<Plural>/<Verb>Endpoint.cs` (namespace `AppTemplate.Web.<Plural>`), with its request, validator and mapper in the same file |
+| List query service | `UseCases/<Plural>/Queries/List/IList<Plural>QueryService.cs`, implemented in `Infrastructure/Data/Queries/` |
+| Endpoint | `Web/Endpoints/<Plural>/<Verb>Endpoint.cs` (namespace `AppTemplate.Web.Endpoints.<Plural>`), with its request, validator and mapper in the same file |
 | EF configuration | `Infrastructure/Data/Configurations/<Name>Configuration.cs` |
 | Tests | One class per member or behavior: `UnitTests/Core/<Name>Aggregate/<Name><Member>.cs`, `UnitTests/UseCases/<Plural>/<UseCase>HandlerHandle.cs`, `IntegrationTests/Data/` (or `Identity/`), `FunctionalTests/ApiEndpoints/<Name><Verb>.cs` (`UserGetById`) |
 | Frontend | `features/<plural>/<plural>.service.ts`, `<plural>.model.ts`, `<plural>-page.ts` |

@@ -18,7 +18,7 @@ This is the simple variant, with the features most projects use: JWT sign-in wit
 - **Mediator** for CQRS-style command/query handling
 - **EF Core** + **PostgreSQL** for persistence
 - **Angular** frontend, proxying `/api` to the API from its dev server
-- **JWT bearer** access tokens and rotating refresh-token cookies, issued by the API itself, with role-based permissions
+- **Cookie sessions** with ASP.NET Core Identity (HttpOnly, `SameSite=Strict`, antiforgery tokens), with role-based permissions
 - **.NET Aspire** to orchestrate the API, database, and frontend together in local dev
 
 ## Getting Started

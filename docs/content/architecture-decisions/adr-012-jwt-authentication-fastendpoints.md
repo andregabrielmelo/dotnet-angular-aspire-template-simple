@@ -6,7 +6,7 @@ weight: 120
 # ADR 012: JWT authentication with FastEndpoints.Security
 
 ## Status
-Accepted. Supersedes [ADR 010]({{< relref "adr-010-authentication-api-issued-tokens" >}}), keeping its credentials, password hashing and one-origin setup. Amended by [ADR 013]({{< relref "adr-013-user-management-aspnetcore-identity" >}}): accounts, passwords and roles are now ASP.NET Core Identity's, which adds lockout, email confirmation, password reset and ending sessions on a password change.
+Superseded by [ADR 015]({{< relref "adr-015-cookie-sessions-aspnetcore-identity" >}}): sessions are ASP.NET Core Identity's cookie, and the API issues no JWTs. Previously: accepted. Supersedes [ADR 010]({{< relref "adr-010-authentication-api-issued-tokens" >}}), keeping its credentials, password hashing and one-origin setup. Amended by [ADR 013]({{< relref "adr-013-user-management-aspnetcore-identity" >}}): accounts, passwords and roles are now ASP.NET Core Identity's, which adds lockout; roles and permissions are smart enums (ADR 011).
 
 ## Context
 ADR 010 had the API issue its own tokens, but built everything by hand: a token issuer, plain `AddJwtBearer`, token families with sliding and absolute expiry, `xmin`-guarded rotation with a 10-second reuse window and 409s, an `Origin` allow-list, antiforgery cookies and a sign-in rate limit. Each piece had a reason, but together they were more than a *simple* template should ask a new project to understand and own.
@@ -45,7 +45,7 @@ Browser ──(Authorization: Bearer <access token from localStorage>)──► 
   - The refresh endpoint only accepts JSON, which a cross-site form can't send, and the API allows no CORS.
   - A forged refresh could at worst rotate the token, and its response can't be read cross-origin.
   - Every other endpoint needs the Bearer header, which a browser never adds by itself.
-- **The fallback policy** (authenticated user) is kept for one reason. FastEndpoints endpoints are secure by default, but 8.3 also maps `GET /_test_url_cache_` outside its endpoint pipeline, without authorization metadata, and that route lists every endpoint. The fallback keeps it private. Drop it once the template moves to FastEndpoints 8.4 or later, where the route is opt-in.
+- **No authorization fallback policy.** FastEndpoints endpoints are secure by default (`AllowAnonymous()` is explicit), so the template relies on that. One route sits outside it: FastEndpoints 8.3 maps `GET /_test_url_cache_` outside its endpoint pipeline, without authorization metadata, and it lists every route and endpoint type name to anyone. Moving to FastEndpoints 8.4 or later, where the route is opt-in, closes it; until then, block it at the host or add a fallback policy (`AddAuthorization(o => o.FallbackPolicy = ...)`) if that listing matters.
 - **The SPA** (`AuthService`) refreshes before sending a token that is about to expire, and on a 401 refreshes once and retries.
   - Refreshes are shared within a tab and serialized across tabs with the Web Locks API (`REFRESH_LOCK`). Inside the lock, a tab first looks in `localStorage`: if another tab has just refreshed, it uses that token rather than spending the already rotated cookie.
   - A `storage` listener keeps tabs in step.

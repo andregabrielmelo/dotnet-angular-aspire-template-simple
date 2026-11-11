@@ -48,7 +48,7 @@ There are no end-to-end browser tests in this template. The full template ([dotn
 
 ## Consequences
 - Integration and functional tests need Docker (or a Docker-compatible engine such as Podman, via `DOCKER_HOST`). Without it they fail fast with a message saying so.
-- Every test class that needs Postgres is marked `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`. Tests that don't (`ResultExtensionsToProblem`, `RevokedAccessTokensRevoke`) are not, so `dotnet test --filter "Category!=RequiresDocker"` still runs them anywhere.
+- Every test class that needs Postgres is marked `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`. Tests that don't (`ResultExtensionsToProblem`, `OptionsValidationAtStartup`) are not, so `dotnet test --filter "Category!=RequiresDocker"` still runs them anywhere.
 - CI runs the full suite only on Linux; hosted Windows and macOS runners can't run Linux containers, so they use that filter (see `backend-build.yml`).
 - Tests now catch Postgres-only behavior: unique violations, database defaults, owned types, raw SQL and concurrency (`AppTemplate.IntegrationTests`).
 - Migrations can't drift from the model (`IntegrationTests/Data/MigrationDrift`). A model change without a migration fails `HasPendingModelChanges()`. The schema the migrations build is also compared, column by column (including types, lengths and defaults), constraint by constraint and index by index, with the schema `EnsureCreated` builds straight from the model. That catches what the model snapshot can't see: a hand-edited migration, or a default EF added to fill existing rows and never dropped. The first run found exactly that on `users.external_id`.

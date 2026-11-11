@@ -8,7 +8,7 @@ These extend [`AGENTS.md`](../../AGENTS.md); read it first. This file covers onl
 
 ## Endpoint shape
 
-Model every endpoint on `backend/src/AppTemplate.Web/Endpoints/Users/GetByIdEndpoint.cs` (namespace `AppTemplate.Web.Users`):
+Model every endpoint on `backend/src/AppTemplate.Web/Endpoints/Users/GetByIdEndpoint.cs` (namespace `AppTemplate.Web.Endpoints.Users`):
 
 ```csharp
 public sealed class GetUserByIdRequest            // dedicated request DTO, no Data Annotations
@@ -49,10 +49,11 @@ public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, U
 ## Use case shape
 
 ```
-UseCases/<Feature>/<UseCase>/
+UseCases/<Feature>/Commands/<UseCase>/   // or Queries/<UseCase>/ for a query
   <UseCase>Command.cs   // or <UseCase>Query.cs: record : ICommand<Result<T>> / IQuery<Result<T>>
   <UseCase>Handler.cs   // ICommandHandler / IQueryHandler, one Handle method
 ```
+UseCases/<Feature>/Handlers/   // domain event handlers
 
 - **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types.
 - **List query services** (`Infrastructure/Data/Queries/`) read with `FromSqlRaw`: every mapped column in snake_case, `WHERE` with `{n}` parameters only, and `OrderBy`/`Skip`/`Take`/`Select`/`CountAsync` in LINQ on top. See `ListUsersQueryService` and step 3 of [Adding a feature](../../docs/content/guides/adding-a-feature.md#3-infrastructure-the-database).
@@ -71,6 +72,6 @@ UseCases/<Feature>/<UseCase>/
 - **Setup:**
   - One class per route and verb in `tests/AppTemplate.FunctionalTests/ApiEndpoints/`, named like `UserGetById` or `AuthLoginPost`.
   - Use `IClassFixture<CustomWebApplicationFactory<Program>>`, and add `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
-  - Sign in for real: `var (user, session) = await factory.CreateSignedInSessionAsync(Roles.Admin);`, then call the API with `session.Client`.
+  - Sign in for real: `var (user, session) = await factory.CreateSignedInSessionAsync(Role.Admin);`, then call the API with `session.Client`.
 - **What to test:** for each endpoint, cover the success path, invalid input (400), no permission (403), a missing resource (404) and any conflict (409). Assert status codes with `Ardalis.HttpClientTestExtensions` (`GetAndEnsureNotFoundAsync`, ...), and, where it matters, `errors`/`detail`, with Shouldly.
 - **Replacing services:** subclass `CustomWebApplicationFactory<Program>` and override `ConfigureWebHost`, as `OptionsValidationAtStartup` does; a test that moves the clock (`factory.Time`) gets its own factory class.

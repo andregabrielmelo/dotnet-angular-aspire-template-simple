@@ -20,11 +20,13 @@ ADR 008 kept fine-grained permissions in code and took them from Keycloak client
   - **Handlers** decide what depends on the resource: `UpdateUserHandler` allows the caller's own profile (`ICurrentUser.Id == user.Id`) or anyone's with `users:write`, otherwise `Result.Forbidden()` → 403. Owning a profile is not a permission, which is why `Member` needs none.
   - **The domain** holds rules about the resource itself, when there are any.
 - No authorization pipeline behavior. Add one when enough use cases share declarative requirements.
-- **Clients may hint, the API decides.** `GET /users/me` returns the token's permissions so the SPA can hide actions (`permissionGuard`); the API enforces every one regardless.
+- **Clients may hint, the API decides.** `GET /users/me` returns the session's permissions so the SPA can hide actions (`permissionGuard`); the API enforces every one regardless.
 
 ## Consequences
-- Adding a protected operation means a constant in `Permission`, a line in `RolePermissions`, and `Permissions(...)` on the endpoint or an `ICurrentUser` check in the use case.
-- A role change takes effect at the user's next refresh (within the 15-minute access token lifetime), not instantly.
-- A new role means a constant in `Roles`, a seeded row in `ApplicationRoleConfiguration` (and a migration), and a line in `RolePermissions`. Permissions per user would use Identity's user claims; the token's claims stay as they are.
+- **Adding a protected operation** means a new `Permission` instance, adding it to the roles that grant it in `Role`, and `Permissions(...)` on the endpoint or an `ICurrentUser` check in the use case.
+- **One place per role:** a role, what it grants and its seeded row all come from its `Role` instance. Before smart enums, they lived in three classes.
+- A role change takes effect at the user's next security stamp check (within 30 minutes, Identity's default interval), not instantly.
+- **A new role** is a `Role` instance and a fixed concurrency stamp in `IdentityRoleConfiguration`, then a migration (the new seeded row). Permissions per user would use Identity's user claims; the claims factory would add them.
+- **Strings at the edges:** Identity stores role names, and tokens carry role names and permission values. The smart enums are the typed catalog the code uses in between.
 - Changing someone's role is `UserManager.AddToRoleAsync` / `RemoveFromRoleAsync`, behind `IIdentityService` when a use case needs it.
-- ADR 008's other consequences still hold: `EndpointAuthorization` (functional tests) pins the anonymous routes (now sign-in, registration, refresh and the account email endpoints), and resource-based rules stay in use cases. The authorization fallback policy remains for the reason in ADR 012.
+- ADR 008's other consequences still hold: `EndpointAuthorization` (functional tests) pins the anonymous routes (now sign-in, registration and refresh), and resource-based rules stay in use cases. There is no authorization fallback policy: FastEndpoints endpoints are secure by default (see ADR 012 for the one route that isn't).
