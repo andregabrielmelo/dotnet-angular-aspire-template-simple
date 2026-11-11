@@ -106,6 +106,7 @@ describe('AuthPage', () => {
   it.each([
     [401, 'Wrong email or password.'],
     [409, 'An account with this email already exists. Sign in instead.'],
+    [429, 'Too many attempts. Wait a minute and try again.'],
   ])('explains a %s', (status, message) => {
     const { fixture, page, authService, text } = setup();
     authService.login.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));

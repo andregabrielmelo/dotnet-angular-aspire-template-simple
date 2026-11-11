@@ -127,6 +127,8 @@ export class AuthPage implements OnInit {
         return 'Confirm your email address first: open the link we emailed you.';
       case 409:
         return 'An account with this email already exists. Sign in instead.';
+      case 429:
+        return 'Too many attempts. Wait a minute and try again.';
       default:
         return 'Something went wrong. Please try again later.';
     }

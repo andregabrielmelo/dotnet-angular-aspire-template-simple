@@ -6,6 +6,10 @@ public static class MiddlewareConfigurations
 {
     public static async Task<IApplicationBuilder> UseAppMiddleware(this WebApplication app)
     {
+        // First: the client address and scheme from a known proxy (ForwardedHeadersSettings),
+        // before anything reads them.
+        app.UseForwardedHeaders();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
@@ -17,8 +21,9 @@ public static class MiddlewareConfigurations
             app.UseHsts();
         }
 
-        // A signed-in session's unsafe requests need an antiforgery token (CSRF, ADR 015).
-        app.UseAuthentication().UseSessionAntiforgery().UseAuthorization();
+        // The rate limiter runs after authentication, so it can count a signed-in caller by id;
+        // then a signed-in session's unsafe requests need an antiforgery token (CSRF, ADR 015).
+        app.UseAuthentication().UseRateLimiter().UseSessionAntiforgery().UseAuthorization();
 
         app.UseFastEndpoints();
 

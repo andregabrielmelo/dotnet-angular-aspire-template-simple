@@ -835,6 +835,15 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
     };
   };
   AppTemplateWebEndpointsAuthenticationForgotPasswordEndpoint: {
@@ -859,6 +868,15 @@ export interface operations {
       };
       /** @description Invalid request data */
       400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
         headers: {
           [name: string]: unknown;
         };
@@ -908,6 +926,15 @@ export interface operations {
       };
       /** @description The password is right, but the email isn't confirmed yet */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
         headers: {
           [name: string]: unknown;
         };
@@ -982,6 +1009,15 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
     };
   };
   AppTemplateWebEndpointsAuthenticationResendConfirmationEndpoint: {
@@ -1013,6 +1049,15 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
     };
   };
   AppTemplateWebEndpointsAuthenticationResetPasswordEndpoint: {
@@ -1037,6 +1082,15 @@ export interface operations {
       };
       /** @description Invalid request data, a wrong or expired code, or a weak password */
       400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
         headers: {
           [name: string]: unknown;
         };

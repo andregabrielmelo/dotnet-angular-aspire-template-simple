@@ -12,6 +12,8 @@ export default {
     target,
     secure: false,
     changeOrigin: true,
+    // The API trusts loopback as a proxy in Development, so rate limits see the browser's address.
+    xfwd: true,
     pathRewrite: { '^/api': '' },
   },
 };

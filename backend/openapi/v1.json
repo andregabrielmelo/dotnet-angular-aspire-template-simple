@@ -443,6 +443,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -474,6 +484,16 @@
           },
           "400": {
             "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -532,6 +552,16 @@
           },
           "403": {
             "description": "The password is right, but the email isn't confirmed yet",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -612,6 +642,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -650,6 +690,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -681,6 +731,16 @@
           },
           "400": {
             "description": "Invalid request data, a wrong or expired code, or a weak password",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
             "content": {
               "application/problem+json": {
                 "schema": {

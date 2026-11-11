@@ -1,5 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Authentication.Commands.ConfirmEmail;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Authentication;
@@ -18,6 +19,9 @@ public class ConfirmEmailEndpoint(IMediator _mediator)
     {
         Post("/auth/confirm-email");
         AllowAnonymous();
+        Options(builder =>
+            builder.RequireRateLimiting(RateLimitingConfigurations.AuthenticationPolicy)
+        );
 
         Summary(s =>
         {
@@ -27,13 +31,18 @@ public class ConfirmEmailEndpoint(IMediator _mediator)
                 + "can sign in afterwards.";
             s.ExampleRequest = new ConfirmEmailRequest { UserId = 1, Code = "Q2ZESjhB..." };
             s.Responses[204] = "Confirmed";
+            s.Responses[429] = "Too many attempts from this address";
             s.Responses[400] = "Invalid request data, or a wrong or expired code";
         });
 
         Tags("Auth");
 
         Description(builder =>
-            builder.Accepts<ConfirmEmailRequest>().Produces(204).ProducesProblem(400)
+            builder
+                .Accepts<ConfirmEmailRequest>()
+                .Produces(204)
+                .ProducesProblem(400)
+                .ProducesProblem(429)
         );
     }
 

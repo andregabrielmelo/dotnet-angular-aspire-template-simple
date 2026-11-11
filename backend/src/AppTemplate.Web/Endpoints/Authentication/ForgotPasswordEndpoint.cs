@@ -1,5 +1,6 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Authentication.Commands.ForgotPassword;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Authentication;
@@ -20,6 +21,9 @@ public class ForgotPasswordEndpoint(IMediator _mediator)
     {
         Post("/auth/forgot-password");
         AllowAnonymous();
+        Options(builder =>
+            builder.RequireRateLimiting(RateLimitingConfigurations.AuthenticationPolicy)
+        );
 
         Summary(s =>
         {
@@ -29,13 +33,18 @@ public class ForgotPasswordEndpoint(IMediator _mediator)
                 + "account. Answers 202 either way.";
             s.ExampleRequest = new ForgotPasswordRequest { Email = "ada@example.com" };
             s.Responses[202] = "If the account exists, the email is on its way";
+            s.Responses[429] = "Too many attempts from this address";
             s.Responses[400] = "Invalid request data";
         });
 
         Tags("Auth");
 
         Description(builder =>
-            builder.Accepts<ForgotPasswordRequest>().Produces(202).ProducesProblem(400)
+            builder
+                .Accepts<ForgotPasswordRequest>()
+                .Produces(202)
+                .ProducesProblem(400)
+                .ProducesProblem(429)
         );
     }
 

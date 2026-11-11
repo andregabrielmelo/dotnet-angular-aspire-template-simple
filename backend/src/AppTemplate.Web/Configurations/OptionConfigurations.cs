@@ -1,5 +1,7 @@
+using System.Net;
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.Web.Settings;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -37,6 +39,28 @@ public static class OptionConfigurations
                     links.ConfirmEmailPath.StartsWith('/')
                     && links.ResetPasswordPath.StartsWith('/'),
                 "AccountLinks paths must start with '/'."
+            )
+            .ValidateOnStart();
+
+        services
+            .AddOptions<RateLimitSettings>()
+            .Bind(configuration.GetSection(RateLimitSettings.SectionName))
+            .Validate(
+                limits =>
+                    limits.Window > TimeSpan.Zero
+                    && limits.AuthenticatedPermitLimit > 0
+                    && limits.AnonymousPermitLimit > 0
+                    && limits.AuthenticationPermitLimit > 0,
+                "RateLimiting needs a positive Window and permit limits."
+            )
+            .ValidateOnStart();
+
+        services
+            .AddOptions<ForwardedHeadersSettings>()
+            .Bind(configuration.GetSection(ForwardedHeadersSettings.SectionName))
+            .Validate(
+                proxies => proxies.KnownProxies.All(proxy => IPAddress.TryParse(proxy, out _)),
+                "ForwardedHeaders:KnownProxies must be IP addresses."
             )
             .ValidateOnStart();
 

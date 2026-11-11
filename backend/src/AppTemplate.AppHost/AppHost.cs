@@ -47,6 +47,11 @@ if (builder.Environment.IsDevelopment())
         .WithEnvironment("Mailserver__Port", smtp.Property(EndpointProperty.Port))
         .WithEnvironment("Mailserver__FromAddress", "noreply@apptemplate.local")
         .WaitFor(mailpit);
+
+    // The Angular dev server's proxy reaches the API from loopback: trust its X-Forwarded-For,
+    // so rate limits count the browser's address (ADR 014).
+    api.WithEnvironment("ForwardedHeaders__KnownProxies__0", "127.0.0.1")
+        .WithEnvironment("ForwardedHeaders__KnownProxies__1", "::1");
 }
 else
 {

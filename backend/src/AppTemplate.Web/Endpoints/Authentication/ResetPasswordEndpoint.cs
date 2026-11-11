@@ -1,6 +1,7 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Authentication.Commands.ResetPassword;
 using AppTemplate.UseCases.Constants;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Authentication;
@@ -23,6 +24,9 @@ public class ResetPasswordEndpoint(IMediator _mediator)
     {
         Post("/auth/reset-password");
         AllowAnonymous();
+        Options(builder =>
+            builder.RequireRateLimiting(RateLimitingConfigurations.AuthenticationPolicy)
+        );
 
         Summary(s =>
         {
@@ -37,13 +41,18 @@ public class ResetPasswordEndpoint(IMediator _mediator)
                 NewPassword = "correct horse battery staple",
             };
             s.Responses[204] = "The password is changed";
+            s.Responses[429] = "Too many attempts from this address";
             s.Responses[400] = "Invalid request data, a wrong or expired code, or a weak password";
         });
 
         Tags("Auth");
 
         Description(builder =>
-            builder.Accepts<ResetPasswordRequest>().Produces(204).ProducesProblem(400)
+            builder
+                .Accepts<ResetPasswordRequest>()
+                .Produces(204)
+                .ProducesProblem(400)
+                .ProducesProblem(429)
         );
     }
 

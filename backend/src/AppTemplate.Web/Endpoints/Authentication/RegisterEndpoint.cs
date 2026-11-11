@@ -2,6 +2,7 @@ using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Constants;
 using AppTemplate.UseCases.Users.Commands.Register;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Authentication;
@@ -24,6 +25,9 @@ public class RegisterEndpoint(IMediator _mediator)
     {
         Post("/auth/register");
         AllowAnonymous();
+        Options(builder =>
+            builder.RequireRateLimiting(RateLimitingConfigurations.AuthenticationPolicy)
+        );
 
         Summary(s =>
         {
@@ -40,6 +44,7 @@ public class RegisterEndpoint(IMediator _mediator)
             s.Responses[201] = "Account created; the confirmation email is on its way";
             s.Responses[400] = "Invalid request data";
             s.Responses[409] = "An account with this email already exists";
+            s.Responses[429] = "Too many attempts from this address";
         });
 
         Tags("Auth");
@@ -50,6 +55,7 @@ public class RegisterEndpoint(IMediator _mediator)
                 .Produces(201)
                 .ProducesProblem(400)
                 .ProducesProblem(409)
+                .ProducesProblem(429)
         );
     }
 

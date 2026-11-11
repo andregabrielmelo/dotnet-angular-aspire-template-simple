@@ -53,6 +53,10 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
         );
         builder.UseSetting("Mailserver:FromAddress", "noreply@app.test");
         builder.UseSetting("AccountLinks:ClientUrl", ClientUrl);
+        // Tests sign in many times from one address; RateLimitingTests set their own limits.
+        builder.UseSetting("RateLimiting:AnonymousPermitLimit", "100000");
+        builder.UseSetting("RateLimiting:AuthenticatedPermitLimit", "100000");
+        builder.UseSetting("RateLimiting:AuthenticationPermitLimit", "100000");
 
         builder.ConfigureServices(services =>
         {

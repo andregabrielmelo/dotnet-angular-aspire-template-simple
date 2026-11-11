@@ -1,6 +1,7 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Authentication.Commands.Login;
 using AppTemplate.UseCases.Constants;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Authentication;
@@ -22,6 +23,9 @@ public class LoginEndpoint(IMediator _mediator)
     {
         Post("/auth/login");
         AllowAnonymous();
+        Options(builder =>
+            builder.RequireRateLimiting(RateLimitingConfigurations.AuthenticationPolicy)
+        );
 
         Summary(s =>
         {
@@ -38,6 +42,7 @@ public class LoginEndpoint(IMediator _mediator)
             s.Responses[400] = "Invalid request data";
             s.Responses[401] = "Wrong email or password, or too many failed attempts";
             s.Responses[403] = "The password is right, but the email isn't confirmed yet";
+            s.Responses[429] = "Too many attempts from this address";
         });
 
         Tags("Auth");
@@ -49,6 +54,7 @@ public class LoginEndpoint(IMediator _mediator)
                 .ProducesProblem(400)
                 .ProducesProblem(401)
                 .ProducesProblem(403)
+                .ProducesProblem(429)
         );
     }
 
