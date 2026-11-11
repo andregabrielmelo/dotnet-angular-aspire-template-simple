@@ -1,4 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
+using Ardalis.GuardClauses;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate;
 
@@ -31,7 +32,7 @@ public class User(UserName name) : EntityBase<User, UserId>, IAggregateRoot
 
     public User UpdatePhoneNumber(PhoneNumber newPhoneNumber)
     {
-        PhoneNumber = newPhoneNumber;
+        PhoneNumber = Guard.Against.Null(newPhoneNumber);
         return this;
     }
 }

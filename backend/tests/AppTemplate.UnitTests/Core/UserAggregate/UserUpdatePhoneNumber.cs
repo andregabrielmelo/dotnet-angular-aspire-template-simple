@@ -12,4 +12,12 @@ public class UserUpdatePhoneNumber
 
         user.PhoneNumber.ShouldBe(phoneNumber);
     }
+
+    [Fact]
+    public void RefusesNoPhoneNumber()
+    {
+        var user = TestUsers.Saved();
+
+        Should.Throw<ArgumentNullException>(() => user.UpdatePhoneNumber(null!));
+    }
 }

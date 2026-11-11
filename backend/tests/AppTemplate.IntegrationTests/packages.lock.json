@@ -623,6 +623,7 @@
         "type": "Project",
         "dependencies": {
           "AppTemplate.SharedKernel": "[1.0.0, )",
+          "Ardalis.GuardClauses": "[5.0.0, )",
           "Ardalis.Result": "[10.1.0, )",
           "Vogen": "[8.0.7, )"
         }
@@ -632,6 +633,7 @@
         "dependencies": {
           "AppTemplate.Core": "[1.0.0, )",
           "AppTemplate.UseCases": "[1.0.0, )",
+          "Ardalis.GuardClauses": "[5.0.0, )",
           "Ardalis.Specification": "[9.3.1, )",
           "Ardalis.Specification.EntityFrameworkCore": "[9.3.1, )",
           "Aspire.Npgsql.EntityFrameworkCore.PostgreSQL": "[13.6.5, )",
@@ -647,6 +649,7 @@
       "apptemplate.sharedkernel": {
         "type": "Project",
         "dependencies": {
+          "Ardalis.GuardClauses": "[5.0.0, )",
           "Ardalis.Specification": "[9.3.1, )",
           "Mediator.Abstractions": "[3.0.2, )",
           "Microsoft.Extensions.Logging": "[10.0.14, )"
@@ -659,6 +662,12 @@
           "Ardalis.Result": "[10.1.0, )",
           "Ardalis.SmartEnum": "[8.2.0, )"
         }
+      },
+      "Ardalis.GuardClauses": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.0, )",
+        "resolved": "5.0.0",
+        "contentHash": "jVPRvLw0xIUFto2cMrKgRYADWIHbEEfzZHGiU/swwNgl1zo28Q1zfSa3VUC3C0s9DyhFDPSaF4dEDQRyTZUcyQ=="
       },
       "Ardalis.Result": {
         "type": "CentralTransitive",

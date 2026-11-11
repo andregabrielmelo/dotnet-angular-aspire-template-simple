@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Ardalis.GuardClauses;
 
 namespace AppTemplate.Core.ValueObjects;
 
@@ -13,14 +14,17 @@ public class EmailAddress : ValueObject
 
     public EmailAddress(string value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            throw new ArgumentException("Email cannot be empty");
+        Guard.Against.NullOrWhiteSpace(value, message: "Email cannot be empty");
 
         // Stored lower-cased, so the unique index treats Ada@Example.com and ada@example.com
         // as the same address and sign-in doesn't depend on how the user typed it.
         var normalized = value.Trim().ToLowerInvariant();
-        if (!EmailRegex.IsMatch(normalized))
-            throw new ArgumentException("Invalid email format");
+        Guard.Against.InvalidInput(
+            normalized,
+            nameof(value),
+            EmailRegex.IsMatch,
+            "Invalid email format"
+        );
 
         Value = normalized;
     }

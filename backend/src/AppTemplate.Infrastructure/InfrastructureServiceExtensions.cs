@@ -4,6 +4,7 @@ using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Constants;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users.Queries.List;
+using Ardalis.GuardClauses;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -25,11 +26,10 @@ public static class InfrastructureServiceExtensions
     )
     {
         // Set by the AppHost (WithReference) in development, and by the environment elsewhere.
-        var connectionString =
-            config.GetConnectionString("apptemplate")
-            ?? throw new InvalidOperationException(
-                "No valid connection string found. Please ensure that the 'apptemplate' is configured."
-            );
+        var connectionString = Guard.Against.NullOrEmpty(
+            config.GetConnectionString("apptemplate"),
+            "ConnectionStrings:apptemplate"
+        );
         builder.Services.AddScoped<ISaveChangesInterceptor, EventDispatchInterceptor>();
         builder.Services.AddScoped<IDomainEventDispatcher, MediatorDomainEventDispatcher>();
 

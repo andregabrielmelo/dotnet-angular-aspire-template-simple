@@ -13,6 +13,12 @@ public class EmailAddressConstructor
     }
 
     [Fact]
+    public void ThrowsGivenNoValue()
+    {
+        Should.Throw<ArgumentNullException>(() => new EmailAddress(null!));
+    }
+
+    [Fact]
     public void KeepsAValidAddress()
     {
         new EmailAddress("ada@example.com").Value.ShouldBe("ada@example.com");

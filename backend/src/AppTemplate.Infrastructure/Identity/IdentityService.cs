@@ -5,6 +5,7 @@ using AppTemplate.Infrastructure.Data;
 using AppTemplate.UseCases.Authentication;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
+using Ardalis.GuardClauses;
 using Ardalis.Result;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
@@ -286,9 +287,7 @@ public sealed class IdentityService(
     private async Task<ApplicationUser> FindRequiredAsync(
         UserId userId,
         CancellationToken cancellationToken
-    ) =>
-        await FindAsync(userId, cancellationToken)
-        ?? throw new InvalidOperationException($"User {userId} has no account.");
+    ) => Guard.Against.NotFound(userId, await FindAsync(userId, cancellationToken));
 
     private async Task SendEmailConfirmationAsync(ApplicationUser? account)
     {

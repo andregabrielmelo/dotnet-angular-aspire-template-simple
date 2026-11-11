@@ -44,6 +44,7 @@
         "type": "Project",
         "dependencies": {
           "AppTemplate.SharedKernel": "[1.0.0, )",
+          "Ardalis.GuardClauses": "[5.0.0, )",
           "Ardalis.Result": "[10.1.0, )",
           "Vogen": "[8.0.7, )"
         }
@@ -51,10 +52,17 @@
       "apptemplate.sharedkernel": {
         "type": "Project",
         "dependencies": {
+          "Ardalis.GuardClauses": "[5.0.0, )",
           "Ardalis.Specification": "[9.3.1, )",
           "Mediator.Abstractions": "[3.0.2, )",
           "Microsoft.Extensions.Logging": "[10.0.14, )"
         }
+      },
+      "Ardalis.GuardClauses": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.0, )",
+        "resolved": "5.0.0",
+        "contentHash": "jVPRvLw0xIUFto2cMrKgRYADWIHbEEfzZHGiU/swwNgl1zo28Q1zfSa3VUC3C0s9DyhFDPSaF4dEDQRyTZUcyQ=="
       },
       "Ardalis.Specification": {
         "type": "CentralTransitive",

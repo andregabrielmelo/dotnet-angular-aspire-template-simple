@@ -1120,6 +1120,7 @@
         "type": "Project",
         "dependencies": {
           "AppTemplate.SharedKernel": "[1.0.0, )",
+          "Ardalis.GuardClauses": "[5.0.0, )",
           "Ardalis.Result": "[10.1.0, )",
           "Vogen": "[8.0.7, )"
         }
@@ -1129,6 +1130,7 @@
         "dependencies": {
           "AppTemplate.Core": "[1.0.0, )",
           "AppTemplate.UseCases": "[1.0.0, )",
+          "Ardalis.GuardClauses": "[5.0.0, )",
           "Ardalis.Specification": "[9.3.1, )",
           "Ardalis.Specification.EntityFrameworkCore": "[9.3.1, )",
           "Aspire.Npgsql.EntityFrameworkCore.PostgreSQL": "[13.6.5, )",
@@ -1156,6 +1158,7 @@
       "apptemplate.sharedkernel": {
         "type": "Project",
         "dependencies": {
+          "Ardalis.GuardClauses": "[5.0.0, )",
           "Ardalis.Specification": "[9.3.1, )",
           "Mediator.Abstractions": "[3.0.2, )",
           "Microsoft.Extensions.Logging": "[10.0.14, )"
