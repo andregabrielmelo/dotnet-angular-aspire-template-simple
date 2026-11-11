@@ -35,7 +35,7 @@ public class AntiforgeryTokenEndpoint(IAntiforgery _antiforgery) : EndpointWitho
         HttpContext.Response.Cookies.Append(
             AntiforgeryConfigurations.RequestTokenCookieName,
             tokens.RequestToken!,
-            AntiforgeryConfigurations.RequestTokenCookieOptions(HttpContext)
+            AntiforgeryConfigurations.RequestTokenCookieOptions()
         );
         return Task.FromResult(TypedResults.NoContent());
     }

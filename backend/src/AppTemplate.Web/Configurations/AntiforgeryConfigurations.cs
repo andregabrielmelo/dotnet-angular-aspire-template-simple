@@ -20,8 +20,7 @@ public static class AntiforgeryConfigurations
 
     public static IServiceCollection AddAntiforgeryConfigurations(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger,
-        IHostEnvironment environment
+        Microsoft.Extensions.Logging.ILogger logger
     )
     {
         services.AddAntiforgery(options =>
@@ -30,7 +29,7 @@ public static class AntiforgeryConfigurations
             // The HttpOnly half of the token pair.
             options.Cookie.Name = "apptemplate_antiforgery";
             options.Cookie.SameSite = SameSiteMode.Strict;
-            options.Cookie.SecurePolicy = SecurePolicy(environment);
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             // UseSecurityHeaders sends X-Frame-Options: DENY on every response.
             options.SuppressXFrameOptionsHeader = true;
         });
@@ -40,12 +39,13 @@ public static class AntiforgeryConfigurations
     }
 
     /// <summary>The readable cookie's options: the session cookie's, except that scripts can read it.</summary>
-    public static CookieOptions RequestTokenCookieOptions(HttpContext context) =>
+    public static CookieOptions RequestTokenCookieOptions() =>
         new()
         {
             HttpOnly = false,
             SameSite = SameSiteMode.Strict,
-            Secure = context.Request.IsHttps,
+            // Every request is HTTPS, development included (ADR 016).
+            Secure = true,
             Path = "/",
         };
 
@@ -76,10 +76,4 @@ public static class AntiforgeryConfigurations
                 await next(context);
             }
         );
-
-    private static CookieSecurePolicy SecurePolicy(IHostEnvironment environment) =>
-        // Development runs over plain HTTP (the Angular dev server's proxy).
-        environment.IsDevelopment()
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
 }

@@ -95,10 +95,8 @@ public static class InfrastructureServiceExtensions
         {
             // Never sent on a cross-site request; with no CORS, this is the CSRF defense (ADR 015).
             options.Cookie.SameSite = SameSiteMode.Strict;
-            // Development runs over plain HTTP (the Angular dev server's proxy).
-            options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-                ? CookieSecurePolicy.SameAsRequest
-                : CookieSecurePolicy.Always;
+            // Every request is HTTPS, development included (ADR 016).
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             // An API answers 401 and 403; it doesn't redirect to a login page.
             options.Events.OnRedirectToLogin = context =>
             {

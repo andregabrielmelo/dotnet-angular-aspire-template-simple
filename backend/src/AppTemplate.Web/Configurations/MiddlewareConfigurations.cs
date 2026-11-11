@@ -10,6 +10,10 @@ public static class MiddlewareConfigurations
         // before anything reads them.
         app.UseForwardedHeaders();
 
+        // Every request is HTTPS (ADR 016): the API listens on HTTPS only, and behind a host that
+        // terminates TLS the forwarded scheme decides. A plain HTTP request is redirected.
+        app.UseHttpsRedirection();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
@@ -48,8 +52,6 @@ public static class MiddlewareConfigurations
                 })
                 .AllowAnonymous(); // a browser page, open before signing in
         }
-
-        app.UseHttpsRedirection();
 
         return app;
     }

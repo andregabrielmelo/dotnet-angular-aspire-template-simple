@@ -13,6 +13,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../backend"
 
+# An HTTP URL is fine here: the API writes the document and exits without serving a request, so
+# no development certificate is needed (CI has none).
 dotnet run --project src/AppTemplate.Web --configuration Release --no-launch-profile "$@" -- \
   --export-swagger-docs true \
   --urls=http://127.0.0.1:0 \
