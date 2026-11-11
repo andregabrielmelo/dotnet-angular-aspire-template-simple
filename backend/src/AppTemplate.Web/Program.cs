@@ -35,6 +35,15 @@ builder
         o.EnableJWTBearerAuth = false;
     });
 
+// TODO: Add response compression if needed. Prefer server-based response compression technologies, probably better.
+// https://learn.microsoft.com/en-us/aspnet/core/performance/response-compression?view=aspnetcore-10.0
+//builder.Services.AddResponseCompression(options =>
+//{
+//    options.EnableForHttps = true;
+//    options.Providers.Add<BrotliCompressionProvider>();
+//    options.Providers.Add<GzipCompressionProvider>();
+//});
+
 var app = builder.Build();
 
 await app.UseAppMiddleware();
