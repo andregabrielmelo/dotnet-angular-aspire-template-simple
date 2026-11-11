@@ -17,7 +17,8 @@ public static class MiddlewareConfigurations
             app.UseHsts();
         }
 
-        app.UseAuthentication().UseAuthorization();
+        // A signed-in session's unsafe requests need an antiforgery token (CSRF, ADR 015).
+        app.UseAuthentication().UseSessionAntiforgery().UseAuthorization();
 
         app.UseFastEndpoints();
 

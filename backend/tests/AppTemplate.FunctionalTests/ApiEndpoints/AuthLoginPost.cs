@@ -10,7 +10,7 @@ public class AuthLoginPost(CustomWebApplicationFactory<Program> factory)
         var user = await factory.CreateUserAsync();
         var session = new TestSession(factory);
 
-        var response = await session.LoginAsync(user.Email.Value);
+        var response = await session.LoginAsync(user.Email.Value, fetchAntiforgeryToken: false);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var setCookie = session.LastSetCookies.Single(header =>

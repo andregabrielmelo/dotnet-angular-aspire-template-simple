@@ -346,6 +346,21 @@
         }
       }
     },
+    "/auth/antiforgery-token": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get an antiforgery token",
+        "description": "Sets the XSRF-TOKEN cookie. Signed-in requests other than GET must send its value as the X-XSRF-TOKEN header. Fetch a new one after signing in.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationAntiforgeryTokenEndpoint",
+        "responses": {
+          "204": {
+            "description": "The response sets the token cookies"
+          }
+        }
+      }
+    },
     "/auth/change-password": {
       "post": {
         "tags": [

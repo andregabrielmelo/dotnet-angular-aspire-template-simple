@@ -5,7 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import { AuthService } from './auth-service';
+import { ANTIFORGERY_TOKEN_PATH, AuthService } from './auth-service';
 import { CurrentUser, CurrentUserService } from '../../core/auth/current-user.service';
 
 const ada: CurrentUser = { id: 1, name: 'Ada', email: 'ada@example.com', permissions: [] };
@@ -37,7 +37,7 @@ describe('AuthService', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('login() signs in and forgets the old profile', () => {
+  it('login() signs in, forgets the old profile and fetches an antiforgery token for the new session', () => {
     let done = false;
     service.login('ada@example.com', 'secret').subscribe(() => (done = true));
 
@@ -46,16 +46,22 @@ describe('AuthService', () => {
     expect(login.request.body).toEqual({ email: 'ada@example.com', password: 'secret' });
     login.flush(null, { status: 204, statusText: 'No Content' });
     expect(clear).toHaveBeenCalled();
+    expect(done).toBe(false);
+
+    httpMock
+      .expectOne(ANTIFORGERY_TOKEN_PATH)
+      .flush(null, { status: 204, statusText: 'No Content' });
     expect(done).toBe(true);
   });
 
-  it('login() fails when the API refuses', () => {
+  it('login() fails without fetching a token when the API refuses', () => {
     let failed = false;
     service.login('ada@example.com', 'wrong').subscribe({ error: () => (failed = true) });
 
     httpMock.expectOne('api/auth/login').flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(failed).toBe(true);
+    httpMock.expectNone(ANTIFORGERY_TOKEN_PATH);
   });
 
   it('register() creates the account without signing in', () => {
@@ -106,6 +112,17 @@ describe('AuthService', () => {
     profile.set(ada);
 
     expect(service.isAuthenticated()).toBe(true);
+  });
+
+  it('fetchAntiforgeryToken() never fails', () => {
+    let done = false;
+    service.fetchAntiforgeryToken().subscribe(() => (done = true));
+
+    httpMock
+      .expectOne(ANTIFORGERY_TOKEN_PATH)
+      .flush(null, { status: 503, statusText: 'Service Unavailable' });
+
+    expect(done).toBe(true);
   });
 
   it('logout() signs out, forgets the user and goes to sign in', () => {

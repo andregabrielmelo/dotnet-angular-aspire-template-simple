@@ -14,7 +14,8 @@ public class EndpointAuthorization(CustomWebApplicationFactory<Program> factory)
     private static readonly string[] ExpectedAnonymousRoutes =
     [
         // (The health probes are anonymous too, but mapped in Development only.)
-        // Signing in and up: there's no session yet.
+        // Signing in and up: there's no session yet; and the antiforgery token, needed after.
+        "GET /auth/antiforgery-token",
         "POST /auth/login",
         "POST /auth/register",
         // Account emails' links, and asking for them: whoever uses them isn't signed in.

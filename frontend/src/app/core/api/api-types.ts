@@ -88,6 +88,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/auth/antiforgery-token': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get an antiforgery token
+     * @description Sets the XSRF-TOKEN cookie. Signed-in requests other than GET must send its value as the X-XSRF-TOKEN header. Fetch a new one after signing in.
+     */
+    get: operations['AppTemplateWebEndpointsAuthenticationAntiforgeryTokenEndpoint'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/auth/change-password': {
     parameters: {
       query?: never;
@@ -725,6 +745,24 @@ export interface operations {
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationAntiforgeryTokenEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The response sets the token cookies */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

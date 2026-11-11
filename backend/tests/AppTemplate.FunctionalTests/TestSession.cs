@@ -1,3 +1,4 @@
+using AppTemplate.Web.Configurations;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 
@@ -6,8 +7,9 @@ namespace AppTemplate.FunctionalTests;
 /// <summary>
 /// A browser's side of a session: a cookie jar on <c>https://localhost</c> (HTTPS, because the
 /// session cookie is Secure outside Development) that every request through <see cref="Client"/>
-/// sends and updates, as a browser does. Signing in sets Identity's session cookie; nothing else
-/// is needed to be signed in.
+/// sends and updates, as a browser does. Signing in sets Identity's session cookie, then fetches an
+/// antiforgery token, which every unsafe request sends as <c>X-XSRF-TOKEN</c>, as the SPA's
+/// HttpClient does.
 /// </summary>
 public sealed class TestSession
 {
@@ -36,10 +38,33 @@ public sealed class TestSession
     public void SetSessionCookie(string value) =>
         _cookies.Add(Origin, new Cookie(SessionCookieName, value) { Secure = true });
 
-    public Task<HttpResponseMessage> LoginAsync(
+    /// <summary>The token this session sends as <c>X-XSRF-TOKEN</c>; <c>null</c> before it has one.</summary>
+    public string? AntiforgeryToken =>
+        _cookies
+            .GetCookies(Origin)
+            .FirstOrDefault(cookie =>
+                cookie.Name == AntiforgeryConfigurations.RequestTokenCookieName && !cookie.Expired
+            )
+            ?.Value;
+
+    /// <summary>Signs in, then fetches an antiforgery token for the new session, as the SPA does.</summary>
+    public async Task<HttpResponseMessage> LoginAsync(
         string email,
-        string password = CustomWebApplicationFactory<Program>.Password
-    ) => Client.PostAsJsonAsync("/auth/login", new { email, password });
+        string password = CustomWebApplicationFactory<Program>.Password,
+        bool fetchAntiforgeryToken = true
+    )
+    {
+        var response = await Client.PostAsJsonAsync("/auth/login", new { email, password });
+        if (response.IsSuccessStatusCode && fetchAntiforgeryToken)
+        {
+            await FetchAntiforgeryTokenAsync();
+        }
+
+        return response;
+    }
+
+    public async Task FetchAntiforgeryTokenAsync() =>
+        (await Client.GetAsync("/auth/antiforgery-token")).EnsureSuccessStatusCode();
 
     public Task<HttpResponseMessage> RegisterAsync(
         string email,
@@ -63,7 +88,10 @@ public sealed class TestSession
 
     public Task<HttpResponseMessage> LogoutAsync() => Client.PostAsync("/auth/logout", null);
 
-    /// <summary>Sends the jar's cookies with each request and keeps what the response sets.</summary>
+    /// <summary>
+    /// Sends the jar's cookies with each request, and the antiforgery token with unsafe ones
+    /// (as Angular's HttpClient does), and keeps what the response sets.
+    /// </summary>
     private sealed class CookieJar(TestSession session) : DelegatingHandler
     {
         protected override async Task<HttpResponseMessage> SendAsync(
@@ -75,6 +103,16 @@ public sealed class TestSession
             if (cookies.Length > 0)
             {
                 request.Headers.Add("Cookie", cookies);
+            }
+
+            var safe = request.Method == HttpMethod.Get || request.Method == HttpMethod.Head;
+            if (
+                !safe
+                && session.AntiforgeryToken is { } token
+                && !request.Headers.Contains(AntiforgeryConfigurations.HeaderName)
+            )
+            {
+                request.Headers.Add(AntiforgeryConfigurations.HeaderName, token);
             }
 
             var response = await base.SendAsync(request, cancellationToken);
