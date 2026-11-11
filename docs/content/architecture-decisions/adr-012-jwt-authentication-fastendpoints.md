@@ -54,7 +54,7 @@ Browser ──(Authorization: Bearer <access token from localStorage>)──► 
 
 ## Consequences
 - **Far less code.** No token issuer, families, reuse window, 409 retries, `Origin` checks, antiforgery or rate limit policies. `UserTokenService` overrides four hooks, and the use cases (`Login`, `StoreRefreshToken`, `ConsumeRefreshToken`, `Logout`) are small enough to read in one sitting.
-- **XSS can read the access token** from `localStorage`, for up to 15 minutes, and could use it from elsewhere during that time. It still can't read the refresh token. Keep the strict CSP (`npm run csp:check`) and never render untrusted HTML.
+- **XSS can read the access token** from `localStorage`, for up to 15 minutes, and could use it from elsewhere during that time. It still can't read the refresh token. Keep the strict CSP and never render untrusted HTML.
 - **Revocation is per instance and in memory.** A restart, or another instance behind a load balancer, doesn't know about a revoked access token. At worst, a logged-out token keeps working until it expires (15 minutes), which is what short-lived JWTs give anyway. Move `RevokedAccessTokens` to `IDistributedCache` when the API runs on several instances.
 - **No sliding or absolute session limit.** Each refresh issues a new 7-day token, so a session used at least once a week never ends on its own. Shorten `RefreshTokenValidity`, or store a session start on the token, if that matters.
 - **No refresh-token reuse detection.** A stolen refresh token used before its owner gets a new pair. The owner's next refresh then fails, and they sign in again; their new session doesn't revoke the thief's. ADR 010's token families detected this; bring them back if a project needs it.

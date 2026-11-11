@@ -6,7 +6,7 @@ Restores (`--locked-mode`, against the committed `packages.lock.json` files), fo
 
 ## `frontend-build.yml`
 
-Installs, regenerates the API types from `backend/openapi/v1.json` and fails if `src/app/core/api/api-types.ts` is stale (so it also runs when only `backend/openapi/` changed), format-checks (`npm run format:check`, prettier), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), builds the Angular app, and checks the built `index.html` has no inline script or event handler a strict Content-Security-Policy would block (the one the production host should send) (`npm run csp:check`). Triggers on pushes to `main`/`develop` that touch `frontend/**` and on every PR. On a PR, the build only runs if it touches `frontend/**`, but the `Frontend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)).
+Installs, regenerates the API types from `backend/openapi/v1.json` and fails if `src/app/core/api/api-types.ts` is stale (so it also runs when only `backend/openapi/` changed), format-checks (`npm run format:check`, prettier), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), and builds the Angular app. Triggers on pushes to `main`/`develop` that touch `frontend/**` and on every PR. On a PR, the build only runs if it touches `frontend/**`, but the `Frontend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)).
 
 ## `pr-conventions.yml`
 

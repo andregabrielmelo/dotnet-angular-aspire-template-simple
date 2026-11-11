@@ -36,7 +36,7 @@ Browser ──(Authorization: Bearer <access token>)──► Angular dev server
 
 ## Consequences
 - **No identity provider features.** No password reset, email verification, account lockout, 2FA or external sign-in. This is minimal authentication, not identity management. Add them yourself, or take ADR 007's Keycloak setup from the full template.
-- **XSS** can't read the refresh token, but script running in the page can use the in-memory access token while the page is open. Keep the strict CSP (`npm run csp:check`) and never render untrusted HTML.
+- **XSS** can't read the refresh token, but script running in the page can use the in-memory access token while the page is open. Keep the strict CSP and never render untrusted HTML.
 - **Stateless access tokens.** A role change or a deleted user reaches the user with their next access token: an already issued token stays valid for up to 15 minutes. Refresh tokens are checked on every use, so revoking them is immediate.
 - **Cookie scope.** With `SameSite=Strict`, a same-origin deployment works as is, and `app.example.com` with `api.example.com` works with CORS for that exact origin with credentials. A fully cross-site SPA and API needs a different cookie policy (`SameSite=None; Secure`) and is not supported as is.
 - **The rate limiter is in memory**, so per instance. Behind several instances, add a distributed limiter or account-level throttling.

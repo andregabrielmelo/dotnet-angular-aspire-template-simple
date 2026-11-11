@@ -53,7 +53,6 @@ The API contract is committed: after changing an endpoint, request or response, 
 npm ci
 npm start                                          # ng serve, proxying /api to the Web API (proxy.conf.mjs)
 npm run build
-npm run csp:check                                  # fails if the built index.html breaks the CSP (inline scripts/handlers)
 npm run test                                       # vitest, runs once (not watch mode)
 npm run lint                                       # eslint (@angular-eslint), CI-enforced
 npm run format:check                               # prettier check (CI-enforced); npm run format to fix

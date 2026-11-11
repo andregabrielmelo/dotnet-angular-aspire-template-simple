@@ -112,7 +112,7 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 - Standalone components in `core/`, `shared/` and `features/<feature>/`.
 - HTTP calls live in feature services, not components.
 - Guards are UX, not authorization.
-- The SPA must run under a strict CSP, sent by the production host: no inline scripts, inline event handlers or `eval` (`npm run csp:check`). New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Production deployment).
+- The SPA must run under a strict CSP, sent by the production host: no inline scripts, inline event handlers or `eval`. New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Production deployment).
 - `AuthService` keeps the access token and its expiry in `localStorage`; the refresh token is an HttpOnly cookie the app never reads, sent only to `api/auth/refresh-token` ([ADR 012](docs/content/architecture-decisions/adr-012-jwt-authentication-fastendpoints.md)). Never store a token anywhere else.
 
 ## 11. Code style
@@ -142,7 +142,6 @@ dotnet test AppTemplate.slnx   # needs Docker (or Podman via DOCKER_HOST)
 npm run format:check               # npm run format to fix
 npm run lint
 npm run build
-npm run csp:check
 npm run test
 ```
 

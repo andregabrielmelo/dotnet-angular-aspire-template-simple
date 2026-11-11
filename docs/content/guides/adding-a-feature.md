@@ -846,7 +846,7 @@ export class ProjectsPage implements OnInit {
 - `role="alert"` on the error message
 - an `@for` list with an `@empty` row
 
-Use no inline scripts or event-handler attributes: the content security policy blocks them, and `npm run csp:check` fails the build.
+Use no inline scripts or event-handler attributes: the content security policy blocks them.
 
 **The route**, in `frontend/src/app/app.routes.ts`:
 
@@ -999,7 +999,7 @@ dotnet csharpier format . && dotnet build AppTemplate.slnx && dotnet test AppTem
 From `frontend/`:
 
 ```bash
-npm run format && npm run lint && npm run test && npm run build && npm run csp:check
+npm run format && npm run lint && npm run test && npm run build
 ```
 
 Then run the app (`dotnet run --project src/AppTemplate.AppHost`), open the `angular` resource from the Aspire dashboard, sign in, and use the new page. Commit as `feat: add projects`, on a `feature/` branch.
