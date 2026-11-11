@@ -17,7 +17,7 @@ The API had no request limits. Identity's lockout protects one account at a time
   - **The `authentication` policy** (`RateLimitingConfigurations.AuthenticationPolicy`, 5 attempts per address and minute) adds a stricter limit on top. It covers login, register, confirm-email, resend-confirmation, forgot-password and reset-password, applied with `Options(x => x.RequireRateLimiting(...))`.
   - **A rejection** is a 429 problem details response with `Retry-After`.
   - **Partitions never come from a header a client picks.** `user_id` is read from the validated session (`UseRateLimiter` runs after `UseAuthentication`).
-  - **The address comes from `X-Forwarded-For`** only when the connection comes from a proxy in `ForwardedHeaders:KnownProxies`. The AppHost lists loopback in development (`ForwardedHeaders__KnownProxies__0/1`), for the Angular dev server's proxy (which sends `X-Forwarded-For`). Elsewhere the list is empty until a deployment names its load balancer.
+  - **The address comes from `X-Forwarded-For`** only when the connection comes from a proxy in `ForwardedHeaders:KnownProxies`. The AppHost lists loopback in development (the `web:ForwardedHeaders:KnownProxies` array in its `appsettings.Development.json`, which it passes on as `ForwardedHeaders__KnownProxies__0`, `__1`), for the Angular dev server's proxy (which sends `X-Forwarded-For`). Elsewhere the list is empty until a deployment names its load balancer.
   - **With no known proxy, nothing is forwarded at all** (`ForwardedHeaders.None`). ASP.NET Core's middleware otherwise trusts every peer when both of its lists are empty, which would let any client choose its own partition. A functional test pins this.
 
 ## Consequences

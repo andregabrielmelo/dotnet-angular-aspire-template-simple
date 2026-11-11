@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -20,6 +21,24 @@ var api = builder
     .WaitFor(applicationDatabase)
     // Readiness (Postgres reachable): resources that WaitFor(api) start only once it's ready.
     .WithHttpHealthCheck("/health", endpointName: "https");
+
+// The API's settings kept in the AppHost's appsettings ("web" section), passed on as environment
+// variables: Mailserver:FromAddress becomes Mailserver__FromAddress, and an array element such as
+// ForwardedHeaders:KnownProxies:0 becomes ForwardedHeaders__KnownProxies__0. In development they
+// are Mailpit's sender and loopback as a known proxy: the Angular dev server's proxy reaches the
+// API from loopback, so trusting its X-Forwarded-For makes rate limits count the browser's
+// address (ADR 014).
+foreach (
+    var (key, value) in builder
+        .Configuration.GetSection("web")
+        .AsEnumerable(makePathsRelative: true)
+)
+{
+    if (value is not null)
+    {
+        api.WithEnvironment(key.Replace(":", "__"), value);
+    }
+}
 
 // The Angular dev server is the browser's single origin: its proxy (frontend/proxy.conf.mjs)
 // forwards /api to the Web API, found through the services__web__https__0 variable that
@@ -64,13 +83,7 @@ if (builder.Environment.IsDevelopment())
     var smtp = mailpit.GetEndpoint("smtp");
     api.WithEnvironment("Mailserver__Hostname", smtp.Property(EndpointProperty.Host))
         .WithEnvironment("Mailserver__Port", smtp.Property(EndpointProperty.Port))
-        .WithEnvironment("Mailserver__FromAddress", "noreply@apptemplate.local")
         .WaitFor(mailpit);
-
-    // The Angular dev server's proxy reaches the API from loopback: trust its X-Forwarded-For,
-    // so rate limits count the browser's address (ADR 014).
-    api.WithEnvironment("ForwardedHeaders__KnownProxies__0", "127.0.0.1")
-        .WithEnvironment("ForwardedHeaders__KnownProxies__1", "::1");
 }
 else
 {
