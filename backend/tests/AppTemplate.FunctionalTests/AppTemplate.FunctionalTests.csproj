@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\PostgresTestDatabase.cs" Link="PostgresTestDatabase.cs" />
+    <Compile Include="..\Shared\TestCategories.cs" Link="TestCategories.cs" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
