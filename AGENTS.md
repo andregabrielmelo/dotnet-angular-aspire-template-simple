@@ -22,8 +22,8 @@ Dependencies point inward:
 | Project | Contains | May depend on |
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
-| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events and their handlers, specifications; ports in `Core/Interfaces` (`IEmailSender`, the request context `ICurrentUser`, ...) | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), the accounts port (`UseCases/Interfaces/IIdentityService`) and the `Role`/`Permission` smart enums | Core, SharedKernel |
+| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports for external resources in `Core/Interfaces` (`IEmailSender`) | SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and their handlers; domain event handlers (`UseCases/<Feature>/Handlers/`, where the ports they need are visible); list query-service interfaces (`IListUsersQueryService`), the accounts port and the request context (`UseCases/Interfaces`: `IIdentityService`, `ICurrentUser`), the `Role`/`Permission` smart enums, and the caching contract (`ICacheable`, `CacheTags`, `CacheProfile`) | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, ASP.NET Core Identity (`ApplicationUser`, `IdentityService`) | Core, UseCases, SharedKernel |
 | `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`: logging, and caching `ICacheable` queries), the antiforgery check, composition root | everything above |
 
@@ -92,7 +92,7 @@ Dependencies point inward:
 
 ## 8. Health checks
 
-- Postgres gates readiness (`/health`, tag `ready`). A new required dependency joins it; an optional one must not gate readiness, and the code that uses it fails open. Never tag a dependency `live`. Policy: `docs/content/best-practices.md`, Health checks.
+- Postgres gates readiness (`/health`, tag `ready`). A new required dependency joins it; an optional one must not gate readiness, and the code that uses it fails open. One deliberate exception: with Redis down, cached reads fall back, but a write that must invalidate cache entries saves and then answers 500, because `RemoveByTagAsync` needs Redis (ADR 017). Never tag a dependency `live`. Policy: `docs/content/best-practices.md`, Health checks.
 
 ## 9. Testing ([ADR 006](docs/content/architecture-decisions/adr-006-testing-strategy.md))
 

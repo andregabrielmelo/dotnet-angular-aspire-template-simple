@@ -10,7 +10,7 @@ Where to look when the ADRs don't settle a design question. These are the source
 ## Templates this project builds on
 
 - [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture): the Core / UseCases / Infrastructure / Web layout ([ADR 001]({{< relref "architecture-decisions/adr-001-clean-architecture-layering" >}})), ports in `Core/Interfaces`, query services in UseCases, `Ardalis.Result`, `Ardalis.Specification` and REPR endpoints with FastEndpoints. Its [MailserverConfiguration](https://github.com/ardalis/CleanArchitecture/blob/main/src/Clean.Architecture.Infrastructure/Email/MailserverConfiguration.cs) is the shape of this template's typed settings.
-- [jasontaylordev/CleanArchitecture](https://github.com/jasontaylordev/CleanArchitecture): application pipeline behaviors (its [PerformanceBehaviour](https://github.com/jasontaylordev/CleanArchitecture/blob/main/src/Application/Common/Behaviours/PerformanceBehaviour.cs) is the model for `UseCases/Behaviors`).
+- [jasontaylordev/CleanArchitecture](https://github.com/jasontaylordev/CleanArchitecture): application pipeline behaviors (its [PerformanceBehaviour](https://github.com/jasontaylordev/CleanArchitecture/blob/main/src/Application/Common/Behaviours/PerformanceBehaviour.cs) is the model for `Web/Behaviors`).
 
 ## Articles behind specific decisions
 
