@@ -20,7 +20,7 @@ The first version ran functional tests on EF Core's InMemory provider, so they n
 Microsoft also [recommends against](https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy#in-memory-as-a-database-fake) InMemory as a database fake.
 
 ## Decision
-Four test projects, following [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture/tree/main/tests):
+Five test projects, following [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture/tree/main/tests):
 
 - **Conventions:**
   - xUnit v3 (pinned to 3.2.x with `xunit.runner.visualstudio` 3.1.x: 4.x requires Microsoft.Testing.Platform on the .NET 10 SDK), [Shouldly](https://docs.shouldly.org/) assertions and [NSubstitute](https://nsubstitute.github.io/) fakes.
@@ -39,10 +39,11 @@ Four test projects, following [ardalis/CleanArchitecture](https://github.com/ard
   - `LayerDependencyTests` ([NetArchTest](https://github.com/BenMorris/NetArchTest)) inspects the compiled code. Core uses no outer layer, EF Core or ASP.NET Core. UseCases uses no Infrastructure, Web or infrastructure SDK. No layer uses MediatR.
   - `ConventionTests`: endpoints live in a feature namespace under `AppTemplate.Web` (`AppTemplate.Web.Endpoints.Users`, from `Web/Endpoints/Users/`), there are no MVC controllers, command and query handlers live only in UseCases, and commands and queries follow the `<UseCase>Command`/`<UseCase>Query` naming.
   - It needs no Docker, so it runs on every CI operating system.
+- **`AppTemplate.AspireTests`** - one smoke test of the whole local composition. It starts the real AppHost with [Aspire.Hosting.Testing](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test) and waits for the API to be healthy. The other projects test the API (`WebApplicationFactory`) and the infrastructure (Testcontainers) on their own; only this one notices a broken resource reference, a setting the AppHost no longer passes, or a health check that never turns healthy. It overrides the AppHost's persistent containers and data volumes with throwaway ones, so it never touches a developer's data. It's deliberately a single startup check, not an end-to-end suite.
 
 One rule needs the running app, so it lives in the functional tests: `EndpointAuthorization` pins the exact set of anonymous routes ([ADR 011]({{< relref "adr-011-role-based-permissions" >}}), [ADR 012]({{< relref "adr-012-jwt-authentication-fastendpoints" >}})).
 
-For the Docker test projects, Testcontainers was chosen over `Aspire.Hosting.Testing`, which would start the whole AppHost (Mailpit, the frontend) for every run - far more than they need.
+For the integration and functional tests, Testcontainers was chosen over `Aspire.Hosting.Testing`, which would start the whole AppHost (Mailpit, the frontend) for every run - far more than they need. `Aspire.Hosting.Testing` is used only where starting the whole AppHost is the point: the single smoke test in `AppTemplate.AspireTests`.
 
 There are no end-to-end browser tests in this template. The full template ([dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template)) has an `AppTemplate.EndToEndTests` project that starts the AppHost with `Aspire.Hosting.Testing` and drives Chromium with Playwright through sign-in, profile editing and sign-out; copy and adapt it when the sign-in round trip through the Angular app needs a test of its own.
 
