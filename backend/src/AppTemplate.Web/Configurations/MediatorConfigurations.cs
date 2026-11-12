@@ -1,7 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Infrastructure;
-using AppTemplate.UseCases.Behaviors;
-using AppTemplate.UseCases.Users;
+using AppTemplate.UseCases.Users.Commands.Register;
+using AppTemplate.Web.Behaviors;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -22,17 +22,22 @@ public static class MediatorConfigurations
             options.Assemblies =
             [
                 typeof(User), // Core
-                typeof(UserDto), // UseCases
+                typeof(RegisterUserCommand), // UseCases
                 typeof(InfrastructureServiceExtensions), // Infrastructure
                 typeof(MediatorConfigurations), // Web
             ];
 
-            // Register pipeline behaviors here (order matters).
-            options.PipelineBehaviors = [typeof(LoggingBehavior<,>)];
+            // Register pipeline behaviors here (order matters): logging is outermost, so cache
+            // hits are logged and timed too.
+            options.PipelineBehaviors = [typeof(LoggingBehavior<,>), typeof(CachingBehavior<,>)];
 
             // If you have stream behaviors:
             // options.StreamPipelineBehaviors = [ typeof(YourStreamBehavior<,>) ];
         });
+
+        // Alternative: register behaviors via DI yourself (useful if not doing AOT):
+        // services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        // services.AddScoped(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
 
         return services;
     }

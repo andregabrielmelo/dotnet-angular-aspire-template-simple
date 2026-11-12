@@ -6,7 +6,7 @@ weight: 70
 # ADR 007: Keycloak, a backend for frontend, and JWT Bearer for the API
 
 ## Status
-Accepted
+Superseded by [ADR 010]({{< relref "adr-010-authentication-api-issued-tokens" >}}). The simple template no longer uses Keycloak or a backend for frontend; this design lives on in the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template).
 
 ## Context
 Users need to register, log in and log out. The earlier scaffolding kept access and refresh tokens in the browser's `localStorage`, where any injected script can read them, and grew a home-made token issuer on top of ASP.NET Core Identity that never compiled. What we want instead:

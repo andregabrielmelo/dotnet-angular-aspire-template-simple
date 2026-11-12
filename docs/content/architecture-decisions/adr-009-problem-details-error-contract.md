@@ -1,12 +1,12 @@
 ---
-title: "ADR 009: One problem details contract for every error"
+title: "ADR 009: Problem details for use case results"
 weight: 90
 ---
 
-# ADR 009: One problem details contract for every error
+# ADR 009: Problem details for use case results
 
 ## Status
-Accepted.
+Accepted. Revised: the simple template keeps problem details for use case results only. Request validation and the framework's own errors (401, 403, 404, 500) use ASP.NET Core's and FastEndpoints' defaults, without extra configuration, and there is no `traceId` extension.
 
 ## Context
 Error responses came from five places, and each made its own choice:
@@ -16,25 +16,29 @@ Error responses came from five places, and each made its own choice:
 | FastEndpoints request validation | FastEndpoints' `ErrorResponse` (`statusCode`, `message`, `errors`), not problem details |
 | Use case `Invalid` results | ASP.NET Core's `ValidationProblem` |
 | Other use case results (`ResultExtensions`) | A catch-all mapped `Conflict`, `Unavailable` and `Error` to **400**, and echoed `result.Errors`, which can describe internals |
-| Authentication and authorization | Empty 401 and 403 bodies, from both the API and the backend for frontend |
+| Authentication and authorization | Empty 401 and 403 bodies |
 | Unmatched routes and unhandled exceptions | An empty 404; FastEndpoints' own exception JSON |
 
 Several endpoints, `MeEndpoint` among them, each had their own `switch`. A client (the Angular app, or a generated one) couldn't parse errors in one way, and the wrong status codes hid what had happened.
 
 ## Decision
-Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details response (`application/problem+json`) with `type`, `title`, `status`, optional `detail`, and a `traceId` extension. The `traceId` is the W3C trace id, which finds the request's logs and trace in the Aspire dashboard.
+Use case results are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details responses (`application/problem+json`) with `type`, `title`, `status` and an optional `detail`. Everything else uses the framework's defaults, configured nowhere:
 
-**Sources** (`Web/Configurations/ProblemDetailsConfigurations.cs`):
-- `AddProblemDetails()` adds `traceId` to everything written through `IProblemDetailsService`.
-- `UseExceptionHandler()` (outside Development) turns unhandled exceptions into a 500 with no exception details, and logs the exception.
-- `UseStatusCodePages()` gives empty 4xx and 5xx responses a body: 401 and 403 from authorization, and 404 for unmatched routes.
-- FastEndpoints' `Errors.ResponseBuilder` writes validation failures as an ASP.NET Core `HttpValidationProblemDetails`. Request validation and use case `Invalid` results therefore share one shape, an `errors` object of camelCase field name to messages:
+| Source | Response |
+|---|---|
+| Use case results (`ResultExtensions`) | Problem details, by the table below |
+| FastEndpoints request validation, and `AddError` in the refresh endpoint | FastEndpoints' `ErrorResponse`: `statusCode`, `message`, and `errors`, camelCase field name to messages |
+| No or an expired session cookie, a missing permission | An empty 401 or 403 |
+| A signed-in request without a valid antiforgery token ([ADR 015]({{< relref "adr-015-cookie-sessions-aspnetcore-identity" >}})) | A 400 problem details |
+| Unmatched routes | An empty 404 |
+| Unhandled exceptions, outside Development | FastEndpoints' `UseDefaultExceptionHandler(useGenericReason: true)`: a 500 JSON body without the exception's message; the exception is logged |
 
-  ```json
-  { "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-    "title": "One or more validation errors occurred.", "status": 400,
-    "errors": { "id": ["Id must be greater than zero"] }, "traceId": "00-…" }
-  ```
+Both shapes a form cares about carry the same `errors` object, so a client shows field messages the same way for request validation and a use case's `Invalid` result:
+
+```json
+{ "statusCode": 400, "message": "One or more errors occurred!",
+  "errors": { "email": ["Email is required"] } }
+```
 
 **Mapping use case results.** `Web/Extensions/ResultExtensions.cs` is the only place an `Ardalis.Result` becomes HTTP. Endpoints return `Results<Ok<T> | Created<T> | NoContent | Accepted, ProblemHttpResult>` through `ToOkResult`, `ToCreatedResult`, `ToNoContentResult` and `ToAcceptedResult`.
 
@@ -42,18 +46,17 @@ Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem det
 |---|---|---|
 | `Invalid` | 400 | `errors` by field |
 | `Unauthorized` | 401 | none |
-| `Forbidden` | 403 | generic |
+| `Forbidden` | 403 | the use case's message, or a generic one |
 | `NotFound` | 404 | the use case's message, if any |
 | `Conflict` | 409 | the use case's message |
 | `Unavailable` | 503 | generic |
 | `Error`, `CriticalError`, anything else | 500 | generic, never `result.Errors` |
 
-Messages from `Invalid`, `NotFound` and `Conflict` are written by use cases *for the caller*. The others may describe internals, so a use case logs those itself before returning them.
-
-**Backend for frontend.** It calls `AddProblemDetails()`, `UseExceptionHandler()` and `UseStatusCodePages()` too, so its own 401s (missing `X-CSRF`, no session) and 403s use the same contract. Proxied responses already have a body, so they pass through unchanged.
+Messages from `Invalid`, `Forbidden`, `NotFound` and `Conflict` are written by use cases *for the caller*. The others may describe internals, so a use case logs those itself before returning them.
 
 ## Consequences
-- **Breaking for API clients:** validation errors no longer use FastEndpoints' `ErrorResponse`; 404s now have a body; 409, 503 and 500 replace former 400s.
 - A new endpoint only picks a `To…Result` helper; it never builds an error response by hand. A new result status means one new row in `ToProblem`.
-- `ProblemDetailsContractTests` (HTTP, against real Postgres), `ResultMappingTests` (every status, no Docker) and the backend for frontend's `ProblemDetailsTests` pin the contract. They check that the three middleware pieces never overwrite or empty each other's bodies, and that no exception text leaks.
+- Clients read `errors` for field messages and the status code for everything else; they don't rely on a body for 401, 403 or 404.
+- `ResultExtensionsToProblem` (functional tests, no Docker) pins the mapping, and the endpoint tests pin each endpoint's status codes.
+- No `traceId` in error bodies. Find a failing request in the Aspire dashboard by its route and time, or add `AddProblemDetails()` and FastEndpoints' `Errors.ResponseBuilder` (as the full template does) when clients need one error shape with a trace id.
 - In Development, the developer exception page still shows exception details, on purpose.

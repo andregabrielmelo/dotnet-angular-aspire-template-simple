@@ -1,6 +1,5 @@
 ﻿namespace AppTemplate.Core.ValueObjects;
 
-[PersonalData]
 public class PhoneNumber(string countryCode, string number, string? extension) : ValueObject
 {
     public string CountryCode { get; private set; } = countryCode;

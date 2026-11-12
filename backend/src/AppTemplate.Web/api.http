@@ -1,9 +1,32 @@
 # For more info on HTTP files go to https://aka.ms/vs/httpfile
-@host=https://localhost
-@port=7243
-# Every endpoint needs a Keycloak access token. In the running app the backend for frontend
-# attaches it; to call the API directly, paste a Keycloak token for the apptemplate-api audience.
+@host=http://localhost
+@port=5234
+# Every /users endpoint needs an access token: sign in below (the dev admin account is seeded
+# in Development) and paste the response's accessToken here. It expires after 15 minutes.
 @token=paste-an-access-token-here
+
+// Sign in. The response also sets the refresh token cookie, used by the SPA's /auth/refresh.
+POST {{host}}:{{port}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+###
+
+// Register (and sign in) a new account
+POST {{host}}:{{port}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Ada Lovelace",
+  "email": "ada@example.com",
+  "password": "correct horse battery staple"
+}
+
+###
 
 // List all users
 GET {{host}}:{{port}}/users
@@ -18,7 +41,7 @@ Authorization: Bearer {{token}}
 
 ###
 
-// Get (and on first call, create) the current user from the token's claims
+// Get the current user (the token's sub) and the permissions the token grants
 GET {{host}}:{{port}}/users/me
 Authorization: Bearer {{token}}
 

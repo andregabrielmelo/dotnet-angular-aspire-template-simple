@@ -1,4 +1,6 @@
-﻿namespace AppTemplate.SharedKernel;
+﻿using Ardalis.GuardClauses;
+
+namespace AppTemplate.SharedKernel;
 
 /// <summary>
 /// NOTE: Use `readonly record struct` for most cases in C# 10+
@@ -119,7 +121,7 @@ public abstract class ValueObject : IComparable, IComparable<ValueObject>
 
     internal static Type GetUnproxiedType(object obj)
     {
-        ArgumentNullException.ThrowIfNull(obj);
+        Guard.Against.Null(obj);
 
         const string EFCoreProxyPrefix = "Castle.Proxies.";
         const string NHibernateProxyPostfix = "Proxy";

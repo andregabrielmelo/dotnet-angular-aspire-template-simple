@@ -1,39 +1,93 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
+using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Interfaces;
+using Ardalis.Result;
+using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data;
 
+/// <summary>
+/// Development-only demo data (see DatabaseConfigurations.StartDatabase). The accounts are created
+/// confirmed, so they can sign in without an email round trip.
+/// </summary>
 public class SeedData
 {
     public const int NUMBER_OF_SEED_USERS = 25;
 
-    public static async Task InitializeAsync(ApplicationDatabaseContext dbContext)
+    /// <summary>An account with the Admin role, for trying the users pages locally.</summary>
+    public const string AdminEmail = "admin@example.com";
+    public const string AdminPassword = "Admin123!";
+
+    /// <summary>The shared password of the fixture users (user1@example.com, ...).</summary>
+    public const string FixturePassword = "Passw0rd!";
+
+    public static async Task InitializeAsync(
+        ApplicationDatabaseContext dbContext,
+        IIdentityService identity,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (await dbContext.Users.AnyAsync())
+        if (await dbContext.UserProfiles.AnyAsync(cancellationToken))
             return; // DB has been seeded
 
-        await PopulateTestDataAsync(dbContext);
+        await PopulateTestDataAsync(identity, cancellationToken);
     }
 
-    public static async Task PopulateTestDataAsync(ApplicationDatabaseContext dbContext)
+    public static async Task PopulateTestDataAsync(
+        IIdentityService identity,
+        CancellationToken cancellationToken = default
+    )
     {
-        var names = new List<string>();
+        await CreateAsync(
+            identity,
+            "Admin",
+            AdminEmail,
+            AdminPassword,
+            Role.Admin,
+            cancellationToken
+        );
+
         for (int i = 1; i <= NUMBER_OF_SEED_USERS; i++)
         {
-            names.Add($"User {i}");
+            await CreateAsync(
+                identity,
+                $"User {i}",
+                $"user{i}@example.com",
+                FixturePassword,
+                Role.Member,
+                cancellationToken
+            );
         }
+    }
 
-        // Seed users are fixtures for pagination demos, not accounts anyone can log into - their
-        // ExternalIds don't match any identity in Keycloak.
-        var users = names.Select(
-            (name, index) =>
-                User.Create(
-                    $"seed-{index + 1}",
-                    UserName.From(name),
-                    new EmailAddress($"{name.ToLowerInvariant().Replace(" ", "")}@example.com")
-                )
+    private static async Task CreateAsync(
+        IIdentityService identity,
+        string name,
+        string email,
+        string password,
+        Role role,
+        CancellationToken cancellationToken
+    )
+    {
+        var created = await identity.CreateUserAsync(
+            UserName.From(name),
+            new EmailAddress(email),
+            password,
+            cancellationToken
         );
-        dbContext.Users.AddRange(users);
-        await dbContext.SaveChangesAsync();
+        Succeeded(created, email);
+        Succeeded(await identity.AddToRolesAsync(created.Value, [role], cancellationToken), email);
+        Succeeded(await identity.MarkEmailConfirmedAsync(created.Value, cancellationToken), email);
+    }
+
+    private static void Succeeded(IResult result, string email)
+    {
+        if (result.Status != ResultStatus.Ok)
+        {
+            throw new InvalidOperationException(
+                $"Seeding {email} failed: {result.Status} {string.Join("; ", result.Errors)}"
+            );
+        }
     }
 }

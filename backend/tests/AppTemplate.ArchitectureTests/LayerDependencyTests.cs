@@ -45,6 +45,11 @@ public class LayerDependencyTests
         );
 
     [Fact]
+    public void Web_LeavesAspNetCoreIdentityToInfrastructure() =>
+        // Accounts go through UseCases' IIdentityService (ADR 013); Web only issues JWTs.
+        AssertNoDependencies(Layers.Web, "Microsoft.AspNetCore.Identity");
+
+    [Fact]
     public void Infrastructure_DoesNotDependOnWeb() =>
         AssertNoDependencies(Layers.Infrastructure, Layers.WebNamespace);
 

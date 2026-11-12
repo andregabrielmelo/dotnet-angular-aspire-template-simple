@@ -1,5 +1,6 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.ValueObjects;
+using AppTemplate.Core.Aggregates.UserAggregate;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AppTemplate.Infrastructure.Data.Configurations;
 
@@ -7,9 +8,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
+        // The DbSet is UserProfiles (Identity's DbSet is Users); the table keeps the domain's name.
+        builder.ToTable("users");
+
         builder
             .Property(entity => entity.Id)
-            .HasValueGenerator<VogenIdValueGenerator<ApplicationDatabaseContext, User, UserId>>()
+            .ValueGeneratedOnAdd()
             .HasVogenConversion()
             .IsRequired();
 
@@ -19,23 +23,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(UserName.MaxLength)
             .IsRequired();
 
-        builder
-            .Property(entity => entity.Email)
-            .HasConversion(email => email.Value, value => new EmailAddress(value))
-            .HasMaxLength(320)
-            .IsRequired();
-
-        builder.HasIndex(entity => entity.Email).IsUnique();
-
-        builder
-            .Property(entity => entity.ExternalId)
-            .HasMaxLength(User.ExternalIdMaxLength)
-            .IsRequired();
-
-        builder.HasIndex(entity => entity.ExternalId).IsUnique();
-
-        // Set by Postgres on insert (EF leaves the column out while the value is unset); the
-        // migration that added it backfilled existing rows with the migration time.
+        // Set by Postgres on insert (EF leaves the column out while the value is unset).
         builder.Property(entity => entity.CreatedAtUtc).HasDefaultValueSql("now()");
 
         builder.OwnsOne(builder => builder.PhoneNumber);

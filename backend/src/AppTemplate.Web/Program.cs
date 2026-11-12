@@ -1,23 +1,21 @@
 ﻿using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
+using Serilog.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults(); // OpenTelemetry, health checks, and Serilog logging with redaction
+var serilogLogger = builder.AddLoggerConfigs(); // Serilog to the console
+builder.AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
 
-using var loggerFactory = LoggerFactory.Create(config => config.AddConsole());
-var startupLogger = loggerFactory.CreateLogger<Program>();
+var startupLogger = new SerilogLoggerFactory(serilogLogger).CreateLogger<Program>();
 
 startupLogger.LogInformation("Starting web host");
 
-builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger, builder);
+builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger);
 builder.Services.AddServiceConfigurations(startupLogger, builder);
-builder.Services.AddAuthenticationConfigurations(startupLogger, builder);
-builder.Services.AddAuthorizationConfigurations(startupLogger, builder);
-builder.Services.AddProblemDetailsConfigurations(startupLogger);
-builder.Services.AddForwardedHeadersConfigurations(builder.Configuration);
-builder.Services.AddRateLimitingConfigurations(builder.Configuration);
-builder.Services.AddRequestTimeoutConfigurations(builder.Configuration);
+builder.Services.AddAuthenticationConfigurations(startupLogger);
+builder.Services.AddRateLimitingConfigurations(startupLogger);
+builder.Services.AddAntiforgeryConfigurations(startupLogger);
 
 builder
     .Services.AddFastEndpoints()
@@ -29,22 +27,31 @@ builder
             s.Title = "AppTemplate API";
             s.Version = "v1";
             s.Description = "REST API for AppTemplate.";
-            s.SchemaSettings.SchemaProcessors.Add(
-                new RequireNonNullablePropertiesSchemaProcessor()
-            );
+            // Generated clients (the Angular types) get non-optional fields for non-nullable ones.
+            s.MarkNonNullablePropsAsRequired();
         };
+        // No bearer scheme: the reference pages are same-origin, so the browser sends the session
+        // cookie set by POST /auth/login.
+        o.EnableJWTBearerAuth = false;
     });
+
+// TODO: Add response compression if needed. Prefer server-based response compression technologies, probably better.
+// https://learn.microsoft.com/en-us/aspnet/core/performance/response-compression?view=aspnetcore-10.0
+//builder.Services.AddResponseCompression(options =>
+//{
+//    options.EnableForHttps = true;
+//    options.Providers.Add<BrotliCompressionProvider>();
+//    options.Providers.Add<GzipCompressionProvider>();
+//});
 
 var app = builder.Build();
 
 await app.UseAppMiddleware();
 
-// `--OpenApi:ExportPath=<file>` writes the OpenAPI document and exits, before anything below
-// needs a database or other services (see OpenApiExport).
-if (await app.TryExportOpenApiAsync())
-{
-    return;
-}
+// `--export-swagger-docs true` writes v1.json (SwaggerExportPath in the csproj) and exits, before
+// anything below needs a database (scripts/export-openapi.sh).
+await app.ExportSwaggerDocsAndExitAsync("v1");
+
 await app.StartDatabase(); // decides for itself: Development, or Database:ApplyMigrationsOnStartup
 
 app.MapDefaultEndpoints(); // Aspire health checks and metrics

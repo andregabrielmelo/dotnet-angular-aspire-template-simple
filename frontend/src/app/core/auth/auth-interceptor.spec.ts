@@ -3,22 +3,29 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { vi } from 'vitest';
-import { authInterceptor, CSRF_HEADER } from './auth-interceptor';
+import { authInterceptor } from './auth-interceptor';
 import { AuthService } from '../../features/auth/auth-service';
 
 describe('authInterceptor', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
-  const authService = { clearUser: vi.fn(), login: vi.fn() };
+  let signedIn: boolean;
+  const clearSession = vi.fn();
+  const navigate = vi.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    signedIn = true;
+    clearSession.mockReset();
+    navigate.mockReset();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: authService },
-        { provide: Router, useValue: { url: '/home' } },
+        {
+          provide: AuthService,
+          useValue: { isAuthenticated: () => signedIn, clearSession },
+        },
+        { provide: Router, useValue: { url: '/users', navigate } },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -27,38 +34,43 @@ describe('authInterceptor', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('adds the CSRF header to API and backend-for-frontend requests', () => {
+  it('adds no credentials: the browser sends the session cookie', () => {
     http.get('api/users/me').subscribe();
-    http.get('backend-for-frontend/user').subscribe();
 
-    expect(httpMock.expectOne('api/users/me').request.headers.get(CSRF_HEADER)).toBe('1');
-    expect(httpMock.expectOne('backend-for-frontend/user').request.headers.get(CSRF_HEADER)).toBe(
-      '1',
-    );
+    expect(httpMock.expectOne('api/users/me').request.headers.has('Authorization')).toBe(false);
   });
 
-  it('leaves other requests untouched', () => {
-    http.get('assets/config.json').subscribe();
+  it('sends a signed-in user whose session ended to sign in, and passes the error on', () => {
+    let status: number | undefined;
+    http.get('api/users').subscribe({ error: (error) => (status = error.status) });
 
-    expect(httpMock.expectOne('assets/config.json').request.headers.has(CSRF_HEADER)).toBe(false);
+    httpMock.expectOne('api/users').flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(status).toBe(401);
+    expect(clearSession).toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith(['/auth/login'], {
+      queryParams: { returnUrl: '/users' },
+    });
   });
 
-  it('sends the user back through login when the API answers 401', () => {
+  it('leaves a 401 alone when nobody was signed in (the guard handles that)', () => {
+    signedIn = false;
     http.get('api/users/me').subscribe({ error: () => undefined });
 
     httpMock.expectOne('api/users/me').flush(null, { status: 401, statusText: 'Unauthorized' });
 
-    expect(authService.clearUser).toHaveBeenCalled();
-    expect(authService.login).toHaveBeenCalledWith('/home');
+    expect(clearSession).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('does not redirect when the session endpoint answers 401', () => {
-    http.get('backend-for-frontend/user').subscribe({ error: () => undefined });
+  it('leaves other errors and the auth endpoints alone', () => {
+    http.get('api/users').subscribe({ error: () => undefined });
+    http.post('api/auth/login', {}).subscribe({ error: () => undefined });
 
-    httpMock
-      .expectOne('backend-for-frontend/user')
-      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    httpMock.expectOne('api/users').flush(null, { status: 403, statusText: 'Forbidden' });
+    httpMock.expectOne('api/auth/login').flush(null, { status: 401, statusText: 'Unauthorized' });
 
-    expect(authService.login).not.toHaveBeenCalled();
+    expect(clearSession).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

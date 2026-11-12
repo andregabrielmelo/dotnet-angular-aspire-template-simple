@@ -1,49 +1,31 @@
-using AppTemplate.ServiceDefaults;
+using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Interfaces;
+using AppTemplate.Web.Services;
 
 namespace AppTemplate.Web.Configurations;
 
 public static class AuthenticationConfigurations
 {
     /// <summary>
-    /// The API only accepts OAuth 2.0 access tokens (JWTs) issued by Keycloak for this API's
-    /// audience. Browsers never call it directly - AppTemplate.BackendForFrontend holds the
-    /// user's session cookie and attaches the access token as a Bearer header when proxying.
-    /// See ADR 007.
+    /// Authorization and the current user. Authentication is ASP.NET Core Identity's session
+    /// cookie, registered with Identity in Infrastructure (ADR 015); FastEndpoints endpoints
+    /// require it unless they call <c>AllowAnonymous()</c>, and <c>Permissions(...)</c> checks the
+    /// <see cref="AppClaimTypes.Permission"/> claims it carries.
     /// </summary>
     public static IServiceCollection AddAuthenticationConfigurations(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger,
-        WebApplicationBuilder builder
+        Microsoft.Extensions.Logging.ILogger logger
     )
     {
-        var keycloak = builder.Configuration.GetSection("Keycloak");
-        // Required: read here so a missing value stops startup, not the first request.
-        var realm = builder.Configuration.GetRequiredValue("Keycloak:Realm");
-        var audience = builder.Configuration.GetRequiredValue("Keycloak:Audience");
+        services.AddAuthorization();
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUser, CurrentUser>();
 
-        services
-            .AddAuthentication()
-            .AddKeycloakJwtBearer(
-                serviceName: "keycloak",
-                realm: realm,
-                options =>
-                {
-                    options.Audience = audience;
-                    // Keycloak runs over plain HTTP inside Aspire locally.
-                    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
-                    // The Aspire service-discovery address is for local development. Elsewhere,
-                    // set Keycloak:Authority to the realm's public HTTPS URL (the tokens' issuer).
-                    if (keycloak["Authority"] is { Length: > 0 } authority)
-                    {
-                        options.Authority = authority;
-                    }
-                    // Keep JWT claim names ("sub", "email", ...) instead of the legacy
-                    // WS-Federation URIs ASP.NET Core maps them to by default.
-                    options.MapInboundClaims = false;
-                }
-            );
-
-        logger.LogInformation("{Project} were configured", "Authentication");
+        logger.LogInformation(
+            "{Project} were configured ({Permissions} permissions)",
+            "Authentication and authorization",
+            Permission.List.Count
+        );
 
         return services;
     }

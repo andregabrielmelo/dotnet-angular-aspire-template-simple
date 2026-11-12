@@ -108,10 +108,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      # The backend for frontend's CSP blocks inline scripts and event handlers.
-      - name: Check the built index.html is CSP-compatible
-        run: npm run csp:check
-
   # The only check the ruleset requires for this workflow. A skipped matrix job reports its
   # unexpanded name (`... ${{ matrix.x }}`), so the matrix jobs themselves can't be required.
   gate:

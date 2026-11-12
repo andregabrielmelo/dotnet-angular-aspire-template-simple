@@ -19,10 +19,7 @@ describe('HomePage', () => {
         provideRouter([]),
         {
           provide: AuthService,
-          useValue: {
-            user: signal({ name: 'Ada Lovelace', email: 'ada@example.com', logoutUrl: '/x' }),
-            logout,
-          },
+          useValue: { logout },
         },
         {
           provide: CurrentUserService,
@@ -39,7 +36,7 @@ describe('HomePage', () => {
     return { fixture, text: (fixture.nativeElement as HTMLElement).textContent };
   }
 
-  it('shows the user name and the API profile', () => {
+  it('shows the name and profile from the API', () => {
     const { text } = setup([]);
 
     expect(text).toContain('Ada Lovelace');

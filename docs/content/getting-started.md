@@ -23,7 +23,16 @@ This is a plain find-and-replace across the repo (not a `dotnet new` template en
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js](https://nodejs.org/) (LTS) and npm
-- [Docker](https://www.docker.com/) or Podman (Aspire runs Postgres, Keycloak and Mailpit in containers)
+- [Docker](https://www.docker.com/) or Podman (Aspire runs Postgres and Mailpit in containers)
+- A trusted ASP.NET Core development certificate: every request is HTTPS, development included ([ADR 016]({{< relref "architecture-decisions/adr-016-https-in-development" >}})). Run once, then restart the browser:
+
+  ```bash
+  dotnet dev-certs https --trust
+  ```
+
+  - **In WSL,** the command also trusts the certificate in Windows, so Edge and Firefox there accept it.
+  - **For `curl` in WSL or Linux,** add `export SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs` to your profile.
+  - **`aspire certs trust`** does the same with the Aspire CLI.
 - The [Aspire CLI/workload](https://learn.microsoft.com/dotnet/aspire/fundamentals/setup-tooling), or just run the AppHost project from your IDE
 
 ## 4. Run it
@@ -33,11 +42,11 @@ cd backend
 dotnet run --project src/YourProjectName.AppHost
 ```
 
-The Aspire dashboard opens and starts Postgres (in a container, with a persistent data volume), Keycloak (with the `apptemplate` realm imported), Mailpit (catching development emails), the Web API, the backend for frontend, and the Angular frontend (via `npm ci` + `npm start`, served through the backend for frontend - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). Open the app at `https://localhost:7100`; the development realm has an `admin`/`admin` account. On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)).
+The Aspire dashboard opens and starts Postgres (in a container, with a persistent data volume), Mailpit (catching development emails, such as the confirmation and reset links), the Web API, and the Angular frontend (via `npm ci` + `npm start`; its dev server proxies `/api` to the API - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). Open the app from the `angular` resource's `https://` URL in the dashboard, then register and open the confirmation link from Mailpit (its web UI is the `mailpit` resource's URL), or sign in as the development admin, `admin@example.com` / `Admin123!`. On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)).
 
 ## 5. Add your own feature
 
-The `User` aggregate/feature (`Core/Aggregates/UserAggregate`, `UseCases/Users`, `Web/Features/UserFeatures`) is the reference example - a full vertical slice from domain entity to HTTP endpoint. Copy its shape for your first real feature, then delete `User` once you no longer need it as a reference.
+The `User` aggregate/feature (`Core/Aggregates/UserAggregate`, `UseCases/Users`, `Web/Endpoints/Users`) is the reference example - a full vertical slice from domain entity to HTTP endpoint. Copy its shape for your first real feature, then delete `User` once you no longer need it as a reference.
 
 [Adding a feature, step by step]({{< relref "guides/adding-a-feature" >}}) walks through exactly that, with a complete `Project` example. Start with [How the project fits together]({{< relref "guides/project-map" >}}) for a map of the code.
 

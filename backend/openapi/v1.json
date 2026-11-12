@@ -14,7 +14,7 @@
         ],
         "summary": "Delete a user",
         "description": "Deletes a user with the specified id.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesDeleteEndpoint",
+        "operationId": "AppTemplateWebEndpointsUsersDeleteEndpoint",
         "parameters": [
           {
             "name": "userId",
@@ -64,12 +64,7 @@
           "401": {
             "description": "Unauthorized"
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/users/{id}": {
@@ -79,7 +74,7 @@
         ],
         "summary": "Get a user by Id",
         "description": "Get a user with the specified Id.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesGetByIdEndpoint",
+        "operationId": "AppTemplateWebEndpointsUsersGetByIdEndpoint",
         "parameters": [
           {
             "name": "id",
@@ -134,12 +129,7 @@
           "403": {
             "description": "Requires the users:read permission"
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       },
       "put": {
         "tags": [
@@ -147,7 +137,7 @@
         ],
         "summary": "Update a user",
         "description": "Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesUpdateEndpoint",
+        "operationId": "AppTemplateWebEndpointsUsersUpdateEndpoint",
         "parameters": [
           {
             "name": "id",
@@ -224,12 +214,7 @@
           "401": {
             "description": "Unauthorized"
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/users": {
@@ -239,7 +224,7 @@
         ],
         "summary": "List users with pagination",
         "description": "Retrieves a paginated list of all users. Supports GitHub-style pagination with 1-based page indexing and configurable page size.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesListEndpoint",
+        "operationId": "AppTemplateWebEndpointsUsersListEndpoint",
         "parameters": [
           {
             "name": "page",
@@ -308,12 +293,7 @@
           "403": {
             "description": "Requires the users:read permission"
           }
-        },
-        "security": [
-          {
-            "JWTBearerAuth": []
-          }
-        ]
+        }
       }
     },
     "/users/me": {
@@ -322,8 +302,8 @@
           "Users"
         ],
         "summary": "Get the current user",
-        "description": "Returns the authenticated caller's profile, creating it from the access token's claims on first call.",
-        "operationId": "AppTemplateWebFeaturesUserFeaturesMeEndpoint",
+        "description": "Returns the authenticated caller's profile and the permissions their roles grant.",
+        "operationId": "AppTemplateWebEndpointsUsersMeEndpoint",
         "responses": {
           "200": {
             "description": "Current user returned successfully",
@@ -343,8 +323,71 @@
               }
             }
           },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The user was deleted",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/antiforgery-token": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get an antiforgery token",
+        "description": "Sets the XSRF-TOKEN cookie. Signed-in requests other than GET must send its value as the X-XSRF-TOKEN header. Fetch a new one after signing in.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationAntiforgeryTokenEndpoint",
+        "responses": {
+          "204": {
+            "description": "The response sets the token cookies"
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Change the password",
+        "description": "Checks the current password and sets the new one. Other sessions end within minutes; this one stays signed in.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationChangePasswordEndpoint",
+        "requestBody": {
+          "x-name": "ChangePasswordRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "204": {
+            "description": "Changed; this session stays signed in"
+          },
           "400": {
-            "description": "The access token is missing a required claim",
+            "description": "Invalid request data, a wrong current password, or a weak one",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -354,7 +397,234 @@
             }
           },
           "401": {
-            "description": "Missing or invalid access token",
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/confirm-email": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Confirm an email address",
+        "description": "Takes the userId and code from the link in the confirmation email. The account can sign in afterwards.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationConfirmEmailEndpoint",
+        "requestBody": {
+          "x-name": "ConfirmEmailRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmEmailRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "204": {
+            "description": "Confirmed"
+          },
+          "400": {
+            "description": "Invalid request data, or a wrong or expired code",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Ask for a password reset",
+        "description": "Emails a link to POST /auth/reset-password if the address has a confirmed account. Answers 202 either way.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationForgotPasswordEndpoint",
+        "requestBody": {
+          "x-name": "ForgotPasswordRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "202": {
+            "description": "If the account exists, the email is on its way"
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign in",
+        "description": "Sets the session cookie (HttpOnly, SameSite=Strict), which signs in every later request from this browser.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationLoginEndpoint",
+        "requestBody": {
+          "x-name": "LoginRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "204": {
+            "description": "Signed in; the response sets the session cookie"
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong email or password, or too many failed attempts",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The password is right, but the email isn't confirmed yet",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign out",
+        "description": "Ends this session by deleting its cookie.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationLogoutEndpoint",
+        "responses": {
+          "204": {
+            "description": "Signed out"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register",
+        "description": "Creates an account and emails a link that confirms the address. Sign in (POST /auth/login) once it's confirmed.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationRegisterEndpoint",
+        "requestBody": {
+          "x-name": "RegisterRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "201": {
+            "description": "Account created; the confirmation email is on its way"
+          },
+          "400": {
+            "description": "Invalid request data",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -364,7 +634,17 @@
             }
           },
           "409": {
-            "description": "The token's email is already linked to another user",
+            "description": "An account with this email already exists",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -373,12 +653,103 @@
               }
             }
           }
+        }
+      }
+    },
+    "/auth/resend-confirmation": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Resend the confirmation email",
+        "description": "Emails a new confirmation link if the address has an unconfirmed account. Answers 202 either way.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationResendConfirmationEndpoint",
+        "requestBody": {
+          "x-name": "ResendConfirmationRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendConfirmationRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
         },
-        "security": [
-          {
-            "JWTBearerAuth": []
+        "responses": {
+          "202": {
+            "description": "If the account exists and needs it, the email is on its way"
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
-        ]
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset the password",
+        "description": "Takes the email and code from the reset link and the new password. Signs out every session at its next refresh, and lifts a lockout.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationResetPasswordEndpoint",
+        "requestBody": {
+          "x-name": "ResetPasswordRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "204": {
+            "description": "The password is changed"
+          },
+          "400": {
+            "description": "Invalid request data, a wrong or expired code, or a weak password",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -568,14 +939,195 @@
             "example": null
           }
         }
-      }
-    },
-    "securitySchemes": {
-      "JWTBearerAuth": {
-        "type": "http",
-        "description": "Enter a JWT token to authorize the requests...",
-        "scheme": "Bearer",
-        "bearerFormat": "JWT"
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "example": {
+          "currentPassword": "correct horse battery staple",
+          "newPassword": "a new and longer passphrase"
+        },
+        "additionalProperties": false,
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "nullable": false,
+            "example": "correct horse battery staple"
+          },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "nullable": false,
+            "example": "a new and longer passphrase"
+          }
+        }
+      },
+      "ConfirmEmailRequest": {
+        "type": "object",
+        "example": {
+          "userId": 1,
+          "code": "Q2ZESjhB..."
+        },
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "userId"
+        ],
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0.0,
+            "example": 1,
+            "exclusiveMinimum": true
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": false,
+            "example": "Q2ZESjhB..."
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
+            "example": "ada@example.com"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com",
+          "password": "correct horse battery staple"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
+            "example": "ada@example.com"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "nullable": false,
+            "example": "correct horse battery staple"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "example": {
+          "name": "Ada Lovelace",
+          "email": "ada@example.com",
+          "password": "correct horse battery staple"
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "nullable": false,
+            "example": "Ada Lovelace"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
+            "example": "ada@example.com"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "nullable": false,
+            "example": "correct horse battery staple"
+          }
+        }
+      },
+      "ResendConfirmationRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
+            "example": "ada@example.com"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com",
+          "code": "Q2ZESjhB...",
+          "newPassword": "correct horse battery staple"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "code",
+          "newPassword"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
+            "example": "ada@example.com"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "nullable": false,
+            "example": "Q2ZESjhB..."
+          },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "nullable": false,
+            "example": "correct horse battery staple"
+          }
+        }
       }
     }
   }

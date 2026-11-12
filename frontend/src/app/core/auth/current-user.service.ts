@@ -8,8 +8,8 @@ import { ApiSchema } from '../api/api-schema';
 export type CurrentUser = ApiSchema<'CurrentUserResponse'>;
 
 /**
- * The signed-in user's application profile and permissions, from GET /api/users/me (which
- * also provisions the profile on first sign-in). Loaded once and cached.
+ * The signed-in user's application profile and the permissions their roles grant,
+ * from GET /api/users/me. Loaded once and cached until the session changes.
  */
 @Injectable({ providedIn: 'root' })
 export class CurrentUserService {
@@ -33,6 +33,12 @@ export class CurrentUserService {
         this.loaded = profile !== null;
       }),
     );
+  }
+
+  /** Forgets the cached profile, on sign-in and sign-out. */
+  clear(): void {
+    this.profileSignal.set(null);
+    this.loaded = false;
   }
 
   /** Applies a change the API has confirmed (such as a rename) without reloading the profile. */

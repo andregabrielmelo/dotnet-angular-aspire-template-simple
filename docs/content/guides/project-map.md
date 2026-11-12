@@ -11,7 +11,7 @@ A map of the repository for your first hour in it: where things live, what happe
 
 | Path | What's in it |
 |---|---|
-| `backend/` | The .NET solution (`AppTemplate.slnx`): the API, the backend for frontend, the Aspire host and the tests |
+| `backend/` | The .NET solution (`AppTemplate.slnx`): the API, the Aspire host and the tests |
 | `frontend/` | The Angular app |
 | `docs/` | This documentation site (Hugo) |
 | `scripts/` | `rename-template.sh` (run once, when starting a project) and `export-openapi.sh` (after changing the API) |
@@ -24,29 +24,28 @@ Dependencies point inward: each project may use the ones listed above it, never 
 
 | Project | Holds | Example |
 |---|---|---|
-| `AppTemplate.SharedKernel` | Base types every layer uses: `EntityBase`, `IRepository<T>`, domain event plumbing, the `[PersonalData]`/`[SecretData]` markers | `IRepository.cs` |
+| `AppTemplate.SharedKernel` | Base types every layer uses: `EntityBase`, `IRepository<T>`, domain event plumbing, the persistence exceptions use cases catch | `IRepository.cs` |
 | `AppTemplate.Core` | The domain: aggregates, value objects, specifications, domain events, and interfaces ("ports") for things outside the process | `Aggregates/UserAggregate/User.cs`, `Interfaces/IEmailSender.cs` |
-| `AppTemplate.UseCases` | What the application does: one folder per command or query, with its handler. Also list query-service interfaces, `ICurrentUser` and `Permission` | `Users/Update/UpdateUserHandler.cs` |
-| `AppTemplate.Infrastructure` | How it's done: EF Core and Postgres, repository and query-service implementations, email over SMTP | `Data/Queries/ListUsersQueryService.cs` |
-| `AppTemplate.Web` | The HTTP API: endpoints, validation, authentication, error responses, and the composition root (`Program.cs`, `Configurations/`) | `Features/UserFeatures/UpdateEndpoint.cs` |
-| `AppTemplate.BackendForFrontend` | The browser's only origin: sign-in with Keycloak, the session cookie, and the proxy from `/api/**` to the API | `Configurations/ReverseProxyConfigurations.cs` |
-| `AppTemplate.ServiceDefaults` | Shared by every host: logging, OpenTelemetry, health checks, service discovery | `Logging/LoggingExtensions.cs` |
-| `AppTemplate.AppHost` | Local development only: starts Postgres, Keycloak, Mailpit, the API, the backend for frontend and Angular together | `AppHost.cs`, `Realms/apptemplate-realm.json` |
+| `AppTemplate.UseCases` | What the application does: one folder per command or query, with its handler. Also list query-service interfaces, the `Role` and `Permission` smart enums and the accounts port `IIdentityService` | `Users/Commands/Update/UpdateUserHandler.cs` |
+| `AppTemplate.Infrastructure` | How it's done: EF Core and Postgres, repository and query-service implementations, ASP.NET Core Identity for accounts, email over SMTP | `Data/Queries/ListUsersQueryService.cs` |
+| `AppTemplate.Web` | The HTTP API: endpoints, validation, authentication, error responses, and the composition root (`Program.cs`, `Configurations/`) | `Endpoints/Users/UpdateEndpoint.cs` |
+| `AppTemplate.ServiceDefaults` | Shared by every host: OpenTelemetry (logs, traces, metrics), health checks, service discovery | `Extensions.cs` |
+| `AppTemplate.AppHost` | Local development only: starts Postgres, Mailpit (`Development` only), the API and Angular together | `AppHost.cs` |
 
 ### Tests (`backend/tests/`)
 
 | Project | Tests | Needs |
 |---|---|---|
 | `AppTemplate.UnitTests` | Domain rules and handlers, with fakes (NSubstitute) | nothing |
-| `AppTemplate.FunctionalTests` | Real HTTP calls through the whole API, against a real Postgres | Docker or Podman |
-| `AppTemplate.BackendForFrontend.Tests` | Sign-in redirects, the CSRF header, the proxy | nothing |
+| `AppTemplate.IntegrationTests` | Repositories, ASP.NET Core Identity (`IdentityService`), query services and migrations, against a real Postgres | Docker or Podman |
+| `AppTemplate.FunctionalTests` | Real HTTP calls through the whole API (`ApiEndpoints/`), against a real Postgres, signed in for real with the session cookie and antiforgery token, including logout and sessions ending | Docker or Podman |
 | `AppTemplate.ArchitectureTests` | The layering and naming rules | nothing |
 
 ### Frontend (`frontend/src/app/`)
 
 | Folder | Holds |
 |---|---|
-| `core/` | App-wide plumbing: `api/` (generated API types, base paths), `auth/` (session, current user, guards, the CSRF interceptor) |
+| `core/` | App-wide plumbing: `api/` (generated API types, base paths), `auth/` (current user, guards, the auth interceptor, the cross-tab refresh lock) |
 | `features/<feature>/` | Everything one feature owns: pages, its `<feature>.service.ts` (HTTP calls), its `<feature>.model.ts` (API types) |
 | `shared/` | Not there yet. Create it when two features need the same component or pipe |
 
@@ -54,14 +53,14 @@ Dependencies point inward: each project may use the ones listed above it, never 
 
 Saving your name on the profile page sends `PUT /api/users/7` with `{ "name": "Ada" }`. Here's its path, with the file that handles each step:
 
-1. **Angular.** `ProfilePage` calls `UsersService.update` (`features/users/users.service.ts`). `auth-interceptor.ts` adds the `X-CSRF: 1` header to every API call. The browser sends the session cookie automatically.
-2. **Backend for frontend.** It checks the session cookie and the CSRF header, strips `/api`, attaches the user's Keycloak access token as `Authorization: Bearer`, and forwards `PUT /users/7` to the API (`ReverseProxyConfigurations.cs`). The browser never sees the token.
-3. **API middleware** (`Web/Configurations/MiddlewareConfigurations.cs`, in this order): forwarded headers, security headers, request logging, error handling, JWT authentication, the rate limiter, authorization (permission policies), the request timeout.
-4. **Endpoint.** FastEndpoints routes to `UpdateEndpoint` (`Web/Features/UserFeatures/UpdateEndpoint.cs`), binds `UpdateUserRequest`, and runs `UpdateUserValidator`. Invalid input stops here with a 400. Otherwise the endpoint turns the request into an `UpdateUserCommand` and sends it.
-5. **Mediator.** `LoggingBehavior` (`UseCases/Behaviors/`) logs the command, with personal data redacted, and times it, then calls the handler.
+1. **Angular.** `ProfilePage` calls `UsersService.update` (`features/users/users.service.ts`). The browser sends the session cookie by itself, and HttpClient adds the antiforgery token (`X-XSRF-TOKEN`, from the `XSRF-TOKEN` cookie). If the API answers 401 (the session ended), `auth-interceptor.ts` sends the user to sign in.
+2. **Dev server proxy.** `frontend/proxy.conf.mjs` strips `/api` and forwards `PUT /users/7` to the API.
+3. **API middleware** (`Web/Configurations/MiddlewareConfigurations.cs`, in this order): forwarded headers (from a known proxy only), the HTTPS redirect, error handling, authentication (Identity's cookie, with its security stamp check), the rate limiter (by `user_id`, or by address), the antiforgery check for a signed-in session's unsafe requests, then authorization, which enforces the endpoint's `Permissions(...)`.
+4. **Endpoint.** FastEndpoints routes to `UpdateEndpoint` (`Web/Endpoints/Users/UpdateEndpoint.cs`), binds `UpdateUserRequest`, and runs `UpdateUserValidator`. Invalid input stops here with a 400 (FastEndpoints' `ErrorResponse`). Otherwise the endpoint turns the request into an `UpdateUserCommand` and sends it.
+5. **Mediator.** `LoggingBehavior` (`Web/Behaviors/`) logs the command's name (never its contents) and times it, then calls the handler. For a query marked `ICacheable` (such as `GetUserQuery`), `CachingBehavior` answers from HybridCache when it can (ADR 017).
 6. **Handler.** `UpdateUserHandler` loads the user through `IRepository<User>` and checks, with `ICurrentUser`, that you may change it. It changes the user through a domain method (`User.UpdateName`), saves, and returns `Result<UserDto>`.
 7. **Database.** `EntityFrameworkRepository` (Infrastructure) saves with EF Core to Postgres. After a successful save, `EventDispatchInterceptor` publishes any domain events the entity raised.
-8. **Back out.** The endpoint maps the `Result` with `ResultExtensions.ToOkResult`. Success becomes `200` with an `UpdateUserResponse`; `NotFound`, `Forbidden` or `Invalid` becomes a problem details response with a `traceId` ([ADR 009]({{< relref "architecture-decisions/adr-009-problem-details-error-contract" >}})). The backend for frontend passes it back to the browser unchanged.
+8. **Back out.** The endpoint maps the `Result` with `ResultExtensions.ToOkResult`. Success becomes `200` with an `UpdateUserResponse`; `NotFound`, `Forbidden` or `Invalid` becomes a problem details response ([ADR 009]({{< relref "architecture-decisions/adr-009-problem-details-error-contract" >}})).
 
 To see this for yourself, run the app, open the Aspire dashboard's **Traces** tab, and open the trace for one request.
 
@@ -84,23 +83,29 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 | **Specification** | A named, reusable query for the repository | `UserByIdSpecification` |
 | **Query service** | An interface in UseCases, implemented in Infrastructure, that reads straight into DTOs. Use it for lists, projections and joins | `IListUsersQueryService` |
 | **`PagedResult<T>`** | A page of items plus the page number, page size, total count and total pages | `ListUsersHandler` |
-| **Domain event** | Something that happened in the domain, published in-process after the save | `UserProvisioned` |
+| **Domain event** | Something that happened in the domain, published in-process after the save | `UserRegisteredDomainEvent` |
+| **Profile / account** | A person is a profile, the domain `User` (name, phone), and an ASP.NET Core Identity account, `ApplicationUser` (email, password, roles, lockout), linked by the profile's `UserId` | `User`, `IIdentityService` |
 | **Port** | An interface in `Core/Interfaces` for something outside the process. Infrastructure implements it | `IEmailSender` |
-| **Permission / policy** | A Keycloak client role, such as `users:read`, which is also an ASP.NET Core policy of the same name | `Policies(Permission.UsersRead)` |
-| **`ICurrentUser`** | The caller: their `sub` (`ExternalId`) and permissions. Use it for "only the owner may..." rules | `UpdateUserHandler` |
+| **Permission** | Something a role grants, such as `users:read`, carried in the session's `permissions` claims and checked by FastEndpoints | `Permissions(Permission.UsersRead)` |
+| **`ICurrentUser`** | The caller: their `Id` (the session's `user_id`) and permissions. Use it for "only the owner may..." rules | `UpdateUserHandler` |
 | **Feature service** | The Angular class that makes a feature's HTTP calls. Components never use `HttpClient` directly | `UsersService` |
 
 ## To change X, look in Y
 
 | To change... | Look in |
 |---|---|
-| Sign-in, registration, password reset pages | Keycloak: `AppHost/Realms/apptemplate-realm.json`, or its admin console at `http://localhost:8080` |
-| The session cookie, CSRF check, what's proxied | `AppTemplate.BackendForFrontend/Configurations/` |
-| How the API validates tokens | `Web/Configurations/AuthenticationConfigurations.cs` |
-| Permissions | `UseCases/Authorization/Permission.cs`, the realm file, `frontend/src/app/core/auth/permissions.ts` |
-| Error responses | `Web/Extensions/ResultExtensions.cs`, `Web/Configurations/ProblemDetailsConfigurations.cs` |
-| Logging, redaction | `ServiceDefaults/Logging/` |
-| Rate limits, request timeouts | `Web/Configurations/RateLimitingConfigurations.cs`, `RequestTimeoutConfigurations.cs` |
+| The sign-in and registration pages, and the account pages (confirm email, forgot and reset password) | `frontend/src/app/features/auth/`: `login-page/`, `register-page/`, the account pages, `resend-confirmation/` (shared by both), `auth-messages.ts` (error messages, safe `returnUrl`) and `account.service.ts` for the account flows; the change-password form in `features/profile/` |
+| Sign-in, registration and sign-out | `Web/Endpoints/Authentication/`, `UseCases/Authentication/Commands/`, `UseCases/Users/Commands/Register/` |
+| Email confirmation, password reset and change | the endpoints and use cases above, `Infrastructure/Identity/` (`IdentityService`, `AccountEmailSender`, `AccountLinkSettings`, `IdentityResultExtensions`), `UseCases/Users/Handlers/SendConfirmationOnUserRegistered.cs` |
+| Rate limits | `Web/Configurations/RateLimitingConfigurations.cs` (the `authentication` policy, forwarded headers), the `RateLimiting` and `ForwardedHeaders` settings (`Web/Settings/`), ADR 014 |
+| Accounts: passwords, lockout, roles, the security stamp | `Infrastructure/Identity/` (`IdentityService`, `ApplicationUser`), the Identity options in `InfrastructureServiceExtensions`, `UseCases/Interfaces/IIdentityService.cs`, `UseCases/Constants/PasswordConstants.cs` |
+| The roles, their permissions and their seeding | `UseCases/Authorization/Role.cs` (a smart enum), `Infrastructure/Data/Configurations/IdentityRoleConfiguration.cs` |
+| The session: cookie, claims, lifetime, stamp checks | the `ConfigureApplicationCookie` and `SecurityStampValidatorOptions` settings in `InfrastructureServiceExtensions`, `Infrastructure/Identity/ApplicationClaimsPrincipalFactory.cs`, `UseCases/Authorization/AppClaimTypes.cs`, `Web/Services/CurrentUser.cs`, ADR 015 |
+| CSRF: the antiforgery token | `Web/Configurations/AntiforgeryConfigurations.cs`, `Web/Endpoints/Authentication/AntiforgeryTokenEndpoint.cs`, `withXsrfConfiguration` in `frontend/src/app/app.config.ts` |
+| What's proxied to the API | `frontend/proxy.conf.mjs` |
+| Permissions, and which role has them | `UseCases/Authorization/Permission.cs` and `Role.cs` (smart enums), `frontend/src/app/core/auth/permissions.ts` |
+| Error responses | `Web/Extensions/ResultExtensions.cs`, `Web/Configurations/MiddlewareConfigurations.cs` |
+| Logging | `Web/Configurations/LoggerConfigs.cs`, the `Serilog` and `Logging` settings |
 | Settings and their validation | `Web/Configurations/OptionConfigurations.cs`, and the options class next to what uses it |
 | The database schema | `Infrastructure/Data/Configurations/`, then a migration in `Infrastructure/Data/Migrations/` |
 | Seed data (Development only) | `Infrastructure/Data/SeedData.cs` |
@@ -117,12 +122,12 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 |---|---|
 | Aggregate | `Core/Aggregates/<Name>Aggregate/<Name>.cs`, with `<Name>Id.cs` and its value objects next to it |
 | Specification | `Core/Aggregates/<Name>Aggregate/Specifications/<Name>By<What>Specification.cs` |
-| Command or query | `UseCases/<Plural>/<UseCase>/<UseCase>Command.cs` or `...Query.cs`, plus `<UseCase>Handler.cs` |
+| Command or query | `UseCases/<Plural>/Commands/<UseCase>/<UseCase>Command.cs` or `UseCases/<Plural>/Queries/<UseCase>/<UseCase>Query.cs`, plus `<UseCase>Handler.cs`; domain event handlers in `UseCases/<Plural>/Handlers/` |
 | DTO | `UseCases/<Plural>/<Name>Dto.cs` |
-| List query service | `UseCases/<Plural>/List/IList<Plural>QueryService.cs`, implemented in `Infrastructure/Data/Queries/` |
-| Endpoint | `Web/Features/<Name>Features/<Verb>Endpoint.cs`, with its request, validator and mapper in the same file |
+| List query service | `UseCases/<Plural>/Queries/List/IList<Plural>QueryService.cs`, implemented in `Infrastructure/Data/Queries/` |
+| Endpoint | `Web/Endpoints/<Plural>/<Verb>Endpoint.cs` (namespace `AppTemplate.Web.Endpoints.<Plural>`), with its request, validator and mapper in the same file |
 | EF configuration | `Infrastructure/Data/Configurations/<Name>Configuration.cs` |
-| Tests | `UnitTests/Core/<Name>Aggregate/`, `UnitTests/UseCases/<Plural>/<UseCase>HandlerTests.cs`, `FunctionalTests/<Name>Features/<Name>EndpointsTests.cs` |
+| Tests | One class per member or behavior: `UnitTests/Core/<Name>Aggregate/<Name><Member>.cs`, `UnitTests/UseCases/<Plural>/<UseCase>HandlerHandle.cs`, `IntegrationTests/Data/` (or `Identity/`), `FunctionalTests/ApiEndpoints/<Name><Verb>.cs` (`UserGetById`) |
 | Frontend | `features/<plural>/<plural>.service.ts`, `<plural>.model.ts`, `<plural>-page.ts` |
 
-The architecture tests check some of this: endpoints live under `Web.Features`, handlers only in UseCases, and command and query names end in `Command` or `Query`.
+The architecture tests check some of this: endpoints live in a feature namespace under `AppTemplate.Web`, handlers only in UseCases, and command and query names end in `Command` or `Query`.

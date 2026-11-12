@@ -18,7 +18,7 @@ export interface paths {
      * Delete a user
      * @description Deletes a user with the specified id.
      */
-    delete: operations['AppTemplateWebFeaturesUserFeaturesDeleteEndpoint'];
+    delete: operations['AppTemplateWebEndpointsUsersDeleteEndpoint'];
     options?: never;
     head?: never;
     patch?: never;
@@ -35,12 +35,12 @@ export interface paths {
      * Get a user by Id
      * @description Get a user with the specified Id.
      */
-    get: operations['AppTemplateWebFeaturesUserFeaturesGetByIdEndpoint'];
+    get: operations['AppTemplateWebEndpointsUsersGetByIdEndpoint'];
     /**
      * Update a user
      * @description Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.
      */
-    put: operations['AppTemplateWebFeaturesUserFeaturesUpdateEndpoint'];
+    put: operations['AppTemplateWebEndpointsUsersUpdateEndpoint'];
     post?: never;
     delete?: never;
     options?: never;
@@ -59,7 +59,7 @@ export interface paths {
      * List users with pagination
      * @description Retrieves a paginated list of all users. Supports GitHub-style pagination with 1-based page indexing and configurable page size.
      */
-    get: operations['AppTemplateWebFeaturesUserFeaturesListEndpoint'];
+    get: operations['AppTemplateWebEndpointsUsersListEndpoint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -77,11 +77,191 @@ export interface paths {
     };
     /**
      * Get the current user
-     * @description Returns the authenticated caller's profile, creating it from the access token's claims on first call.
+     * @description Returns the authenticated caller's profile and the permissions their roles grant.
      */
-    get: operations['AppTemplateWebFeaturesUserFeaturesMeEndpoint'];
+    get: operations['AppTemplateWebEndpointsUsersMeEndpoint'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/antiforgery-token': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get an antiforgery token
+     * @description Sets the XSRF-TOKEN cookie. Signed-in requests other than GET must send its value as the X-XSRF-TOKEN header. Fetch a new one after signing in.
+     */
+    get: operations['AppTemplateWebEndpointsAuthenticationAntiforgeryTokenEndpoint'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/change-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Change the password
+     * @description Checks the current password and sets the new one. Other sessions end within minutes; this one stays signed in.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationChangePasswordEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/confirm-email': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Confirm an email address
+     * @description Takes the userId and code from the link in the confirmation email. The account can sign in afterwards.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationConfirmEmailEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/forgot-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ask for a password reset
+     * @description Emails a link to POST /auth/reset-password if the address has a confirmed account. Answers 202 either way.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationForgotPasswordEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/login': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Sign in
+     * @description Sets the session cookie (HttpOnly, SameSite=Strict), which signs in every later request from this browser.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationLoginEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Sign out
+     * @description Ends this session by deleting its cookie.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationLogoutEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Register
+     * @description Creates an account and emails a link that confirms the address. Sign in (POST /auth/login) once it's confirmed.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationRegisterEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/resend-confirmation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Resend the confirmation email
+     * @description Emails a new confirmation link if the address has an unconfirmed account. Answers 202 either way.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationResendConfirmationEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/reset-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reset the password
+     * @description Takes the email and code from the reset link and the new password. Signs out every session at its next refresh, and lifts a lockout.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationResetPasswordEndpoint'];
     delete?: never;
     options?: never;
     head?: never;
@@ -151,6 +331,108 @@ export interface components {
       /** @example null */
       phoneExtension?: string | null;
     };
+    /**
+     * @example {
+     *       "currentPassword": "correct horse battery staple",
+     *       "newPassword": "a new and longer passphrase"
+     *     }
+     */
+    ChangePasswordRequest: {
+      /** @example correct horse battery staple */
+      currentPassword: string;
+      /** @example a new and longer passphrase */
+      newPassword: string;
+    };
+    /**
+     * @example {
+     *       "userId": 1,
+     *       "code": "Q2ZESjhB..."
+     *     }
+     */
+    ConfirmEmailRequest: {
+      /**
+       * Format: int32
+       * @example 1
+       */
+      userId: number;
+      /** @example Q2ZESjhB... */
+      code: string;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com"
+     *     }
+     */
+    ForgotPasswordRequest: {
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
+      email: string;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com",
+     *       "password": "correct horse battery staple"
+     *     }
+     */
+    LoginRequest: {
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
+      email: string;
+      /** @example correct horse battery staple */
+      password: string;
+    };
+    /**
+     * @example {
+     *       "name": "Ada Lovelace",
+     *       "email": "ada@example.com",
+     *       "password": "correct horse battery staple"
+     *     }
+     */
+    RegisterRequest: {
+      /** @example Ada Lovelace */
+      name: string;
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
+      email: string;
+      /** @example correct horse battery staple */
+      password: string;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com"
+     *     }
+     */
+    ResendConfirmationRequest: {
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
+      email: string;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com",
+     *       "code": "Q2ZESjhB...",
+     *       "newPassword": "correct horse battery staple"
+     *     }
+     */
+    ResetPasswordRequest: {
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
+      email: string;
+      /** @example Q2ZESjhB... */
+      code: string;
+      /** @example correct horse battery staple */
+      newPassword: string;
+    };
   };
   responses: never;
   parameters: never;
@@ -160,7 +442,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  AppTemplateWebFeaturesUserFeaturesDeleteEndpoint: {
+  AppTemplateWebEndpointsUsersDeleteEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -215,7 +497,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesUserFeaturesGetByIdEndpoint: {
+  AppTemplateWebEndpointsUsersGetByIdEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -277,7 +559,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesUserFeaturesUpdateEndpoint: {
+  AppTemplateWebEndpointsUsersUpdateEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -347,7 +629,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesUserFeaturesListEndpoint: {
+  AppTemplateWebEndpointsUsersListEndpoint: {
     parameters: {
       query: {
         /**
@@ -418,7 +700,7 @@ export interface operations {
       };
     };
   };
-  AppTemplateWebFeaturesUserFeaturesMeEndpoint: {
+  AppTemplateWebEndpointsUsersMeEndpoint: {
     parameters: {
       query?: never;
       header?: never;
@@ -446,16 +728,7 @@ export interface operations {
           'application/json': components['schemas']['CurrentUserResponse'];
         };
       };
-      /** @description The access token is missing a required claim */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Missing or invalid access token */
+      /** @description Not signed in */
       401: {
         headers: {
           [name: string]: unknown;
@@ -464,8 +737,360 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
-      /** @description The token's email is already linked to another user */
+      /** @description The user was deleted */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationAntiforgeryTokenEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The response sets the token cookies */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationChangePasswordEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ChangePasswordRequest'];
+      };
+    };
+    responses: {
+      /** @description Changed; this session stays signed in */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data, a wrong current password, or a weak one */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not signed in */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationConfirmEmailEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ConfirmEmailRequest'];
+      };
+    };
+    responses: {
+      /** @description Confirmed */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data, or a wrong or expired code */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationForgotPasswordEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ForgotPasswordRequest'];
+      };
+    };
+    responses: {
+      /** @description If the account exists, the email is on its way */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationLoginEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['LoginRequest'];
+      };
+    };
+    responses: {
+      /** @description Signed in; the response sets the session cookie */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Wrong email or password, or too many failed attempts */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description The password is right, but the email isn't confirmed yet */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationLogoutEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Signed out */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not signed in */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationRegisterEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['RegisterRequest'];
+      };
+    };
+    responses: {
+      /** @description Account created; the confirmation email is on its way */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description An account with this email already exists */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationResendConfirmationEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ResendConfirmationRequest'];
+      };
+    };
+    responses: {
+      /** @description If the account exists and needs it, the email is on its way */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationResetPasswordEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['ResetPasswordRequest'];
+      };
+    };
+    responses: {
+      /** @description The password is changed */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data, a wrong or expired code, or a weak password */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
         headers: {
           [name: string]: unknown;
         };

@@ -12,9 +12,8 @@ public static class ServiceConfigurations
         WebApplicationBuilder builder
     )
     {
-        services
-            .AddInfrastructureServices(builder.Configuration, logger)
-            .AddMediatorSourceGenerator(logger);
+        builder.AddInfrastructureServices(builder.Configuration, logger);
+        services.AddMediatorSourceGenerator(logger);
 
         services.AddScoped<IEmailSender, MimeKitEmailSender>();
 

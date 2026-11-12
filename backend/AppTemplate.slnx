@@ -7,7 +7,6 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/AppTemplate.AppHost/AppTemplate.AppHost.csproj" />
-    <Project Path="src/AppTemplate.BackendForFrontend/AppTemplate.BackendForFrontend.csproj" />
     <Project Path="src/AppTemplate.Core/AppTemplate.Core.csproj" />
     <Project Path="src/AppTemplate.Infrastructure/AppTemplate.Infrastructure.csproj" />
     <Project Path="src/AppTemplate.ServiceDefaults/AppTemplate.ServiceDefaults.csproj" />
@@ -17,8 +16,8 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AppTemplate.ArchitectureTests/AppTemplate.ArchitectureTests.csproj" />
-    <Project Path="tests/AppTemplate.BackendForFrontend.Tests/AppTemplate.BackendForFrontend.Tests.csproj" />
     <Project Path="tests/AppTemplate.FunctionalTests/AppTemplate.FunctionalTests.csproj" />
+    <Project Path="tests/AppTemplate.IntegrationTests/AppTemplate.IntegrationTests.csproj" />
     <Project Path="tests/AppTemplate.UnitTests/AppTemplate.UnitTests.csproj" />
   </Folder>
 </Solution>

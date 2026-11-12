@@ -6,18 +6,20 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ProfilePage } from './profile-page';
 import { CurrentUserService, CurrentUser } from '../../core/auth/current-user.service';
+import { AuthService } from '../auth/auth-service';
 import { UsersService } from '../users/users.service';
 
 describe('ProfilePage', () => {
   const profile: CurrentUser = { id: 7, name: 'Ada', email: 'ada@example.com', permissions: [] };
 
-  function setup(update: ReturnType<typeof vi.fn>) {
+  function setup(update: ReturnType<typeof vi.fn>, changePassword = vi.fn()) {
     const updateName = vi.fn();
     TestBed.configureTestingModule({
       imports: [ProfilePage],
       providers: [
         provideRouter([]),
         { provide: UsersService, useValue: { update } },
+        { provide: AuthService, useValue: { changePassword } },
         {
           provide: CurrentUserService,
           useValue: { load: () => of(profile), profile: signal(profile), updateName },
@@ -74,5 +76,39 @@ describe('ProfilePage', () => {
 
     expect(page.status()).toBe('idle');
     expect(page.errorMessage()).toBe('Name is too long');
+  });
+
+  it('changes the password and says the other devices are signed out', () => {
+    const changePassword = vi.fn().mockReturnValue(of(undefined));
+    const { fixture, page } = setup(vi.fn(), changePassword);
+
+    page.passwordForm.setValue({ currentPassword: 'old secret', newPassword: 'new secret' });
+    page.changePassword();
+    fixture.detectChanges();
+
+    expect(changePassword).toHaveBeenCalledWith('old secret', 'new secret');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Your other devices are signed out.',
+    );
+  });
+
+  it('shows a wrong current password next to its field', () => {
+    const changePassword = vi.fn().mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 400,
+            error: { errors: { currentPassword: ['Incorrect password.'] } },
+          }),
+      ),
+    );
+    const { fixture, page } = setup(vi.fn(), changePassword);
+
+    page.passwordForm.setValue({ currentPassword: 'wrong one', newPassword: 'new secret' });
+    page.changePassword();
+    fixture.detectChanges();
+
+    const error = (fixture.nativeElement as HTMLElement).querySelector('#current-password-error');
+    expect(error?.textContent).toContain('Incorrect password.');
   });
 });

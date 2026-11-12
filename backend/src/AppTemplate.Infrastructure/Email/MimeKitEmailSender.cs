@@ -1,6 +1,7 @@
 ﻿using AppTemplate.Core.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
@@ -13,16 +14,15 @@ public sealed partial class MimeKitEmailSender(
 {
     private readonly MailserverConfiguration _mailserver = mailserverOptions.Value;
 
-    public async Task SendEmailAsync(
+    public async Task SendAsync(
         string to,
-        string from,
         string subject,
         string body,
         CancellationToken cancellationToken = default
     )
     {
         var message = new MimeMessage();
-        message.From.Add(MailboxAddress.Parse(from));
+        message.From.Add(MailboxAddress.Parse(_mailserver.FromAddress));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
         message.Body = new TextPart("plain") { Text = body };

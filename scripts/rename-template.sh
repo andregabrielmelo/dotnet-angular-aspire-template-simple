@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Renames every "AppTemplate" (and "apptemplate") occurrence in this repo to your
 # project's name - project/namespace names, file names, folder names, the Postgres
-# database name, and the Keycloak realm/client names.
+# database name, the JWT issuer/audience, and the cookie names.
 #
 # Usage: scripts/rename-template.sh YourProjectName
 set -euo pipefail

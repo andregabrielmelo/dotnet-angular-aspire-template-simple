@@ -1,4 +1,7 @@
-﻿namespace AppTemplate.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace AppTemplate.Infrastructure.Data;
 
 public static class ApplicationDatabaseContextExtensions
 {

@@ -1,0 +1,60 @@
+<div class="mx-auto max-w-sm p-6">
+  <h1 class="mb-2 text-2xl font-semibold">Sign in</h1>
+  <p class="mb-6 text-sm text-gray-600">
+    New here?
+    <a routerLink="/auth/register" queryParamsHandling="preserve" class="text-blue-600 underline">
+      Create an account
+    </a>
+  </p>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+    <div>
+      <label for="email" class="block text-sm font-medium">Email</label>
+      <input
+        id="email"
+        type="email"
+        autocomplete="email"
+        formControlName="email"
+        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+      />
+      @if (form.controls.email.touched && form.controls.email.invalid) {
+        <p class="mt-1 text-sm text-red-600">Enter a valid email address.</p>
+      }
+    </div>
+
+    <div>
+      <label for="password" class="block text-sm font-medium">Password</label>
+      <input
+        id="password"
+        type="password"
+        autocomplete="current-password"
+        formControlName="password"
+        class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+      />
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <p class="mt-1 text-sm text-red-600">Enter your password.</p>
+      }
+    </div>
+
+    @if (errorMessage(); as message) {
+      <p class="text-sm text-red-600" role="alert">{{ message }}</p>
+    }
+    @if (needsConfirmation()) {
+      <app-resend-confirmation [email]="form.controls.email.value.trim()" />
+    }
+
+    <button
+      type="submit"
+      [disabled]="submitting()"
+      class="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+    >
+      Sign in
+    </button>
+  </form>
+
+  <p class="mt-4 text-sm">
+    <a routerLink="/auth/forgot-password" class="text-blue-600 underline">
+      Forgot your password?
+    </a>
+  </p>
+</div>

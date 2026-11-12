@@ -7,4 +7,7 @@ public class MailserverConfiguration
 
     public string Hostname { get; set; } = "localhost";
     public int Port { get; set; } = 25;
+
+    /// <summary>The sender of every email the application sends.</summary>
+    public string FromAddress { get; set; } = string.Empty;
 }
