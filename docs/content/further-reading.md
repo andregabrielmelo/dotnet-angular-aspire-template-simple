@@ -18,6 +18,7 @@ By Milan Jovanović:
 
 - [Clean Architecture](https://milanjovanovic.tech/articles/clean-architecture): the layering as a whole.
 - [The Infrastructure layer in Clean Architecture](https://milanjovanovic.tech/blog/infrastructure-layer-clean-architecture): one folder per external concern in Infrastructure (Data, Email).
+- [HybridCache in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/performance/caching/hybrid?view=aspnetcore-10.0) and [Milan Jovanović's introduction to it](https://milanjovanovic.tech/blog/hybrid-cache-in-aspnetcore-new-caching-library): HybridCache with Redis as L2 ([ADR 017]({{< relref "architecture-decisions/adr-017-hybrid-cache" >}})).
 - The full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template), lists the articles behind its outbox, inbox, background jobs, audit log and caching, for when a project adds them.
 
 ## Blogs worth checking when in doubt

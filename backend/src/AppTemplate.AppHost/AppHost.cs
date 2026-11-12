@@ -12,6 +12,15 @@ var postgres = builder
 // Add the database
 var applicationDatabase = postgres.AddDatabase("apptemplate");
 
+// Redis: HybridCache's distributed (L2) cache, shared by every API instance so cache entries and
+// invalidations reach all of them (ADR 017). Persistent, with a data volume, so the container and
+// its entries outlive an AppHost run; Redis Insight (its own resource) browses the keys.
+var cache = builder
+    .AddRedis("cache")
+    .WithDataVolume()
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithRedisInsight();
+
 // register the API project and link the DB. HTTPS only (its "https" launch profile), with the
 // ASP.NET Core development certificate (ADR 016).
 var api = builder
@@ -19,6 +28,8 @@ var api = builder
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", builder.Environment.EnvironmentName)
     .WithReference(applicationDatabase)
     .WaitFor(applicationDatabase)
+    .WithReference(cache)
+    .WaitFor(cache)
     // Readiness (Postgres reachable): resources that WaitFor(api) start only once it's ready.
     .WithHttpHealthCheck("/health", endpointName: "https");
 

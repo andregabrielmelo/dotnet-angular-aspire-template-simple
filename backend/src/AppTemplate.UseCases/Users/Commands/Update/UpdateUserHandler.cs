@@ -1,17 +1,23 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Interfaces;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UseCases.Users.Commands.Update;
 
 /// <summary>
 /// Resource-based authorization: anyone may update their own profile, while updating someone
 /// else's requires <see cref="Permission.UsersWrite"/>. This needs the loaded user, so it is
-/// decided here rather than by an endpoint policy.
+/// decided here rather than by an endpoint policy. The saved change invalidates the cached user
+/// reads of this user (<see cref="CacheTags.User"/>) and the user list (<see cref="CacheTags.UserList"/>).
 /// </summary>
-public class UpdateUserHandler(IRepository<User> _repository, ICurrentUser _currentUser)
-    : Mediator.ICommandHandler<UpdateUserCommand, Result<UserDto>>
+public class UpdateUserHandler(
+    IRepository<User> _repository,
+    ICurrentUser _currentUser,
+    HybridCache _cache
+) : Mediator.ICommandHandler<UpdateUserCommand, Result<UserDto>>
 {
     public async ValueTask<Result<UserDto>> Handle(
         UpdateUserCommand command,
@@ -46,6 +52,10 @@ public class UpdateUserHandler(IRepository<User> _repository, ICurrentUser _curr
         }
 
         await _repository.UpdateAsync(user, cancellationToken);
+        await _cache.RemoveByTagAsync(
+            [CacheTags.User(user.Id), CacheTags.UserList],
+            cancellationToken
+        );
 
         var dto = new UserDto(user.Id, user.Name, user.PhoneNumber);
         return Result<UserDto>.Success(dto);

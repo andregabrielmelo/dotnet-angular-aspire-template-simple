@@ -1,3 +1,4 @@
+using AppTemplate.Infrastructure.Caching;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Identity;
@@ -10,15 +11,20 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 namespace AppTemplate.Infrastructure;
 
 public static class InfrastructureServiceExtensions
 {
+    public const string RedisConnectionName = "cache";
+
     public static IServiceCollection AddInfrastructureServices(
         this IHostApplicationBuilder builder,
         IConfigurationManager config,
@@ -49,12 +55,51 @@ public static class InfrastructureServiceExtensions
         );
 
         // Aspire's client integration: health check, logging, traces and metrics for the context,
-        // and a retrying execution strategy (IdentityService runs its own transaction inside it).
+        // and a retrying execution strategy (code that opens its own transaction runs it inside one).
         builder.EnrichNpgsqlDbContext<ApplicationDatabaseContext>();
 
         builder
             .Services.AddScoped(typeof(IRepository<>), typeof(EntityFrameworkRepository<>))
             .AddScoped<IListUsersQueryService, ListUsersQueryService>();
+
+        // HybridCache, with Redis as L2 when the AppHost provides it (ADR 017).
+        var useRedis = !string.IsNullOrEmpty(
+            builder.Configuration.GetConnectionString(RedisConnectionName)
+        );
+        if (useRedis)
+        {
+            // HybridCache logs and skips a failing L2 (falling back to L1 and the handler), so
+            // Redis being down is never an error. While the client knows it's disconnected,
+            // FailFast fails each command at once instead of queueing it until the timeout;
+            // the client reconnects by itself. Aspire's own Redis health check is off: it would
+            // fail /health for an optional dependency.
+            builder.AddRedisDistributedCache(
+                RedisConnectionName,
+                settings => settings.DisableHealthChecks = true,
+                options => options.BacklogPolicy = BacklogPolicy.FailFast
+            );
+        }
+
+        builder.Services.AddHybridCache(options =>
+        {
+            options.MaximumPayloadBytes = 1024 * 1024;
+            options.MaximumKeyLength = 512;
+        });
+        builder
+            .Services.AddOptions<HybridCacheOptions>()
+            .Configure<IOptions<CachingSettings>>(
+                (options, settings) =>
+                    options.DefaultEntryOptions = new HybridCacheEntryOptions
+                    {
+                        Expiration = settings.Value.Expiration,
+                        LocalCacheExpiration = settings.Value.LocalExpiration,
+                    }
+            );
+
+        logger.LogInformation(
+            "{Project} were configured",
+            useRedis ? "HybridCache with Redis" : "HybridCache in memory"
+        );
 
         // Confirmation and reset codes are protected with Data Protection's keys; keeping them in
         // Postgres makes links survive restarts and work on every instance.

@@ -165,6 +165,18 @@ Every request already counts against the global limiter ([ADR 014]({{< relref "a
 
 The client address comes from `X-Forwarded-For` only when the peer is in `ForwardedHeaders:KnownProxies`. Don't use FastEndpoints' `Throttle`: it trusts the raw header.
 
+## Cache a read
+
+Let the Mediator pipeline cache a query ([ADR 017]({{< relref "architecture-decisions/adr-017-hybrid-cache" >}})), as `GetUserQuery` does:
+
+1. Implement `ICacheable` on the query: a `CacheKey` of the query's name and everything the result depends on (`$"{nameof(GetUserQuery)}-{UserId.Value}"`, `$"{nameof(ListUsersQuery)}-{EffectivePage}-{EffectivePerPage}"`), and `CacheTags` (`CacheTags.User(id)` for data about one user, a list tag such as `CacheTags.UserList` for pages that depend on many, or a tag of your own). `CachingBehavior` then caches successful results in HybridCache; failures always reach the handler.
+2. To cache for another lifetime than the default, override `CacheProfile` (`CacheProfile.Short` or `CacheProfile.Long`). A new profile is a `CacheProfile` value plus its default lifetimes in `CachingSettings.Profiles`, overridable under `Caching:Profiles:{Name}`.
+3. Keep the result JSON round-trippable (records, Vogen types, value objects with a public constructor), and check it like `CachedResultRoundTrip`.
+4. In every write that changes the result, inject `HybridCache` and call `RemoveByTagAsync(tag)` after saving.
+5. Add a functional test that reads, writes and reads again (`Caching/UserCaching`).
+
+On a hit the handler doesn't run: don't mark a query cacheable if its handler decides authorization per caller, and never cache what depends on the caller (permissions) under a key without the caller.
+
 ## Change the database schema
 
 1. Change the entity and its `IEntityTypeConfiguration` in `Infrastructure/Data/Configurations/`.
@@ -196,7 +208,7 @@ The full template, [dotnet-angular-aspire-template](https://github.com/andregabr
 | Recurring or background work | Hangfire, `Infrastructure/Jobs/`, ADRs 012 and 013 |
 | Work that must follow a database change reliably | the transactional outbox and inbox, `Infrastructure/Outbox/`, `Infrastructure/Inbox/`, ADR 016 |
 | A record of who changed what | `Infrastructure/Auditing/`, ADR 017 |
-| Caching | HybridCache with Redis, and output caching, ADR 011 |
+| Caching whole HTTP responses | output caching, `AuthorizedSharedResponsePolicy`, ADR 011 |
 | File uploads | `IFileStorage` over S3 (Garage locally), image processing, ADR 018 |
 | Lost-update protection | ETags and `If-Match`, ADR 019 |
 | Versioned URLs (`/v1/...`) | ADR 015 |

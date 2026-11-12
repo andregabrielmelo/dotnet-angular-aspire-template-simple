@@ -1,3 +1,4 @@
+using AppTemplate.Infrastructure.Caching;
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.Web.Settings;
@@ -19,6 +20,7 @@ public class OptionsRegistration(CustomWebApplicationFactory<Program> factory)
             typeof(AccountLinkSettings),
             typeof(RateLimitSettings),
             typeof(ForwardedHeadersSettings),
+            typeof(CachingSettings),
         ];
 
     [Theory]
@@ -43,6 +45,10 @@ public class OptionsValidationAtStartup
     [InlineData("AccountLinks:ClientUrl", "/relative", "AccountLinks:ClientUrl")]
     [InlineData("RateLimiting:AuthenticationPermitLimit", "0", "RateLimiting")]
     [InlineData("ForwardedHeaders:KnownProxies:0", "not-an-address", "KnownProxies")]
+    [InlineData("Caching:LocalExpiration", "00:00:00", "Caching")]
+    [InlineData("Caching:LocalExpiration", "00:20:00", "Caching")]
+    [InlineData("Caching:Profiles:Short:LocalExpiration", "00:00:00", "Caching:Profiles")]
+    [InlineData("Caching:Profiles:Short:LocalExpiration", "00:02:00", "Caching:Profiles")]
     public void FailsGivenAnInvalidSetting(string key, string value, string named)
     {
         using var factory = new MisconfiguredFactory(key, value);

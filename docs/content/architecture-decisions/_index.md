@@ -7,4 +7,4 @@ weight: 30
 
 Records of significant architectural decisions made in this template. See the [ADR process](README.md) for how these are written and when to add a new one.
 
-The decisions behind features this simple variant leaves out (Keycloak and the backend for frontend, background jobs, the transactional outbox, auditing, caching, file storage, ETags, API versioning, third-party sign-in) are recorded in the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template/tree/main/docs/content/architecture-decisions). Its numbers differ: its ADRs 010 and 014 are 008 and 009 here.
+The decisions behind features this simple variant leaves out (Keycloak and the backend for frontend, background jobs, the transactional outbox, auditing, output caching, file storage, ETags, API versioning, third-party sign-in) are recorded in the full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template/tree/main/docs/content/architecture-decisions). Its numbers differ: its ADRs 010 and 014 are 008 and 009 here, and the HybridCache half of its ADR 011 is ADR 017 here.

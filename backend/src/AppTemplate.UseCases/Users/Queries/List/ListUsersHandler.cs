@@ -1,6 +1,4 @@
-﻿using AppTemplate.UseCases.Constants;
-
-namespace AppTemplate.UseCases.Users.Queries.List;
+﻿namespace AppTemplate.UseCases.Users.Queries.List;
 
 public class ListUsersHandler(IListUsersQueryService query)
     : IQueryHandler<ListUsersQuery, Result<PagedResult<UserDto>>>
@@ -13,8 +11,8 @@ public class ListUsersHandler(IListUsersQueryService query)
     )
     {
         var result = await _query.ListAsync(
-            request.Page ?? 1,
-            request.PerPage ?? PaginationConstants.DEFAULT_PAGE_SIZE,
+            request.EffectivePage,
+            request.EffectivePerPage,
             cancellationToken
         );
 

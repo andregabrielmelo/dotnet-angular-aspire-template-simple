@@ -1,6 +1,8 @@
 using System.Net;
+using AppTemplate.Infrastructure.Caching;
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.UseCases.Caching;
 using AppTemplate.Web.Settings;
 
 namespace AppTemplate.Web.Configurations;
@@ -61,6 +63,28 @@ public static class OptionConfigurations
             .Validate(
                 proxies => proxies.KnownProxies.All(proxy => IPAddress.TryParse(proxy, out _)),
                 "ForwardedHeaders:KnownProxies must be IP addresses."
+            )
+            .ValidateOnStart();
+
+        services
+            .AddOptions<CachingSettings>()
+            .Bind(configuration.GetSection(CachingSettings.SectionName))
+            .Validate(
+                caching =>
+                    caching.Expiration > TimeSpan.Zero
+                    && caching.LocalExpiration > TimeSpan.Zero
+                    && caching.LocalExpiration <= caching.Expiration,
+                "Caching needs a positive Expiration and a LocalExpiration no longer than it."
+            )
+            .Validate(
+                caching =>
+                    CacheProfile
+                        .List.Where(profile => profile != CacheProfile.None)
+                        .All(profile =>
+                            caching.Profiles.TryGetValue(profile.Name, out var lifetime)
+                            && lifetime.IsValid
+                        ),
+                $"Caching:Profiles needs every cache profile ({string.Join(", ", CacheProfile.List.Where(profile => profile != CacheProfile.None).Select(profile => profile.Name))}) with a positive Expiration and a LocalExpiration no longer than it."
             )
             .ValidateOnStart();
 

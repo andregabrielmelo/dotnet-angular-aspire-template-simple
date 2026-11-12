@@ -1,9 +1,11 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -75,6 +77,7 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
     /// <summary>
     /// Saves a user (profile and confirmed account, through <see cref="IdentityService"/>) who can
     /// sign in with <see cref="Password"/>; a <see cref="Role.Member"/> unless told otherwise.
+    /// Drops the cached user list afterwards, as registration does.
     /// </summary>
     public async Task<TestUser> CreateUserAsync(Role? role = null, string? email = null)
     {
@@ -99,6 +102,9 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
         (
             await identity.MarkEmailConfirmedAsync(created.Value, CancellationToken.None)
         ).IsSuccess.ShouldBeTrue();
+        await scope
+            .ServiceProvider.GetRequiredService<HybridCache>()
+            .RemoveByTagAsync(CacheTags.UserList, CancellationToken.None);
         return new TestUser(created.Value, name, address);
     }
 

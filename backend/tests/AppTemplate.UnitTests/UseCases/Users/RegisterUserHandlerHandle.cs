@@ -1,8 +1,10 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users.Commands.Register;
 using Mediator;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 
@@ -10,6 +12,7 @@ public class RegisterUserHandlerHandle
 {
     private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
+    private readonly HybridCache _cache = Substitute.For<HybridCache>();
 
     private static readonly RegisterUserCommand Command = new(
         TestUsers.Name,
@@ -35,7 +38,7 @@ public class RegisterUserHandlerHandle
             .Returns(result);
 
     private Task<Result<UserId>> Register() =>
-        new RegisterUserHandler(_identity, _mediator)
+        new RegisterUserHandler(_identity, _mediator, _cache)
             .Handle(Command, TestContext.Current.CancellationToken)
             .AsTask();
 
@@ -113,5 +116,32 @@ public class RegisterUserHandlerHandle
         await _mediator
             .DidNotReceive()
             .Publish(Arg.Any<UserRegisteredDomainEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DropsTheCachedUserListAfterPublishing()
+    {
+        CreationReturns(UserId.From(5));
+
+        await Register();
+
+        Received.InOrder(() =>
+        {
+            _ = _mediator.Publish(
+                Arg.Any<UserRegisteredDomainEvent>(),
+                Arg.Any<CancellationToken>()
+            );
+            _ = _cache.RemoveByTagAsync(CacheTags.UserList, Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task LeavesTheCacheAloneWhenRegistrationFails()
+    {
+        CreationReturns(UserErrors.EmailNotUnique);
+
+        await Register();
+
+        _cache.ReceivedCalls().ShouldBeEmpty();
     }
 }

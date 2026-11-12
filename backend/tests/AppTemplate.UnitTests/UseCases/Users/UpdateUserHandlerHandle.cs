@@ -2,6 +2,7 @@ using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Commands.Update;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 
@@ -9,6 +10,7 @@ public class UpdateUserHandlerHandle
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly User _target = TestUsers.Saved(id: 1);
 
     private static readonly UpdateUserCommand Command = new(
@@ -25,7 +27,7 @@ public class UpdateUserHandlerHandle
     }
 
     private Task<Result<UserDto>> Update(UpdateUserCommand? command = null) =>
-        new UpdateUserHandler(_repository, _currentUser)
+        new UpdateUserHandler(_repository, _currentUser, _cache)
             .Handle(command ?? Command, TestContext.Current.CancellationToken)
             .AsTask();
 
@@ -40,6 +42,25 @@ public class UpdateUserHandlerHandle
     }
 
     [Fact]
+    public async Task DropsTheUsersCachedReadsAndTheListAfterSaving()
+    {
+        _currentUser.Id.Returns(UserId.From(1));
+
+        await Update();
+
+        Received.InOrder(() =>
+        {
+            _ = _repository.UpdateAsync(_target, Arg.Any<CancellationToken>());
+            _ = _cache.RemoveByTagAsync(
+                Arg.Is<IEnumerable<string>>(tags =>
+                    tags.SequenceEqual(new[] { "users:1", "users:list" })
+                ),
+                Arg.Any<CancellationToken>()
+            );
+        });
+    }
+
+    [Fact]
     public async Task ReturnsForbiddenForSomeoneElseWithoutUsersWrite()
     {
         _currentUser.Id.Returns(UserId.From(2));
@@ -47,6 +68,7 @@ public class UpdateUserHandlerHandle
 
         (await Update()).Status.ShouldBe(ResultStatus.Forbidden);
         _target.Name.ShouldBe(TestUsers.Name);
+        _cache.ReceivedCalls().ShouldBeEmpty();
         await _repository
             .DidNotReceive()
             .UpdateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());

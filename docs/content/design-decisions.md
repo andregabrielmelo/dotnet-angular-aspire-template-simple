@@ -66,7 +66,7 @@ A template should *support* a capability without *requiring* every application t
 - background jobs (Hangfire) and job management
 - a transactional outbox and inbox, for work that must reliably follow a database change
 - an audit log
-- caching (HybridCache with Redis, and output caching)
+- output caching (this variant has HybridCache with Redis, ADR 017)
 - file storage (S3, with Garage locally) and image processing
 - ETags and optimistic concurrency
 - URL-versioned endpoints

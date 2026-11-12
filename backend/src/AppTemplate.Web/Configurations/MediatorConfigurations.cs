@@ -27,8 +27,9 @@ public static class MediatorConfigurations
                 typeof(MediatorConfigurations), // Web
             ];
 
-            // Register pipeline behaviors here (order matters).
-            options.PipelineBehaviors = [typeof(LoggingBehavior<,>)];
+            // Register pipeline behaviors here (order matters): logging is outermost, so cache
+            // hits are logged and timed too.
+            options.PipelineBehaviors = [typeof(LoggingBehavior<,>), typeof(CachingBehavior<,>)];
 
             // If you have stream behaviors:
             // options.StreamPipelineBehaviors = [ typeof(YourStreamBehavior<,>) ];

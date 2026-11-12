@@ -1,8 +1,10 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users.Handlers;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UseCases.Users.Commands.Register;
 
@@ -10,10 +12,14 @@ namespace AppTemplate.UseCases.Users.Commands.Register;
 /// Creates the profile and its account (<see cref="IIdentityService"/>), adds the account to
 /// <see cref="Role.Member"/>, then announces it: <see cref="SendConfirmationOnUserRegistered"/>
 /// emails the confirmation link. Joining the role is a second save: if it fails, the account stays
-/// without a role (and so without permissions) and nothing is announced.
+/// without a role (and so without permissions) and nothing is announced. Last, it drops the cached
+/// user list (<see cref="CacheTags.UserList"/>), which the new user now belongs to.
 /// </summary>
-public class RegisterUserHandler(IIdentityService _identity, IMediator _mediator)
-    : ICommandHandler<RegisterUserCommand, Result<UserId>>
+public class RegisterUserHandler(
+    IIdentityService _identity,
+    IMediator _mediator,
+    HybridCache _cache
+) : ICommandHandler<RegisterUserCommand, Result<UserId>>
 {
     public async ValueTask<Result<UserId>> Handle(
         RegisterUserCommand command,
@@ -45,6 +51,8 @@ public class RegisterUserHandler(IIdentityService _identity, IMediator _mediator
             new UserRegisteredDomainEvent(created.Value, command.Name, command.Email),
             cancellationToken
         );
+
+        await _cache.RemoveByTagAsync(CacheTags.UserList, cancellationToken);
 
         return created;
     }

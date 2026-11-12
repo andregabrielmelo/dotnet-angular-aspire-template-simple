@@ -10,7 +10,7 @@ Commands, project layout and the full architecture overview are in [`CLAUDE.md`]
 - When the ADRs don't settle a structural question, check the sources in [Further reading](docs/content/further-reading.md) (the two templates this project builds on and the blogs it leans on) before inventing an answer, and say which one you followed.
 - For *how* to build things, follow the guides in [`docs/content/guides/`](docs/content/guides/): the [project map](docs/content/guides/project-map.md) (layout, a request's path, vocabulary), [adding a feature](docs/content/guides/adding-a-feature.md) (a complete worked example through every layer) and [common tasks](docs/content/guides/cookbook.md). This file holds the rules they follow.
 - Search before assuming something is missing. The template already has authentication, permissions, email and Postgres-backed tests.
-- This is the simple variant of [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template). When a task needs background jobs, a transactional outbox, auditing, caching, file storage, ETags or API versioning, copy the shape from there (code, tests and ADR) instead of designing it from scratch.
+- This is the simple variant of [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template). When a task needs background jobs, a transactional outbox, auditing, output caching, file storage, ETags or API versioning, copy the shape from there (code, tests and ADR) instead of designing it from scratch.
 - Copy the shape of the `User` feature: `Core/Aggregates/UserAggregate`, then `UseCases/Users/<UseCase>/`, then `Web/Endpoints/Users/`. It is the executable reference for every layer.
 - Look at the related tests, DI registrations (`Web/Configurations/`, `Infrastructure/InfrastructureServiceExtensions.cs`) and configuration before creating something new.
 - Keep changes small and focused. Don't refactor unrelated code while implementing a feature.
@@ -25,7 +25,7 @@ Dependencies point inward:
 | `AppTemplate.Core` | Aggregates, Vogen value objects, domain events and their handlers, specifications; ports in `Core/Interfaces` (`IEmailSender`, the request context `ICurrentUser`, ...) | SharedKernel |
 | `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), the accounts port (`UseCases/Interfaces/IIdentityService`) and the `Role`/`Permission` smart enums | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, ASP.NET Core Identity (`ApplicationUser`, `IdentityService`) | Core, UseCases, SharedKernel |
-| `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`), the antiforgery check, composition root | everything above |
+| `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`: logging, and caching `ICacheable` queries), the antiforgery check, composition root | everything above |
 
 - Core never references UseCases, Infrastructure, Web, EF Core or ASP.NET Core.
 - Only Infrastructure uses ASP.NET Core Identity (`UserManager`, `SignInManager`, `ApplicationUser`); everything else goes through `IIdentityService` ([ADR 013](docs/content/architecture-decisions/adr-013-user-management-aspnetcore-identity.md)).
