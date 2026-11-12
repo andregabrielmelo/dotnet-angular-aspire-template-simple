@@ -101,7 +101,9 @@ jobs:
       - name: Trust the ASP.NET Core development certificate
         if: runner.os == 'Linux'
         run: |
-          dotnet dev-certs https --trust
+          # Exit code 4 means only some trust stores took it: OpenSSL does (through SSL_CERT_DIR,
+          # below), but the runner has no browser certificate store. Anything else is a failure.
+          dotnet dev-certs https --trust || [ $? -eq 4 ]
           echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
 
       # Functional tests run against a real Postgres via Testcontainers, which needs a Docker
