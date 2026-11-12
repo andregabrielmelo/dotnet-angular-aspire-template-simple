@@ -2,7 +2,7 @@
 
 ## `backend-build.yml`
 
-Restores (`--locked-mode`, against the committed `packages.lock.json` files), format-checks (`dotnet csharpier check`), builds, and tests (`dotnet test`) the backend solution on Windows, Linux, and macOS. On Linux it also re-exports the OpenAPI document (`scripts/export-openapi.sh`) and fails if `backend/openapi/v1.json` is stale. NuGet packages are cached by `setup-dotnet`, keyed on the lock files' hash. Triggers on pushes to `main`/`develop` that touch `backend/**` and on every PR. On a PR, the build only runs if it touches `backend/**`, but the `Backend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)). `AppTemplate.UnitTests` runs against Core/UseCases with no external dependencies; `AppTemplate.FunctionalTests` exercises the full HTTP -> FastEndpoints -> Mediator -> EF Core pipeline against a real Postgres started with [Testcontainers](https://dotnet.testcontainers.org/). Hosted Windows and macOS runners can't run Linux containers, so only the Linux job runs the whole suite; the others skip tests marked `[Trait("Category", "RequiresDocker")]` (`--filter "Category!=RequiresDocker"`).
+Installs the .NET SDK pinned in `global.json`, restores (`--locked-mode`, against the committed `packages.lock.json` files), format-checks (`dotnet csharpier check`), builds, and tests (`dotnet test`) the backend solution on Windows, Linux, and macOS. On Linux it also re-exports the OpenAPI document (`scripts/export-openapi.sh`) and fails if `backend/openapi/v1.json` is stale. NuGet packages are cached by `setup-dotnet`, keyed on the lock files' hash. Triggers on pushes to `main`/`develop` that touch `backend/**` and on every PR. On a PR, the build only runs if it touches `backend/**`, but the `Backend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)). `AppTemplate.UnitTests` runs against Core/UseCases with no external dependencies; `AppTemplate.FunctionalTests` exercises the full HTTP -> FastEndpoints -> Mediator -> EF Core pipeline against a real Postgres started with [Testcontainers](https://dotnet.testcontainers.org/). Hosted Windows and macOS runners can't run Linux containers, so only the Linux job runs the whole suite; the others skip tests marked `[Trait("Category", "RequiresDocker")]` (`--filter "Category!=RequiresDocker"`).
 
 ## `frontend-build.yml`
 
@@ -51,6 +51,10 @@ Each build workflow therefore has three jobs:
 3. **`gate`** (`Frontend CI` / `Backend CI`) always runs. It passes when the build succeeded or was skipped, and fails when the build failed or was cancelled. This is the one check the ruleset requires.
 
 A new build workflow that should gate PRs must follow the same pattern and add its gate job's name to the ruleset. Changing a matrix (adding Node 24, another OS) needs no ruleset change.
+
+## Dependency updates
+
+Dependabot (`.github/dependabot.yml`) opens weekly PRs into `develop` for NuGet (`backend/`), npm (`frontend/`), the GitHub Actions and the .NET SDK pinned in `global.json`. It never proposes a new major SDK: moving to the next .NET also means changing the target framework and packages, so do that deliberately. Packages that are released together are grouped into one PR (Aspire; the .NET platform with EF Core and Npgsql; OpenTelemetry; Serilog; Ardalis; the test packages; and on npm Angular, lint, Tailwind and the test packages). Their commits are `build(deps): ...` / `build(deps-dev): ...`, so the Conventional Commits check passes, and `dependabot/*` branches pass the Gitflow check into `develop`. If a NuGet PR fails the `--locked-mode` restore, check out its branch, run `dotnet restore` in `backend/`, and push the updated lock files.
 
 ## NuGet lock files
 
