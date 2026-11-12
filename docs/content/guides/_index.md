@@ -11,5 +11,6 @@ How to work in this codebase, step by step. They're written for people and codin
 - **[Adding a feature, step by step]({{< relref "adding-a-feature" >}})**: builds a complete `Project` feature, from the domain model to the Angular page and the tests. Follow it whenever you add something that has its own data.
 - **[Deploying to production]({{< relref "deploying" >}})**: the reverse proxy, settings and secrets, migrations, health probes, telemetry and backups, for whichever platform you deploy to.
 - **[Common tasks]({{< relref "cookbook" >}})**: short recipes. Add a permission, make an endpoint public, send an email, react to a domain event, add a setting, filter a list, and more.
+- **[The frontend: configuration and API errors]({{< relref "frontend" >}})**: how the Angular app reaches the API without per-environment URLs, and how to show the errors it returns.
 
 The guides show *how*. The rules they follow live in [`AGENTS.md`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/blob/main/AGENTS.md), and the reasons behind them in [Goals & Design Decisions]({{< relref "design-decisions" >}}) and the [Architecture Decisions]({{< relref "architecture-decisions" >}}). When a guide and a rule disagree, the rule wins, and the guide is the one to fix.

@@ -153,7 +153,7 @@ Standalone Angular components, organized as `core/`, `shared/`, and `features/<f
 - `core/auth/auth-interceptor.ts` adds nothing: on a 401 from the API while signed in (the session expired or was ended elsewhere) it forgets the user and sends them to `/auth/login?returnUrl=...`. It leaves `api/auth/*` alone.
 - `authGuard` protects routes (sending the user to `/auth/login?returnUrl=...`), and `permissionGuard` hides pages the user has no permission for.
 
-Relative `api/...` URLs (`API_BASE` in `core/api/api-paths.ts`) reach the Web API through the dev server proxy (`frontend/proxy.conf.mjs`, which strips `/api` and targets `services__web__https__0`, verifying its certificate). There is no CORS: in production, serve the app and `/api` from one origin.
+Relative `api/...` URLs (`API_BASE` in `core/api/api-paths.ts`) reach the Web API through the dev server proxy (`frontend/proxy.conf.mjs`, which strips `/api` and targets `services__web__https__0`, verifying its certificate). There is no CORS: in production, serve the app and `/api` from one origin. `docs/content/guides/frontend.md` covers this and how pages show the API's errors (status to message, `errors` by field on 400, 401 left to the interceptor).
 
 ### CI (`.github/workflows/`)
 
