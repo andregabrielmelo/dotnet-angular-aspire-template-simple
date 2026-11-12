@@ -6,7 +6,7 @@ namespace AppTemplate.UseCases.Users.Commands.Delete;
 
 /// <summary>Deletes the user (and, by cascade, their account), then drops their cached reads (<see cref="CacheTags.User"/>) and the cached user list.</summary>
 public class DeleteUserHandler(IRepository<User> _repository, HybridCache _cache)
-    : Mediator.ICommandHandler<DeleteUserCommand, Result>
+    : ICommandHandler<DeleteUserCommand, Result>
 {
     public async ValueTask<Result> Handle(
         DeleteUserCommand request,
