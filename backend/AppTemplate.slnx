@@ -16,6 +16,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AppTemplate.ArchitectureTests/AppTemplate.ArchitectureTests.csproj" />
+    <Project Path="tests/AppTemplate.AspireTests/AppTemplate.AspireTests.csproj" />
     <Project Path="tests/AppTemplate.FunctionalTests/AppTemplate.FunctionalTests.csproj" />
     <Project Path="tests/AppTemplate.IntegrationTests/AppTemplate.IntegrationTests.csproj" />
     <Project Path="tests/AppTemplate.UnitTests/AppTemplate.UnitTests.csproj" />

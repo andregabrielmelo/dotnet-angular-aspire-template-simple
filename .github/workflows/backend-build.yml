@@ -95,6 +95,17 @@ jobs:
         working-directory: backend
         run: dotnet build AppTemplate.slnx --configuration Release --no-restore
 
+      # The Aspire smoke test (AppTemplate.AspireTests) starts the AppHost, whose API is HTTPS
+      # only (ADR 016): create and trust the ASP.NET Core development certificate, and let
+      # OpenSSL find it next to the system certificates.
+      - name: Trust the ASP.NET Core development certificate
+        if: runner.os == 'Linux'
+        run: |
+          # Exit code 4 means only some trust stores took it: OpenSSL does (through SSL_CERT_DIR,
+          # below), but the runner has no browser certificate store. Anything else is a failure.
+          dotnet dev-certs https --trust || [ $? -eq 4 ]
+          echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
+
       # Functional tests run against a real Postgres via Testcontainers, which needs a Docker
       # daemon that runs Linux containers - only the Linux runners have one. Windows and macOS
       # run everything else (unit tests, and functional tests that don't touch the database).

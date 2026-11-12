@@ -40,6 +40,7 @@ Dependencies point inward: each project may use the ones listed above it, never 
 | `AppTemplate.IntegrationTests` | Repositories, ASP.NET Core Identity (`IdentityService`), query services and migrations, against a real Postgres | Docker or Podman |
 | `AppTemplate.FunctionalTests` | Real HTTP calls through the whole API (`ApiEndpoints/`), against a real Postgres, signed in for real with the session cookie and antiforgery token, including logout and sessions ending | Docker or Podman |
 | `AppTemplate.ArchitectureTests` | The layering and naming rules | nothing |
+| `AppTemplate.AspireTests` | The real AppHost starts and the API turns healthy | Docker or Podman, a trusted development certificate |
 
 ### Frontend (`frontend/src/app/`)
 

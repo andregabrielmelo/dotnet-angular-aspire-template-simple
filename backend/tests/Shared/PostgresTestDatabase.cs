@@ -3,13 +3,6 @@ using Testcontainers.PostgreSql;
 
 namespace AppTemplate.Tests;
 
-/// <summary>Trait for tests that need Docker (a real Postgres) - CI filters these out where Docker can't run.</summary>
-public static class TestCategories
-{
-    public const string Name = "Category";
-    public const string RequiresDocker = "RequiresDocker";
-}
-
 /// <summary>
 /// One real Postgres container for the whole test run, started on first use (Testcontainers'
 /// reaper removes it when the run ends). Each test host gets its own database inside it, so
