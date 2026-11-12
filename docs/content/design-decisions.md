@@ -55,7 +55,7 @@ Clean Architecture should make change easier. It shouldn't make a simple databas
 | **Repository + specification** | The write path loads an aggregate, changes it through domain methods and saves it (`UserByIdSpecification`), or several handlers reuse the same lookup | It's a one-off read. Project straight to a DTO in a query service (`IListUsersQueryService`) instead |
 | **Query service** | It's a read model, a projection, a join, pagination or hand-written SQL | The handler needs the aggregate's behavior, so use the repository |
 | **Domain event** | Another part of the system reacts to something that happened in the domain, and the aggregate shouldn't know who that is | It's only "save a record". The `User` slice raises `UserRegisteredDomainEvent`, whose handler sends the confirmation email |
-| **Mediator pipeline behavior** (`UseCases/Behaviors`) | It's a cross-cutting concern for every use case (`LoggingBehavior`), or for every command carrying a marker interface | It's logic for one feature. Put that in its handler |
+| **Mediator pipeline behavior** (`Web/Behaviors`) | It's a cross-cutting concern for every use case (`LoggingBehavior`), or for every message carrying a marker interface (`CachingBehavior` and `ICacheable`) | It's logic for one feature. Put that in its handler |
 
 Every use case still goes through Mediator. That one seam stays uniform on purpose, so endpoints, jobs and tests all dispatch the same way.
 
