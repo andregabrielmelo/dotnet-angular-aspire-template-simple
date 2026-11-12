@@ -22,8 +22,8 @@ Dependencies point inward:
 | Project | Contains | May depend on |
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
-| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events and their handlers, specifications; ports in `Core/Interfaces` (`IEmailSender`, the request context `ICurrentUser`, ...) | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), the accounts port (`UseCases/Interfaces/IIdentityService`) and the `Role`/`Permission` smart enums | Core, SharedKernel |
+| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports for external resources in `Core/Interfaces` (`IEmailSender`) | SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and their handlers; domain event handlers (`UseCases/<Feature>/Handlers/`, where the ports they need are visible); list query-service interfaces (`IListUsersQueryService`), the accounts port and the request context (`UseCases/Interfaces`: `IIdentityService`, `ICurrentUser`), the `Role`/`Permission` smart enums, and the caching contract (`ICacheable`, `CacheTags`, `CacheProfile`) | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, ASP.NET Core Identity (`ApplicationUser`, `IdentityService`) | Core, UseCases, SharedKernel |
 | `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`: logging, and caching `ICacheable` queries), the antiforgery check, composition root | everything above |
 
