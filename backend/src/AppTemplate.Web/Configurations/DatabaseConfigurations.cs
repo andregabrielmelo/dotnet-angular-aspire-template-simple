@@ -1,5 +1,4 @@
 ﻿using AppTemplate.Infrastructure.Data;
-using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Interfaces;
 using Microsoft.EntityFrameworkCore;
 

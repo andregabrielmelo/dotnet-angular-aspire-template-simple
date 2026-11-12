@@ -1,6 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using Ardalis.Result;
