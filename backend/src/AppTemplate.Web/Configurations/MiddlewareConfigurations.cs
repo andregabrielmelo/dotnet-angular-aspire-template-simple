@@ -1,5 +1,4 @@
-﻿using AppTemplate.ServiceDefaults.Logging;
-using Scalar.AspNetCore;
+﻿using Scalar.AspNetCore;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -7,15 +6,13 @@ public static class MiddlewareConfigurations
 {
     public static async Task<IApplicationBuilder> UseAppMiddleware(this WebApplication app)
     {
-        // Before anything reads the client address: rewrites RemoteIpAddress from
-        // X-Forwarded-For, but only for a connection from a configured proxy.
+        // First: the client address and scheme from a known proxy (ForwardedHeadersSettings),
+        // before anything reads them.
         app.UseForwardedHeaders();
 
-        // Early, so its OnStarting callback also covers error and status-code-page responses.
-        app.UseApiSecurityHeaders();
-
-        // Outside the exception handler, so it logs the status the client actually got.
-        app.UseDefaultRequestLogging();
+        // Every request is HTTPS (ADR 016): the API listens on HTTPS only, and behind a host that
+        // terminates TLS the forwarded scheme decides. A plain HTTP request is redirected.
+        app.UseHttpsRedirection();
 
         if (app.Environment.IsDevelopment())
         {
@@ -23,29 +20,16 @@ public static class MiddlewareConfigurations
         }
         else
         {
-            // Unhandled exceptions become a 500 problem details response without exception
-            // details; the middleware logs the exception with the request's trace id.
-            app.UseExceptionHandler();
+            // FastEndpoints' handler: logs the exception, and answers 500 without its message.
+            app.UseDefaultExceptionHandler(useGenericReason: true);
             app.UseHsts();
         }
 
-        // Empty error responses (401/403 from authorization, 404 for unmatched routes) get a
-        // problem details body too. See ProblemDetailsConfigurations.
-        app.UseStatusCodePages();
+        // The rate limiter runs after authentication, so it can count a signed-in caller by id;
+        // then a signed-in session's unsafe requests need an antiforgery token (CSRF, ADR 015).
+        app.UseAuthentication().UseRateLimiter().UseSessionAntiforgery().UseAuthorization();
 
-        app.UseAuthentication();
-        // After authentication: callers are partitioned by validated sub, or by address.
-        app.UseRateLimiter();
-        app.UseAuthorization();
-        // Inside the status code pages middleware, so a timeout's 504 gets a problem body.
-        app.UseRequestTimeouts();
-
-        app.UseFastEndpoints(config =>
-        {
-            config.Errors.ResponseBuilder =
-                ProblemDetailsConfigurations.FastEndpointsValidationProblem;
-            config.Errors.ProducesMetadataType = typeof(HttpValidationProblemDetails);
-        });
+        app.UseFastEndpoints();
 
         if (app.Environment.IsDevelopment())
         {
@@ -66,10 +50,8 @@ public static class MiddlewareConfigurations
                     options.WithTitle("AppTemplate API");
                     options.WithOpenApiRoutePattern("/openapi/{documentName}.json");
                 })
-                .AllowAnonymous(); // a browser page, not an API call: no bearer token
+                .AllowAnonymous(); // a browser page, open before signing in
         }
-
-        app.UseHttpsRedirection(); // Note this will drop Authorization headers
 
         return app;
     }

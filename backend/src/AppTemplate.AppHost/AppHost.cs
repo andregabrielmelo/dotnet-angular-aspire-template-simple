@@ -1,4 +1,7 @@
-﻿var builder = DistributedApplication.CreateBuilder(args);
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+
+var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Postgre SQL Server container
 var postgres = builder
@@ -9,78 +12,100 @@ var postgres = builder
 // Add the database
 var applicationDatabase = postgres.AddDatabase("apptemplate");
 
-// OpenID Connect provider: hosts the login, registration and logout pages. The realm (clients,
-// audience mapper, registration enabled) is imported from Realms/ on first start. The port is
-// pinned so the issuer URL the browser sees stays stable across runs.
-var backendForFrontendSecret = builder.AddParameter(
-    "keycloak-backend-for-frontend-secret",
-    secret: true
-);
-
-// Development SMTP catcher: Keycloak sends its emails (e.g. password reset links) here, and
-// they can be read in Mailpit's web UI (the "mailpit" resource's http endpoint). The registry is
-// explicit because Podman, unlike Docker, does not assume docker.io for unqualified image names.
-var mailpit = builder
-    .AddContainer("mailpit", "axllent/mailpit", "v1.31.2")
-    .WithImageRegistry("docker.io")
-    .WithHttpEndpoint(targetPort: 8025, name: "http")
-    .WithEndpoint(targetPort: 1025, name: "smtp", scheme: "tcp");
-
-var keycloak = builder
-    .AddKeycloak("keycloak", port: 8080)
+// Redis: HybridCache's distributed (L2) cache, shared by every API instance so cache entries and
+// invalidations reach all of them (ADR 017). Persistent, with a data volume, so the container and
+// its entries outlive an AppHost run; Redis Insight (its own resource) browses the keys.
+var cache = builder
+    .AddRedis("cache")
     .WithDataVolume()
-    .WithRealmImport("./Realms")
     .WithLifetime(ContainerLifetime.Persistent)
-    .WaitFor(mailpit);
+    .WithRedisInsight();
 
-// register the API project and link the DB
+// register the API project and link the DB. HTTPS only (its "https" launch profile), with the
+// ASP.NET Core development certificate (ADR 016).
 var api = builder
-    .AddProject<Projects.AppTemplate_Web>("web")
+    .AddProject<Projects.AppTemplate_Web>("web", launchProfileName: "https")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", builder.Environment.EnvironmentName)
     .WithReference(applicationDatabase)
     .WaitFor(applicationDatabase)
-    .WithReference(keycloak)
-    .WaitFor(keycloak)
-    // The API's own emails (IEmailSender) go to Mailpit too.
-    .WithEnvironment(
-        "Mailserver__Hostname",
-        mailpit.GetEndpoint("smtp").Property(EndpointProperty.Host)
-    )
-    .WithEnvironment(
-        "Mailserver__Port",
-        mailpit.GetEndpoint("smtp").Property(EndpointProperty.Port)
-    )
-    .WaitFor(mailpit)
-    .WithHttpEndpoint(name: "api-http")
+    .WithReference(cache)
+    .WaitFor(cache)
     // Readiness (Postgres reachable): resources that WaitFor(api) start only once it's ready.
-    .WithHttpHealthCheck("/health");
+    .WithHttpHealthCheck("/health", endpointName: "https");
 
-// Angular dev server - only reached through the backend for frontend, never directly.
+// The API's settings kept in the AppHost's appsettings ("web" section), passed on as environment
+// variables: Mailserver:FromAddress becomes Mailserver__FromAddress, and an array element such as
+// ForwardedHeaders:KnownProxies:0 becomes ForwardedHeaders__KnownProxies__0. In development they
+// are Mailpit's sender and loopback as a known proxy: the Angular dev server's proxy reaches the
+// API from loopback, so trusting its X-Forwarded-For makes rate limits count the browser's
+// address (ADR 014).
+foreach (
+    var (key, value) in builder
+        .Configuration.GetSection("web")
+        .AsEnumerable(makePathsRelative: true)
+)
+{
+    if (value is not null)
+    {
+        api.WithEnvironment(key.Replace(":", "__"), value);
+    }
+}
+
+// The Angular dev server is the browser's single origin: its proxy (frontend/proxy.conf.mjs)
+// forwards /api to the Web API, found through the services__web__https__0 variable that
+// WithReference(api) sets. Same origin, so there is no CORS. Both legs are HTTPS: ng serve gets
+// the development certificate's files as arguments, and Node trusts the certificate when the
+// proxy connects to the API (ADR 016).
+#pragma warning disable ASPIRECERTIFICATES001 // Aspire's HTTPS certificate APIs are experimental.
 var frontend = builder
     .AddJavaScriptApp("angular", "../../../frontend", runScriptName: "start")
     .WithNpm(installCommand: "ci")
-    .WithHttpEndpoint(env: "PORT")
-    .WithHttpHealthCheck("/")
-    .PublishAsDockerFile();
-
-// The browser's single entry point: owns the session cookie, runs the OIDC flow against
-// Keycloak, and proxies /api to the Web API (adding the access token) and everything else to
-// the Angular dev server. Its port is pinned because the realm's redirect URIs point at it.
-var backendForFrontend = builder
-    .AddProject<Projects.AppTemplate_BackendForFrontend>(
-        "backend-for-frontend",
-        launchProfileName: null
-    )
-    .WithEnvironment("ASPNETCORE_ENVIRONMENT", builder.Environment.EnvironmentName)
-    .WithHttpsEndpoint(port: 7100, name: "https")
-    .WithHttpHealthCheck("/health", endpointName: "https")
-    .WithEnvironment("Keycloak__ClientSecret", backendForFrontendSecret)
-    .WithReference(keycloak)
-    .WaitFor(keycloak)
+    .WithHttpsEndpoint(env: "PORT")
+    .WithHttpsDeveloperCertificate()
+    .WithHttpsCertificateConfiguration(context =>
+    {
+        // npm's separator: without it, npm takes --ssl* as its own options and ng serve only
+        // gets the bare file paths. Aspire adds it only for its own run-script arguments.
+        context.Arguments.Add("--");
+        context.Arguments.Add("--ssl");
+        context.Arguments.Add("--ssl-cert");
+        context.Arguments.Add(context.CertificatePath);
+        context.Arguments.Add("--ssl-key");
+        context.Arguments.Add(context.KeyPath);
+        return Task.CompletedTask;
+    })
+    .WithDeveloperCertificateTrust(true)
+    .WithHttpHealthCheck("/", endpointName: "https")
     .WithReference(api)
     .WaitFor(api)
-    .WithReference(frontend.GetEndpoint("http"))
-    .WaitFor(frontend)
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    .PublishAsDockerFile();
+#pragma warning restore ASPIRECERTIFICATES001
+
+// Account emails (confirmation, password reset) link to the Angular app's pages.
+api.WithEnvironment("AccountLinks__ClientUrl", frontend.GetEndpoint("https"));
+
+if (builder.Environment.IsDevelopment())
+{
+    // Development SMTP catcher: the API's emails (IEmailSender, such as the welcome email) go
+    // here, and can be read in Mailpit's web UI (the "mailpit" resource's http endpoint).
+    var mailpit = builder.AddMailPit("mailpit", httpPort: 8025, smtpPort: 1025);
+
+    var smtp = mailpit.GetEndpoint("smtp");
+    api.WithEnvironment("Mailserver__Hostname", smtp.Property(EndpointProperty.Host))
+        .WithEnvironment("Mailserver__Port", smtp.Property(EndpointProperty.Port))
+        .WaitFor(mailpit);
+}
+else
+{
+    // The SMTP server the API's emails (IEmailSender) go to.
+    var mailserverHostname = builder.AddParameter("mailserver-hostname");
+    var mailserverPort = builder.AddParameter("mailserver-port");
+    var mailserverFromAddress = builder.AddParameter("mailserver-from-address");
+
+    api.WithEnvironment("Mailserver__Hostname", mailserverHostname)
+        .WithEnvironment("Mailserver__Port", mailserverPort)
+        .WithEnvironment("Mailserver__FromAddress", mailserverFromAddress);
+}
 
 builder.Build().Run();

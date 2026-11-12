@@ -1,168 +1,121 @@
-using System.Globalization;
+using System.Net;
 using System.Threading.RateLimiting;
+using AppTemplate.UseCases.Authorization;
+using AppTemplate.Web.Settings;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Web.Configurations;
 
-/// <summary>Limits for the global rate limiter, per partition and per window.</summary>
-public sealed class RateLimitingSettings
-{
-    public const string SectionName = "RateLimiting";
-
-    /// <summary>Requests a signed-in user (partitioned by <c>sub</c>) may make per window.</summary>
-    public int AuthenticatedPermitLimit { get; set; } = 600;
-
-    /// <summary>Requests one anonymous client address may make per window.</summary>
-    public int AnonymousPermitLimit { get; set; } = 120;
-
-    public TimeSpan Window { get; set; } = TimeSpan.FromMinutes(1);
-}
-
 /// <summary>
-/// A global limiter (ASP.NET Core rate limiting) caps overall traffic per caller. It keys on
-/// <see cref="ClientPartition"/>, never on anything the client sends, and rejects with a 429
-/// problem details response. For a sensitive or expensive endpoint, add a named policy with
-/// <c>options.AddPolicy</c> and apply it with <c>Options(x => x.RequireRateLimiting(name))</c>.
+/// ASP.NET Core's rate limiter (not FastEndpoints' <c>Throttle</c>, which trusts a client-sent
+/// header). A global limiter covers every request; <see cref="AuthenticationPolicy"/> adds a
+/// stricter one to the auth endpoints. Partitions never come from a header a client chooses: a
+/// signed-in caller counts against their session's user id, anyone else against their address,
+/// which is taken from <c>X-Forwarded-For</c> only when a known proxy sent it. See ADR 014.
 /// </summary>
 public static class RateLimitingConfigurations
 {
+    /// <summary>The policy of sign-in, registration and the account email endpoints.</summary>
+    public const string AuthenticationPolicy = "authentication";
+
     public static IServiceCollection AddRateLimitingConfigurations(
         this IServiceCollection services,
-        IConfiguration configuration
+        Microsoft.Extensions.Logging.ILogger logger
     )
     {
-        services
-            .AddOptions<RateLimitingSettings>()
-            .Bind(configuration.GetSection(RateLimitingSettings.SectionName))
-            .Validate(
-                settings =>
-                    settings.AuthenticatedPermitLimit > 0
-                    && settings.AnonymousPermitLimit > 0
-                    && settings.Window > TimeSpan.Zero,
-                "RateLimiting needs positive permit limits and a positive window."
-            )
-            .ValidateOnStart();
-
         services.AddRateLimiter(_ => { });
-        // Read from the registered settings when the options are built, never at registration.
         services
             .AddOptions<RateLimiterOptions>()
-            .Configure<IOptions<RateLimitingSettings>>(
-                (options, registered) =>
+            .Configure<IOptions<RateLimitSettings>>(
+                (options, settings) =>
                 {
-                    var settings = registered.Value;
                     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
                         context =>
                         {
-                            if (ClientPartition.IsExcluded(context.Request.Path))
-                            {
-                                return RateLimitPartition.GetNoLimiter(string.Empty);
-                            }
-
-                            var partition = ClientPartition.Of(context);
-                            var permitLimit = partition.StartsWith(
-                                ClientPartition.UserPrefix,
-                                StringComparison.Ordinal
-                            )
-                                ? settings.AuthenticatedPermitLimit
-                                : settings.AnonymousPermitLimit;
-
-                            return FixedWindow(partition, permitLimit, settings.Window);
+                            // Authentication runs first, so a validated session's user id is known here.
+                            var userId = context.User.FindFirst(AppClaimTypes.UserId)?.Value;
+                            return userId is null
+                                ? FixedWindow(
+                                    $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+                                    settings.Value.AnonymousPermitLimit
+                                )
+                                : FixedWindow(
+                                    $"user:{userId}",
+                                    settings.Value.AuthenticatedPermitLimit
+                                );
                         }
                     );
 
-                    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                    options.OnRejected = (context, _) =>
-                        WriteTooManyRequestsAsync(
-                            context.HttpContext,
-                            context.Lease.TryGetMetadata(
+                    options.AddPolicy(
+                        AuthenticationPolicy,
+                        context =>
+                            FixedWindow(
+                                $"auth:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+                                settings.Value.AuthenticationPermitLimit
+                            )
+                    );
+
+                    options.OnRejected = async (rejected, cancellationToken) =>
+                    {
+                        if (
+                            rejected.Lease.TryGetMetadata(
                                 MetadataName.RetryAfter,
                                 out var retryAfter
                             )
-                                ? retryAfter
-                                : settings.Window
+                        )
+                        {
+                            rejected.HttpContext.Response.Headers.RetryAfter = (
+                                (int)Math.Ceiling(retryAfter.TotalSeconds)
+                            ).ToString();
+                        }
+
+                        await TypedResults
+                            .Problem(
+                                detail: "Too many requests. Try again later.",
+                                statusCode: StatusCodes.Status429TooManyRequests
+                            )
+                            .ExecuteAsync(rejected.HttpContext);
+                    };
+
+                    RateLimitPartition<string> FixedWindow(string partition, int permitLimit) =>
+                        RateLimitPartition.GetFixedWindowLimiter(
+                            partition,
+                            _ => new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = permitLimit,
+                                Window = settings.Value.Window,
+                                QueueLimit = 0,
+                            }
                         );
                 }
             );
 
-        return services;
-    }
-
-    private static RateLimitPartition<string> FixedWindow(
-        string partition,
-        int permitLimit,
-        TimeSpan window
-    ) =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partition,
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = permitLimit,
-                Window = window,
-                QueueLimit = 0,
-            }
-        );
-
-    /// <summary>A 429 problem details response with a <c>Retry-After</c> in whole seconds.</summary>
-    private static async ValueTask WriteTooManyRequestsAsync(
-        HttpContext context,
-        TimeSpan retryAfter
-    )
-    {
-        context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        context.Response.Headers.RetryAfter = Math.Max(
-                1,
-                (int)Math.Ceiling(retryAfter.TotalSeconds)
-            )
-            .ToString(CultureInfo.InvariantCulture);
-
-        await context
-            .RequestServices.GetRequiredService<IProblemDetailsService>()
-            .WriteAsync(
-                new ProblemDetailsContext
+        services
+            .AddOptions<ForwardedHeadersOptions>()
+            .Configure<IOptions<ForwardedHeadersSettings>>(
+                (options, settings) =>
                 {
-                    HttpContext = context,
-                    ProblemDetails =
+                    // Only the proxies listed in settings, not ASP.NET Core's loopback default.
+                    options.KnownProxies.Clear();
+                    options.KnownIPNetworks.Clear();
+                    foreach (var proxy in settings.Value.KnownProxies)
                     {
-                        Status = StatusCodes.Status429TooManyRequests,
-                        Title = "Too many requests",
-                        Detail =
-                            "The rate limit was exceeded. Retry after the time in Retry-After.",
-                    },
+                        options.KnownProxies.Add(IPAddress.Parse(proxy));
+                    }
+
+                    // With no known proxy at all, the middleware would trust every peer, so any
+                    // client could pick its own address (and rate limit partition). Forward
+                    // nothing then.
+                    options.ForwardedHeaders =
+                        options.KnownProxies.Count == 0
+                            ? ForwardedHeaders.None
+                            : ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
                 }
             );
-    }
-}
 
-/// <summary>
-/// Who a request counts against: <c>user:{sub}</c> once JWT authentication has validated the
-/// token, otherwise <c>ip:{address}</c> of the connection. The address is rewritten from
-/// <c>X-Forwarded-For</c> only when the connection comes from a configured proxy (see
-/// <see cref="ForwardedHeadersSettings"/>), so a client can't choose its own partition. The
-/// rate limiter must run after <c>UseAuthentication</c> for <c>sub</c> to be known.
-/// </summary>
-public static class ClientPartition
-{
-    public const string UserPrefix = "user:";
-    public const string AddressPrefix = "ip:";
-
-    private static readonly string[] ExcludedPaths = ["/health", "/alive"];
-
-    public static bool IsExcluded(PathString path) =>
-        ExcludedPaths.Any(excluded => path.StartsWithSegments(excluded));
-
-    public static string Of(HttpContext context)
-    {
-        if (context.User.Identity?.IsAuthenticated == true)
-        {
-            var subject = context.User.FindFirst("sub")?.Value;
-            if (!string.IsNullOrEmpty(subject))
-            {
-                return UserPrefix + subject;
-            }
-        }
-
-        return AddressPrefix + (context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        logger.LogInformation("{Project} were configured", "Rate limiting and forwarded headers");
+        return services;
     }
 }

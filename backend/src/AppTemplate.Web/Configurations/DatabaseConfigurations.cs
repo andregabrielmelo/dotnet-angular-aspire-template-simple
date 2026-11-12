@@ -1,4 +1,5 @@
 ﻿using AppTemplate.Infrastructure.Data;
+using AppTemplate.UseCases.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Web.Configurations;
@@ -68,7 +69,10 @@ public static class DatabaseConfigurations
         {
             logger.LogInformation("Seeding database...");
             var context = services.GetRequiredService<ApplicationDatabaseContext>();
-            await SeedData.InitializeAsync(context);
+            await SeedData.InitializeAsync(
+                context,
+                services.GetRequiredService<IIdentityService>()
+            );
             logger.LogInformation("Database seeded successfully");
         }
         catch (Exception ex)

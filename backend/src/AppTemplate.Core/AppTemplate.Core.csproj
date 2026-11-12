@@ -7,16 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ardalis.GuardClauses" />
     <PackageReference Include="Ardalis.Result" />
     <PackageReference Include="Vogen" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AppTemplate.SharedKernel\AppTemplate.SharedKernel.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Aggregates\UserAggregate\Events\" />
-    <Folder Include="Aggregates\UserAggregate\Handlers\" />
   </ItemGroup>
 </Project>

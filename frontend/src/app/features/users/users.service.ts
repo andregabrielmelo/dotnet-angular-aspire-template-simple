@@ -6,7 +6,7 @@ import { API_BASE } from '../../core/api/api-paths';
 
 const BASE = `${API_BASE}/users`;
 
-/** The users API (reached through the backend for frontend). */
+/** The users API (reached through the dev server proxy, see API_BASE). */
 @Injectable({ providedIn: 'root' })
 export class UsersService {
   private readonly http = inject(HttpClient);

@@ -1,5 +1,5 @@
 /**
- * API permissions (Keycloak client roles on apptemplate-api). Mirrors the backend's
+ * API permissions, granted by the user's role. Mirrors the backend's
  * AppTemplate.UseCases.Authorization.Permission. The UI uses these only to show or hide
  * actions; the API enforces every one of them itself.
  */

@@ -1,42 +1,23 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate.Events;
+using AppTemplate.Core.Aggregates.UserAggregate.Events;
+using Ardalis.GuardClauses;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate;
 
 /// <summary>
-/// The application's own view of a person. Credentials live in the OpenID Connect provider
-/// (Keycloak), not here - <see cref="ExternalId"/> links this row to that identity via its
-/// <c>sub</c> claim.
+/// A person's profile: what the application knows about them. Their account (email, password,
+/// roles, lockout) is ASP.NET Core Identity's, kept in Infrastructure and linked to this profile
+/// by its id, so the domain never sees credentials (ADR 013).
 /// </summary>
-public class User(string externalId, UserName name, EmailAddress email)
-    : EntityBase<User, UserId>,
-        IAggregateRoot
+public class User(UserName name) : EntityBase<User, UserId>, IAggregateRoot
 {
-    public const int ExternalIdMaxLength = 64;
-
-    public string ExternalId { get; private set; } = externalId;
     public UserName Name { get; private set; } = name;
-    public EmailAddress Email { get; private set; } = email;
+
     public PhoneNumber? PhoneNumber { get; private set; }
 
     /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
-    public static User Create(string externalId, UserName name, EmailAddress email)
-    {
-        if (string.IsNullOrWhiteSpace(externalId))
-            throw new ArgumentException("External id cannot be empty", nameof(externalId));
-
-        if (externalId.Length > ExternalIdMaxLength)
-            throw new ArgumentException(
-                $"External id must not exceed {ExternalIdMaxLength} characters",
-                nameof(externalId)
-            );
-
-        var user = new User(externalId, name, email);
-        // Dispatched in-process once the user is saved; handle it to react to new users.
-        user.RegisterDomainEvent(new UserProvisioned(externalId));
-        return user;
-    }
+    public static User Create(UserName name) => new(name);
 
     public User UpdateName(UserName newName)
     {
@@ -44,14 +25,14 @@ public class User(string externalId, UserName name, EmailAddress email)
         {
             return this;
         }
-
+        this.RegisterDomainEvent(new UserNameUpdatedEvent(this));
         Name = newName;
         return this;
     }
 
     public User UpdatePhoneNumber(PhoneNumber newPhoneNumber)
     {
-        PhoneNumber = newPhoneNumber;
+        PhoneNumber = Guard.Against.Null(newPhoneNumber);
         return this;
     }
 }

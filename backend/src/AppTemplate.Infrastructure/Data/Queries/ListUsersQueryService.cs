@@ -1,5 +1,8 @@
-﻿using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.List;
+﻿using AppTemplate.Core.ValueObjects;
+using AppTemplate.UseCases;
+using AppTemplate.UseCases.Users;
+using AppTemplate.UseCases.Users.Queries.List;
+using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
@@ -22,8 +25,8 @@ public class ListUsersQueryService : IListUsersQueryService
         var items = await _db
             // EF Core materializes User from this SQL, so it must return every mapped column
             // (snake_case names, see UseSnakeCaseNamingConvention) - not just the projected ones.
-            .Users.FromSqlRaw(
-                "SELECT id, external_id, name, email, created_at_utc, phone_number_country_code, phone_number_number, phone_number_extension FROM users"
+            .UserProfiles.FromSqlRaw(
+                "SELECT id, name, created_at_utc, phone_number_country_code, phone_number_number, phone_number_extension FROM users"
             )
             .OrderBy(c => c.Id)
             .Skip((page - 1) * perPage)
@@ -32,7 +35,7 @@ public class ListUsersQueryService : IListUsersQueryService
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        int totalCount = await _db.Users.CountAsync(cancellationToken);
+        int totalCount = await _db.UserProfiles.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling(totalCount / (double)perPage);
         var result = new PagedResult<UserDto>(items, page, perPage, totalCount, totalPages);
 

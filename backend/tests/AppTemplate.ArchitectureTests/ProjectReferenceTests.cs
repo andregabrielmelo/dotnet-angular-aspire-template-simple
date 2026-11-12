@@ -32,10 +32,8 @@ public class ProjectReferenceTests
             "AppTemplate.ServiceDefaults",
         ],
         ["AppTemplate.ServiceDefaults"] = [],
-        // Sits outside the layers and never sees the domain (ADR 007).
-        ["AppTemplate.BackendForFrontend"] = ["AppTemplate.ServiceDefaults"],
         // Aspire project resources, for local orchestration only (ADR 002).
-        ["AppTemplate.AppHost"] = ["AppTemplate.Web", "AppTemplate.BackendForFrontend"],
+        ["AppTemplate.AppHost"] = ["AppTemplate.Web"],
     };
 
     public static TheoryData<string> SourceProjects()

@@ -14,9 +14,7 @@ export class HomePage implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly currentUser = inject(CurrentUserService);
 
-  protected readonly user = this.authService.user;
-  // From GET /api/users/me - a real API call through the backend for frontend (cookie in,
-  // Bearer token out) that also creates the user's profile on first sign-in.
+  // From GET /api/users/me - a real API call with the in-memory access token (authInterceptor).
   protected readonly profile = this.currentUser.profile;
   protected readonly canManageUsers = () => this.currentUser.hasPermission(Permission.UsersRead);
 

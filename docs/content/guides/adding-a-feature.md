@@ -21,10 +21,10 @@ Write down the operations and who may call each before you write code:
 | Rename a project | `PUT /projects/{id}` | `200` | the owner |
 | Delete a project | `DELETE /projects/{id}` | `204` | the owner |
 
-The browser calls these as `/api/projects/...`. The backend for frontend strips `/api` and adds the access token.
+The browser calls these as `/api/projects/...`. The Angular dev server's proxy strips `/api`; the browser sends the session cookie, and HttpClient the antiforgery token.
 
 Two kinds of authorization show up here, and both are normal:
-- **Permission policies** decide by *who you are*. Declare them on the endpoint with `Policies(Permission.X)`.
+- **Permissions** decide by *who you are*. Declare them on the endpoint with `Permissions(Permission.X)`.
 - **Resource rules** decide by *what you're touching*, such as "only the owner". They need the loaded data, so they live in the handler, using `ICurrentUser`, and return `Result.Forbidden()`.
 
 ## 2. Core: the domain model
@@ -37,7 +37,9 @@ Everything here lives in `backend/src/AppTemplate.Core/Aggregates/ProjectAggrega
 // ProjectId.cs
 namespace AppTemplate.Core.Aggregates.ProjectAggregate;
 
-[ValueObject<int>]
+// The database generates ids. EF Core hands a new row a negative temporary id and converts it
+// through Vogen's deserialization, so that path skips Validate; ProjectId.From(...) enforces it.
+[ValueObject<int>(deserializationStrictness: DeserializationStrictness.AllowAnything)]
 public readonly partial struct ProjectId
 {
     private static Validation Validate(int value) =>
@@ -80,37 +82,22 @@ public partial struct ProjectName
 namespace AppTemplate.Core.Aggregates.ProjectAggregate;
 
 /// <summary>
-/// A project belongs to the user who created it, identified by their identity-provider
-/// subject (<c>sub</c>), the same value as <c>User.ExternalId</c>. Only the owner may change it.
+/// A project belongs to the user who created it, identified by their <see cref="UserId"/>
+/// (the session's <c>user_id</c>). Only the owner may change it.
 /// </summary>
-public class Project(string ownerExternalId, ProjectName name)
+public class Project(UserId ownerId, ProjectName name)
     : EntityBase<Project, ProjectId>,
         IAggregateRoot
 {
-    public const int OwnerExternalIdMaxLength = 64;
-
-    public string OwnerExternalId { get; private set; } = ownerExternalId;
+    public UserId OwnerId { get; private set; } = ownerId;
     public ProjectName Name { get; private set; } = name;
 
     /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
-    public static Project Create(string ownerExternalId, ProjectName name)
-    {
-        if (string.IsNullOrWhiteSpace(ownerExternalId))
-            throw new ArgumentException("Owner cannot be empty", nameof(ownerExternalId));
+    public static Project Create(UserId ownerId, ProjectName name) => new(ownerId, name);
 
-        if (ownerExternalId.Length > OwnerExternalIdMaxLength)
-            throw new ArgumentException(
-                $"Owner must not exceed {OwnerExternalIdMaxLength} characters",
-                nameof(ownerExternalId)
-            );
-
-        return new Project(ownerExternalId, name);
-    }
-
-    public bool IsOwnedBy(string? externalId) =>
-        externalId is not null && externalId == OwnerExternalId;
+    public bool IsOwnedBy(UserId? userId) => userId == OwnerId;
 
     public Project Rename(ProjectName newName)
     {
@@ -120,7 +107,7 @@ public class Project(string ownerExternalId, ProjectName name)
 }
 ```
 
-The owner is stored as the Keycloak `sub` (what `ICurrentUser.ExternalId` returns), not as a foreign key to `users`. The handler can then authorize without loading the user, and a project doesn't depend on the `User` slice you'll eventually delete. Use a real foreign key when the relationship matters to queries.
+`Project.cs` needs `using AppTemplate.Core.Aggregates.UserAggregate;` for `UserId`. The owner is stored as the user's id (what `ICurrentUser.Id` returns), without a foreign key to `users`. The handler can then authorize without loading the user. Add a real foreign key (`HasOne<User>().WithMany().HasForeignKey(...)`, as `RefreshTokenConfiguration` does) when the relationship matters to queries or a deleted user's projects must go too.
 
 **A specification** for the read-only lookup:
 
@@ -141,7 +128,7 @@ public class ProjectByIdSpecification : Specification<Project>
 
 Add `.AsNoTracking()` when nothing will change what's loaded. Leave it off when the handler changes the entity and saves it.
 
-If something elsewhere should react when a project is created, raise a domain event in `Create` with `RegisterDomainEvent`, as `User.Create` does with `UserProvisioned`. See the [cookbook]({{< relref "cookbook#react-to-a-domain-event" >}}).
+If something elsewhere should react when a project is created, raise a domain event with `RegisterDomainEvent`, as `User.MarkRegistered` does with `UserRegisteredDomainEvent`. See the [cookbook]({{< relref "cookbook#react-to-a-domain-event" >}}).
 
 ## 3. Infrastructure: the database
 
@@ -158,9 +145,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
     {
         builder
             .Property(entity => entity.Id)
-            .HasValueGenerator<
-                VogenIdValueGenerator<ApplicationDatabaseContext, Project, ProjectId>
-            >()
+            .ValueGeneratedOnAdd()
             .HasVogenConversion()
             .IsRequired();
 
@@ -170,13 +155,10 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .HasMaxLength(ProjectName.MaxLength)
             .IsRequired();
 
-        builder
-            .Property(entity => entity.OwnerExternalId)
-            .HasMaxLength(Project.OwnerExternalIdMaxLength)
-            .IsRequired();
+        builder.Property(entity => entity.OwnerId).HasVogenConversion().IsRequired();
 
         // The list endpoint filters by owner on every call.
-        builder.HasIndex(entity => entity.OwnerExternalId);
+        builder.HasIndex(entity => entity.OwnerId);
 
         builder.Property(entity => entity.CreatedAtUtc).HasDefaultValueSql("now()");
     }
@@ -186,6 +168,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 **Register the Vogen converters** once, centrally, in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. `HasVogenConversion()` doesn't compile without them:
 
 ```csharp
+[EfCoreConverter<RefreshTokenId>]
 [EfCoreConverter<UserId>]
 [EfCoreConverter<UserName>]
 [EfCoreConverter<ProjectId>]
@@ -209,20 +192,21 @@ dotnet ef migrations add AddProjects \
 dotnet csharpier format .
 ```
 
-Read the generated `Data/Migrations/*_AddProjects.cs`: a `projects` table with snake_case columns (`owner_external_id`, `created_at_utc`), the primary key, and the index. It's applied automatically when the app starts in Development. `MigrationDriftTests` fails if you change the model and forget this step.
+Read the generated `Data/Migrations/*_AddProjects.cs`: a `projects` table with snake_case columns (`owner_id`, `created_at_utc`), the primary key, and the index. It's applied automatically when the app starts in Development. `MigrationDriftTests` fails if you change the model and forget this step.
 
 **The list query service**, `Infrastructure/Data/Queries/ListProjectsQueryService.cs`. Its interface comes in step 4. It reads straight into DTOs, without loading aggregates, and like every list query service it starts from `FromSqlRaw` (mirrors `ListUsersQueryService.cs`):
 
 ```csharp
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Projects;
-using AppTemplate.UseCases.Projects.List;
+using AppTemplate.UseCases.Projects.Queries.List;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
 public class ListProjectsQueryService(ApplicationDatabaseContext _db) : IListProjectsQueryService
 {
     public async Task<PagedResult<ProjectDto>> ListAsync(
-        string ownerExternalId,
+        UserId ownerId,
         int page,
         int perPage,
         CancellationToken cancellationToken
@@ -232,8 +216,8 @@ public class ListProjectsQueryService(ApplicationDatabaseContext _db) : IListPro
             // EF Core materializes Project from this SQL, so it must return every mapped column
             // (snake_case names). Input is always a {n} placeholder, which EF sends as a parameter.
             .Projects.FromSqlRaw(
-                "SELECT id, owner_external_id, name, created_at_utc FROM projects WHERE owner_external_id = {0}",
-                ownerExternalId
+                "SELECT id, owner_id, name, created_at_utc FROM projects WHERE owner_id = {0}",
+                ownerId.Value
             )
             .AsNoTracking();
 
@@ -252,7 +236,7 @@ public class ListProjectsQueryService(ApplicationDatabaseContext _db) : IListPro
 ```
 
 **List query services always use `FromSqlRaw`,** so the SQL that selects and filters is right there in code review. The rules:
-- **Select every mapped column** of the entity, by its snake_case name (`owner_external_id`, not `OwnerExternalId`). EF materializes the entity from this SQL, so a missing column fails at runtime. When you add a property to the entity, add its column here too.
+- **Select every mapped column** of the entity, by its snake_case name (`owner_id`, not `OwnerId`). EF materializes the entity from this SQL, so a missing column fails at runtime. When you add a property to the entity, add its column here too.
 - **Pass input only as `{0}`, `{1}`... placeholders** after the SQL string. EF sends each one as a database parameter. Never concatenate or interpolate a value into the string: `FromSqlRaw($"... = '{owner}'")` is SQL injection.
 - **Leave ordering, paging, the projection and the count to LINQ** on top of `FromSqlRaw`. EF wraps the SQL in a subquery and adds `ORDER BY`, `LIMIT`/`OFFSET` and `COUNT` itself, so the total always matches the filter.
 - **Keep the `WHERE` in the SQL** for every filter, so the query that runs is the one you read.
@@ -270,7 +254,7 @@ services
 
 ## 4. UseCases: commands, queries and handlers
 
-Everything here lives in `backend/src/AppTemplate.UseCases/Projects/`, one folder per use case. It mirrors `UseCases/Users/`.
+Everything here lives in `backend/src/AppTemplate.UseCases/Projects/`: one folder per use case, commands under `Commands/` and queries under `Queries/`. It mirrors `UseCases/Users/`.
 
 **Repository or query service?**
 - **Changing something** (load it, call a domain method, save it): use `IRepository<T>`, plus a specification for anything beyond lookup by id.
@@ -300,7 +284,7 @@ public record ProjectDto(ProjectId Id, ProjectName Name, DateTimeOffset CreatedA
 // Create/CreateProjectCommand.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Create;
+namespace AppTemplate.UseCases.Projects.Commands.Create;
 
 public record CreateProjectCommand(ProjectName Name) : ICommand<Result<ProjectDto>>;
 ```
@@ -310,7 +294,7 @@ public record CreateProjectCommand(ProjectName Name) : ICommand<Result<ProjectDt
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Create;
+namespace AppTemplate.UseCases.Projects.Commands.Create;
 
 /// <summary>The caller becomes the project's owner.</summary>
 public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
@@ -321,7 +305,7 @@ public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser
         CancellationToken cancellationToken
     )
     {
-        if (_currentUser.ExternalId is not { } owner)
+        if (_currentUser.Id is not { } owner)
             return Result<ProjectDto>.Unauthorized();
 
         var project = await _repository.AddAsync(
@@ -342,7 +326,7 @@ public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser
 // Get/GetProjectQuery.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Get;
+namespace AppTemplate.UseCases.Projects.Queries.Get;
 
 public record GetProjectQuery(ProjectId ProjectId) : IQuery<Result<ProjectDto>>;
 ```
@@ -353,7 +337,7 @@ using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.Core.Aggregates.ProjectAggregate.Specifications;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Get;
+namespace AppTemplate.UseCases.Projects.Queries.Get;
 
 /// <summary>
 /// Resource-based authorization: the owner may read their project, and anyone with
@@ -376,7 +360,7 @@ public class GetProjectHandler(IRepository<Project> _repository, ICurrentUser _c
             return Result<ProjectDto>.NotFound();
 
         if (
-            !project.IsOwnedBy(_currentUser.ExternalId)
+            !project.IsOwnedBy(_currentUser.Id)
             && !_currentUser.HasPermission(Permission.ProjectsRead)
         )
             return Result<ProjectDto>.Forbidden();
@@ -392,7 +376,9 @@ Returning `Forbidden` tells a stranger that the project exists. When that matter
 
 ```csharp
 // List/IListProjectsQueryService.cs
-namespace AppTemplate.UseCases.Projects.List;
+using AppTemplate.Core.Aggregates.UserAggregate;
+
+namespace AppTemplate.UseCases.Projects.Queries.List;
 
 /// <summary>
 /// Reads a page of projects straight into DTOs, without loading aggregates.
@@ -401,7 +387,7 @@ namespace AppTemplate.UseCases.Projects.List;
 public interface IListProjectsQueryService
 {
     Task<PagedResult<ProjectDto>> ListAsync(
-        string ownerExternalId,
+        UserId ownerId,
         int page,
         int perPage,
         CancellationToken cancellationToken
@@ -411,7 +397,7 @@ public interface IListProjectsQueryService
 
 ```csharp
 // List/ListProjectsQuery.cs
-namespace AppTemplate.UseCases.Projects.List;
+namespace AppTemplate.UseCases.Projects.Queries.List;
 
 /// <summary>The caller's own projects, a page at a time.</summary>
 public record ListProjectsQuery(int Page = 1, int PerPage = Constants.DEFAULT_PAGE_SIZE)
@@ -422,7 +408,7 @@ public record ListProjectsQuery(int Page = 1, int PerPage = Constants.DEFAULT_PA
 // List/ListProjectsHandler.cs
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.List;
+namespace AppTemplate.UseCases.Projects.Queries.List;
 
 public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser _currentUser)
     : IQueryHandler<ListProjectsQuery, Result<PagedResult<ProjectDto>>>
@@ -432,7 +418,7 @@ public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser 
         CancellationToken cancellationToken
     )
     {
-        if (_currentUser.ExternalId is not { } owner)
+        if (_currentUser.Id is not { } owner)
             return Result<PagedResult<ProjectDto>>.Unauthorized();
 
         return await _query.ListAsync(owner, query.Page, query.PerPage, cancellationToken);
@@ -448,7 +434,7 @@ The query-service interface lives in UseCases, not Core, because it returns a us
 // Rename/RenameProjectCommand.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Rename;
+namespace AppTemplate.UseCases.Projects.Commands.Rename;
 
 public record RenameProjectCommand(ProjectId ProjectId, ProjectName Name)
     : ICommand<Result<ProjectDto>>;
@@ -459,7 +445,7 @@ public record RenameProjectCommand(ProjectId ProjectId, ProjectName Name)
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Rename;
+namespace AppTemplate.UseCases.Projects.Commands.Rename;
 
 /// <summary>Only the owner may rename a project.</summary>
 public class RenameProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
@@ -474,7 +460,7 @@ public class RenameProjectHandler(IRepository<Project> _repository, ICurrentUser
         if (project is null)
             return Result<ProjectDto>.NotFound();
 
-        if (!project.IsOwnedBy(_currentUser.ExternalId))
+        if (!project.IsOwnedBy(_currentUser.Id))
             return Result<ProjectDto>.Forbidden();
 
         project.Rename(command.Name);
@@ -491,26 +477,19 @@ Handlers never touch HTTP, EF Core or the `DbContext`. They return a `Result` fo
 
 ## 5. A new permission
 
-`projects:read` lets an admin read anyone's project. A permission is a Keycloak client role, so it's added in three places:
+`projects:read` lets an admin read anyone's project. A permission is granted by a role, so it's added in three places:
 
-1. **`UseCases/Authorization/Permission.cs`**: the constant, and add it to `All`. Every name in `All` automatically becomes an ASP.NET Core policy.
+1. **`UseCases/Authorization/Permission.cs`**: a new instance of the `Permission` smart enum; `Permission.List` picks it up.
    ```csharp
    /// <summary>Read anyone's project (everyone may read their own).</summary>
-   public const string ProjectsRead = "projects:read";
-
-   public static IReadOnlyList<string> All { get; } =
-   [UsersRead, UsersWrite, UsersDelete, ProjectsRead];
+   public static readonly Permission ProjectsRead = new(nameof(ProjectsRead), "projects:read");
    ```
-2. **`AppHost/Realms/apptemplate-realm.json`**: a client role on `apptemplate-api`, added to the `admin` realm role's composites:
-   ```json
-   { "name": "projects:read", "description": "Read anyone's project" }
-   ```
-   Keycloak imports the realm only into an empty data volume. Delete the Keycloak volume, or add the role in the admin console (`http://localhost:8080`).
+2. **`UseCases/Authorization/Role.cs`**: nothing to do for `Admin`, which gets `[.. Permission.List]`. A role that should have only some permissions lists them in its instance. Users get the new permission at their next sign-in or security stamp check, within 30 minutes.
 3. **`frontend/src/app/core/auth/permissions.ts`**: `ProjectsRead: 'projects:read'`, so the UI can show or hide things.
 
 ## 6. Web: the endpoints
 
-One class per operation, in `backend/src/AppTemplate.Web/Features/ProjectFeatures/`. Each file holds the endpoint, its request, and its validator. It mirrors `Web/Features/UserFeatures/`.
+One class per operation, in `backend/src/AppTemplate.Web/Endpoints/Projects/`, in the namespace `AppTemplate.Web.Endpoints.Projects`. Each file holds the endpoint, its request, and its validator. It mirrors `Web/Endpoints/Users/`.
 
 **The response shape**, shared by the endpoints:
 
@@ -518,7 +497,7 @@ One class per operation, in `backend/src/AppTemplate.Web/Features/ProjectFeature
 // ProjectRecord.cs
 using AppTemplate.UseCases.Projects;
 
-namespace AppTemplate.Web.Features.ProjectFeatures;
+namespace AppTemplate.Web.Endpoints.Projects;
 
 /// <summary>A project as the API returns it: plain values, never the aggregate.</summary>
 public record ProjectRecord(int Id, string Name, DateTimeOffset CreatedAtUtc)
@@ -532,10 +511,10 @@ public record ProjectRecord(int Id, string Name, DateTimeOffset CreatedAtUtc)
 
 ```csharp
 using AppTemplate.Core.Aggregates.ProjectAggregate;
-using AppTemplate.UseCases.Projects.Create;
+using AppTemplate.UseCases.Projects.Commands.Create;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Features.ProjectFeatures;
+namespace AppTemplate.Web.Endpoints.Projects;
 
 public sealed class CreateProjectRequest
 {
@@ -605,8 +584,8 @@ public sealed class CreateProjectValidator : Validator<CreateProjectRequest>
 ```
 
 **Each part of the endpoint:**
-- **No `Policies(...)`:** any signed-in user may create. The global authorization fallback already rejects anonymous callers. An endpoint for admins only adds `Policies(Permission.X)`; a public one calls `AllowAnonymous()` and is added to `EndpointAuthorizationTests`.
-- **The validator** checks the request's shape, so bad input gets a 400 with an `errors` object keyed by field name. `ProjectName.From` would throw on the same input, but that would be a 500. Validators turn expected bad input into a proper answer.
+- **No `Permissions(...)`:** any signed-in user may create. FastEndpoints already rejects anonymous callers. An endpoint for admins only adds `Permissions(Permission.X)`; a public one calls `AllowAnonymous()` and is added to `EndpointAuthorization`.
+- **The validator** checks the request's shape, so bad input gets a 400 (FastEndpoints' `ErrorResponse`) with an `errors` object keyed by field name. `ProjectName.From` would throw on the same input, but that would be a 500. Validators turn expected bad input into a proper answer.
 - **`ResultExtensions`** is the only place a `Result` becomes HTTP: `ToOkResult` (200), `ToCreatedResult` (201 with `Location`), `ToNoContentResult` (204). `Invalid` becomes 400, `Unauthorized` 401, `Forbidden` 403, `NotFound` 404, `Conflict` 409, and anything else 500, all as problem details ([ADR 009]({{< relref "architecture-decisions/adr-009-problem-details-error-contract" >}})).
 - **`Summary`, `Tags` and `Description`** feed the OpenAPI document, which in turn generates the frontend's types.
 - **`Location`** is the API's path (`/projects/1`). A browser client reaches it as `/api/projects/1`.
@@ -652,10 +631,10 @@ public class DeleteEndpoint(IMediator _mediator)
 
 ```csharp
 using AppTemplate.UseCases.Projects;
-using AppTemplate.UseCases.Projects.List;
+using AppTemplate.UseCases.Projects.Queries.List;
 using AppTemplate.Web.Extensions;
 
-namespace AppTemplate.Web.Features.ProjectFeatures;
+namespace AppTemplate.Web.Endpoints.Projects;
 
 public sealed class ListProjectsRequest
 {
@@ -723,7 +702,7 @@ public sealed class ListProjectsValidator : Validator<ListProjectsRequest>
 }
 ```
 
-In Web, write `UseCases.PagedResult<T>` in full: `Ardalis.Result` has a `PagedResult<T>` too, and both namespaces are global usings there, so the short name doesn't compile. The users list also adds a `Link` header with first, previous, next and last URLs; copy `AddLinkHeader` from `Web/Features/UserFeatures/ListEndpoint.cs` if your clients want it.
+In Web, write `UseCases.PagedResult<T>` in full: `Ardalis.Result` has a `PagedResult<T>` too, and both namespaces are global usings there, so the short name doesn't compile. The users list also adds a `Link` header with first, previous, next and last URLs; copy `AddLinkHeader` from `Web/Endpoints/Users/ListEndpoint.cs` if your clients want it.
 
 ## 7. Update the API contract
 
@@ -766,7 +745,7 @@ import { API_BASE } from '../../core/api/api-paths';
 
 const BASE = `${API_BASE}/projects`;
 
-/** The projects API (reached through the backend for frontend). */
+/** The projects API (reached through the dev server proxy, see API_BASE). */
 @Injectable({ providedIn: 'root' })
 export class ProjectsService {
   private readonly http = inject(HttpClient);
@@ -789,7 +768,7 @@ export class ProjectsService {
 }
 ```
 
-The session cookie and the `X-CSRF` header are added for you by the browser and `auth-interceptor.ts`.
+The browser sends the session cookie for you, and HttpClient adds the antiforgery token to requests other than GET.
 
 **The page**, `projects-page.ts`. It uses signals for state and a reactive form, and reads validation messages from the problem details `errors` object:
 
@@ -864,7 +843,7 @@ export class ProjectsPage implements OnInit {
 - `role="alert"` on the error message
 - an `@for` list with an `@empty` row
 
-Use no inline scripts or event-handler attributes: the content security policy blocks them, and `npm run csp:check` fails the build.
+Use no inline scripts or event-handler attributes: the content security policy blocks them.
 
 **The route**, in `frontend/src/app/app.routes.ts`:
 
@@ -882,37 +861,37 @@ For a page only some users may open, add `permissionGuard(Permission.X)` next to
 
 ## 9. Tests
 
-**Unit tests** cover domain rules and handler decisions, without a database. `backend/tests/AppTemplate.UnitTests/`, mirroring `Core/UserAggregate/` and `UseCases/Users/`:
+**Unit tests** cover domain rules and handler decisions, without a database. `backend/tests/AppTemplate.UnitTests/`, mirroring `Core/UserAggregate/` and `UseCases/Users/`, with one class per member, named `<Type><Member>`, and Shouldly assertions:
 
 ```csharp
-// Core/ProjectAggregate/ProjectTests.cs (excerpt)
+// Core/ProjectAggregate/ProjectIsOwnedBy.cs (excerpt)
 [Theory]
-[InlineData("owner-sub", true)]
-[InlineData("someone-else", false)]
+[InlineData(1, true)]
+[InlineData(2, false)]
 [InlineData(null, false)]
-public void IsOwnedBy_ComparesTheSubject(string? caller, bool expected)
+public void ComparesTheUserId(int? caller, bool expected)
 {
-    var project = Project.Create("owner-sub", ProjectName.From("Website"));
+    var project = Project.Create(UserId.From(1), ProjectName.From("Website"));
 
-    Assert.Equal(expected, project.IsOwnedBy(caller));
+    project.IsOwnedBy(caller is null ? null : UserId.From(caller.Value)).ShouldBe(expected);
 }
 ```
 
 ```csharp
-// UseCases/Projects/RenameProjectHandlerTests.cs (excerpt)
+// UseCases/Projects/RenameProjectHandlerHandle.cs (excerpt)
 private readonly IRepository<Project> _repository = Substitute.For<IRepository<Project>>();
 private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
-private readonly Project _project = Project.Create("owner-sub", ProjectName.From("Website"));
+private readonly Project _project = Project.Create(UserId.From(1), ProjectName.From("Website"));
 
 [Fact]
-public async Task Handle_SomeoneElse_IsForbiddenAndChangesNothing()
+public async Task ReturnsForbiddenForSomeoneElseAndChangesNothing()
 {
-    _currentUser.ExternalId.Returns("another-sub");
+    _currentUser.Id.Returns(UserId.From(2));
 
     var result = await Handle();
 
-    Assert.Equal(ResultStatus.Forbidden, result.Status);
-    Assert.Equal("Website", _project.Name.Value);
+    result.Status.ShouldBe(ResultStatus.Forbidden);
+    _project.Name.Value.ShouldBe("Website");
     await _repository
         .DidNotReceive()
         .UpdateAsync(Arg.Any<Project>(), Arg.Any<CancellationToken>());
@@ -921,14 +900,64 @@ public async Task Handle_SomeoneElse_IsForbiddenAndChangesNothing()
 
 Cover each `Result` a handler can return: success, `NotFound`, `Forbidden`, and the permission that overrides ownership. In a test namespace such as `AppTemplate.UnitTests.UseCases.Projects`, add `using AppTemplate.UseCases.Projects;` rather than writing `UseCases.Projects.ProjectDto`, which resolves against the test namespace.
 
-**Functional tests** send real HTTP requests through the whole API to a real Postgres, in `backend/tests/AppTemplate.FunctionalTests/ProjectFeatures/ProjectEndpointsTests.cs` (mirrors `UserFeatures/UserEndpointsTests.cs`):
+**Integration tests** (`backend/tests/AppTemplate.IntegrationTests/Data/`) are only needed for persistence behavior of your own, such as a new unique index or a raw-SQL query service; mirror `EmailUniqueIndex` and `ListUsersQueryServiceList`. `MigrationDrift` already covers the new migration.
+
+**Functional tests** send real HTTP requests through the whole API to a real Postgres, one class per route and verb in `backend/tests/AppTemplate.FunctionalTests/ApiEndpoints/` (mirrors `UserGetById.cs`). `ProjectsPost.cs` and `ProjectGetById.cs`:
 
 ```csharp
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
-public class ProjectEndpointsTests(AppTemplateWebApplicationFactory factory)
-    : IClassFixture<AppTemplateWebApplicationFactory>
+public class ProjectsPost(CustomWebApplicationFactory<Program> factory)
+    : IClassFixture<CustomWebApplicationFactory<Program>>
 {
-    private static string NewSubject() => $"sub-{Guid.NewGuid():N}";
+    [Fact]
+    public async Task ReturnsCreatedWithALocationThatResolves()
+    {
+        var (_, session) = await factory.CreateSignedInSessionAsync();
+
+        var response = await session.Client.PostAsJsonAsync(
+            "/projects",
+            new { name = "Website" },
+            TestContext.Current.CancellationToken
+        );
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<ProjectRecord>(
+            TestContext.Current.CancellationToken
+        );
+        var fetched = await session.Client.GetAndDeserializeAsync<ProjectRecord>(
+            response.Headers.Location!.ToString()
+        );
+        fetched.Id.ShouldBe(created!.Id);
+    }
+}
+
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
+public class ProjectGetById(CustomWebApplicationFactory<Program> factory)
+    : IClassFixture<CustomWebApplicationFactory<Program>>
+{
+    [Fact]
+    public async Task ReturnsForbiddenForSomeoneElsesProjectWithoutProjectsRead()
+    {
+        var (_, owner) = await factory.CreateSignedInSessionAsync();
+        var project = await CreateAsync(owner.Client, "Mine");
+        var (_, stranger) = await factory.CreateSignedInSessionAsync();
+
+        await stranger.Client.GetAndEnsureForbiddenAsync($"/projects/{project.Id}");
+    }
+
+    [Fact]
+    public async Task ReturnsSomeoneElsesProjectGivenProjectsRead()
+    {
+        var (_, owner) = await factory.CreateSignedInSessionAsync();
+        var project = await CreateAsync(owner.Client, "Mine");
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
+
+        var fetched = await admin.Client.GetAndDeserializeAsync<ProjectRecord>(
+            $"/projects/{project.Id}"
+        );
+
+        fetched.Name.ShouldBe("Mine");
+    }
 
     private static async Task<ProjectRecord> CreateAsync(HttpClient client, string name)
     {
@@ -936,44 +965,16 @@ public class ProjectEndpointsTests(AppTemplateWebApplicationFactory factory)
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<ProjectRecord>())!;
     }
-
-    [Fact]
-    public async Task Create_ReturnsCreatedWithALocationThatResolves()
-    {
-        var client = factory.CreateAuthenticatedClient(NewSubject());
-
-        var response = await client.PostAsJsonAsync("/projects", new { name = "Website" });
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var created = await response.Content.ReadFromJsonAsync<ProjectRecord>();
-        var fetched = await client.GetFromJsonAsync<ProjectRecord>(response.Headers.Location);
-        Assert.Equal(created!.Id, fetched!.Id);
-    }
-
-    [Fact]
-    public async Task Get_SomeoneElsesProject_IsForbiddenWithoutProjectsRead()
-    {
-        var project = await CreateAsync(factory.CreateAuthenticatedClient(NewSubject()), "Mine");
-
-        var stranger = await factory
-            .CreateAuthenticatedClient(NewSubject())
-            .GetAsync($"/projects/{project.Id}");
-        var admin = await factory
-            .CreateAuthenticatedClient(NewSubject(), Permission.ProjectsRead)
-            .GetAsync($"/projects/{project.Id}");
-
-        Assert.Equal(HttpStatusCode.Forbidden, stranger.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, admin.StatusCode);
-    }
 }
 ```
 
 **How the functional tests work:**
-- `CreateAuthenticatedClient(sub, permissions...)` signs a request in as that subject, with those permissions. A fresh subject per test keeps tests independent, because they share one database per class.
+- `factory.CreateSignedInSessionAsync(role)` saves a user with that role and signs them in through the real `POST /auth/login`. Its `TestSession.Client` sends their session cookie (and the antiforgery token), whose permissions come from the role (`Admin` has every permission, including the new `projects:read`). A fresh user per test keeps tests independent, because they share one database per class.
+- `Ardalis.HttpClientTestExtensions` (`GetAndDeserializeAsync`, `GetAndEnsureForbiddenAsync`, ...) asserts status codes in one line; Shouldly asserts the rest.
 - Cover, for every endpoint:
   - success, including the `Location` header for a create
   - invalid input (400, with the field in `errors`)
-  - no session (401)
+  - no session (401: `factory.CreateClient()` has no token)
   - someone else's resource (403)
   - a missing id (404)
   - for lists: paging, and that callers see only their own rows
@@ -981,8 +982,8 @@ public class ProjectEndpointsTests(AppTemplateWebApplicationFactory factory)
 **Frontend specs** live next to their files: `projects.service.spec.ts` checks URLs, methods and bodies with `HttpTestingController`; `projects-page.spec.ts` checks the rendered list, creating a project, and showing a 400's field message. Mirror `users.service.spec.ts` and `users-page.spec.ts`.
 
 Some tests need no changes:
-- The **architecture tests** check that the new endpoints live under `Web.Features`, that the handlers live in UseCases, and that the names end in `Command` or `Query`.
-- **`EndpointAuthorizationTests`** still passes, because none of the new routes is anonymous.
+- The **architecture tests** check that the new endpoints live in a feature namespace under `AppTemplate.Web`, that the handlers live in UseCases, and that the names end in `Command` or `Query`.
+- **`EndpointAuthorization`** still passes, because none of the new routes is anonymous.
 
 ## 10. Finish
 
@@ -995,15 +996,15 @@ dotnet csharpier format . && dotnet build AppTemplate.slnx && dotnet test AppTem
 From `frontend/`:
 
 ```bash
-npm run format && npm run lint && npm run test && npm run build && npm run csp:check
+npm run format && npm run lint && npm run test && npm run build
 ```
 
-Then run the app (`dotnet run --project src/AppTemplate.AppHost`), sign in at `https://localhost:7100`, and use the new page. Commit as `feat: add projects`, on a `feature/` branch.
+Then run the app (`dotnet run --project src/AppTemplate.AppHost`), open the `angular` resource from the Aspire dashboard, sign in, and use the new page. Commit as `feat: add projects`, on a `feature/` branch.
 
 ## 11. Later: removing the `User` reference
 
-Once your own features exist, `User` is no longer needed as an example. What to do with it:
-- **Keep** `GET /users/me` (`MeEndpoint`, `GetOrCreateCurrentUserHandler`) if you want a local row per signed-in person; the frontend's `CurrentUserService` uses it for the user's name and permissions.
+Once your own features exist, most of the `User` slice is no longer needed as an example. Part of it is how people sign in, though:
+- **Keep** the `User` aggregate (the profile; the account is Identity's `ApplicationUser`), registration, sign-in and logout (`Web/Endpoints/Authentication/`, `Web/Services/`, `UseCases/Authentication/`, `UseCases/Users/Commands/Register/`, `UseCases/Users/Handlers/`, `Infrastructure/Identity/`), and `GET /users/me` (`MeEndpoint`, `GetCurrentUserHandler`): the frontend's `CurrentUserService` uses it for the user's name and permissions.
 - **Delete** what's only an example: the update, delete and list endpoints, their use cases and tests, `features/users/`, and the `users:*` permissions you don't need.
-- **Keep** `ICurrentUser`, `Permission` and `KeycloakPermissionsClaimsTransformation`: they are the authorization mechanism, not the example.
-- Removing the `users` table needs a migration. Removing `MeEndpoint` means pointing `CurrentUserService` elsewhere, for example at `/backend-for-frontend/user` for the name, plus an endpoint that returns the caller's permissions.
+- **Keep** `ICurrentUser`, `Permission` and `Role`: they are the authorization mechanism, not the example.
+- Moving the profile fields you don't need off `User` (such as the phone number) needs a migration.

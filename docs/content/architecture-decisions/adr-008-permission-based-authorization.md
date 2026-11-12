@@ -6,7 +6,7 @@ weight: 80
 # ADR 008: Permission-based authorization with Keycloak client roles
 
 ## Status
-Accepted
+Superseded by [ADR 011]({{< relref "adr-011-role-based-permissions" >}}): roles on the user now grant the permissions, instead of Keycloak client roles.
 
 ## Context
 Until now any authenticated user could call every `/users` endpoint, including deleting other users. Only users with the right permissions may perform administrative actions. Some rules also depend on the resource itself: everyone may edit their own profile, but not anyone else's.

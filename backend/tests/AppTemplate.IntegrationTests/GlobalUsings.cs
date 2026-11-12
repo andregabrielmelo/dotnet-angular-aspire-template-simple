@@ -1,0 +1,10 @@
+global using AppTemplate.Core.Aggregates.UserAggregate;
+global using AppTemplate.Core.ValueObjects;
+global using AppTemplate.Infrastructure.Data;
+global using AppTemplate.SharedKernel;
+global using AppTemplate.Tests;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.DependencyInjection;
+global using NSubstitute;
+global using Shouldly;
+global using Xunit;
