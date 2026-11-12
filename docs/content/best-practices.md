@@ -42,7 +42,7 @@ Explicit guidelines for projects built from this template, so every project that
 
 ## Production deployment
 
-The AppHost is for local development ([ADR 002]({{< relref "architecture-decisions/adr-002-aspire-orchestration" >}})). Wherever you deploy:
+The AppHost is for local development ([ADR 002]({{< relref "architecture-decisions/adr-002-aspire-orchestration" >}})). [Deploying to production]({{< relref "guides/deploying" >}}) walks through a deployment step by step. Wherever you deploy:
 
 - **Serve the SPA and `/api` from one origin** (the default this template assumes): the host strips `/api` before forwarding to the API, as the dev server proxy does, so the session and antiforgery cookies (`SameSite=Strict`) stay first-party and no CORS is needed.
   - `app.example.com` with `api.example.com` (same site, different origins) also works: enable CORS on the API for exactly the app's origin with credentials, and send requests `withCredentials`. Angular's HttpClient then no longer adds the antiforgery header by itself (it only does for same-origin URLs), so add it in an interceptor.
