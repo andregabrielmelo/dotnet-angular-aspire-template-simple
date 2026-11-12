@@ -9,6 +9,19 @@ updates:
       prefix: build
       include: scope
     open-pull-requests-limit: 10
+    groups: # packages released together are bumped in one PR (first matching group wins)
+      aspire:
+        patterns: ["Aspire.*", "CommunityToolkit.Aspire.*"]
+      dotnet-platform: # ASP.NET Core, EF Core, Npgsql and the System/Extensions packages ship with each .NET patch
+        patterns: ["Microsoft.*", "System.*", "Npgsql.*", "EFCore.*"]
+      opentelemetry:
+        patterns: ["OpenTelemetry.*"]
+      serilog:
+        patterns: ["Serilog*"]
+      ardalis:
+        patterns: ["Ardalis.*"]
+      tests:
+        patterns: ["xunit*", "NSubstitute", "Shouldly", "coverlet.*", "Testcontainers.*", "NetArchTest.*"]
 
   - package-ecosystem: npm
     directory: "/frontend"
@@ -19,6 +32,15 @@ updates:
       prefix: build
       include: scope
     open-pull-requests-limit: 10
+    groups: # packages released together are bumped in one PR (first matching group wins)
+      angular:
+        patterns: ["@angular/*", "@angular-devkit/*", "angular-eslint"]
+      lint:
+        patterns: ["eslint", "@eslint/*", "typescript-eslint", "prettier"]
+      tailwind:
+        patterns: ["tailwindcss", "@tailwindcss/*", "postcss"]
+      tests:
+        patterns: ["vitest", "jsdom"]
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -33,3 +55,15 @@ updates:
       actions: # one PR bumps every pinned action SHA together
         patterns:
           - "*"
+
+  - package-ecosystem: dotnet-sdk # the SDK pinned in global.json
+    directory: "/"
+    target-branch: develop # gitflow: dependency bumps land in develop and ship with the next release
+    schedule:
+      interval: weekly
+    commit-message: # Conventional Commits: build(deps): ...
+      prefix: build
+      include: scope
+    ignore: # a new major .NET also needs the target framework and packages moved; do that deliberately
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

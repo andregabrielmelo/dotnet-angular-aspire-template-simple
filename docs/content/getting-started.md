@@ -21,7 +21,7 @@ This is a plain find-and-replace across the repo (not a `dotnet new` template en
 
 ## 3. Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download), 10.0.114 or a later 10.0 feature band (`global.json` pins it)
 - [Node.js](https://nodejs.org/) (LTS) and npm
 - [Docker](https://www.docker.com/) or Podman (Aspire runs Postgres and Mailpit in containers)
 - A trusted ASP.NET Core development certificate: every request is HTTPS, development included ([ADR 016]({{< relref "architecture-decisions/adr-016-https-in-development" >}})). Run once, then restart the browser:
