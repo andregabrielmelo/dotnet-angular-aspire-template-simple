@@ -92,7 +92,7 @@ Dependencies point inward:
 
 ## 8. Health checks
 
-- Postgres gates readiness (`/health`, tag `ready`). A new required dependency joins it; an optional one must not gate readiness, and the code that uses it fails open. Never tag a dependency `live`. Policy: `docs/content/best-practices.md`, Health checks.
+- Postgres gates readiness (`/health`, tag `ready`). A new required dependency joins it; an optional one must not gate readiness, and the code that uses it fails open. One deliberate exception: with Redis down, cached reads fall back, but a write that must invalidate cache entries saves and then answers 500, because `RemoveByTagAsync` needs Redis (ADR 017). Never tag a dependency `live`. Policy: `docs/content/best-practices.md`, Health checks.
 
 ## 9. Testing ([ADR 006](docs/content/architecture-decisions/adr-006-testing-strategy.md))
 
