@@ -1,4 +1,3 @@
-using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;

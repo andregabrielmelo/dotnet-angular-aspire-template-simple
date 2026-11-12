@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using AppTemplate.FunctionalTests.ApiEndpoints;
+using AppTemplate.FunctionalTests.User;
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Web.Endpoints.Users;

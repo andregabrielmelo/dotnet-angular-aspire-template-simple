@@ -1,4 +1,6 @@
-namespace AppTemplate.FunctionalTests.ApiEndpoints;
+using AppTemplate.FunctionalTests.User;
+
+namespace AppTemplate.FunctionalTests.Auth;
 
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)

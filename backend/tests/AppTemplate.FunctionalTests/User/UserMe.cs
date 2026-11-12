@@ -1,4 +1,4 @@
-namespace AppTemplate.FunctionalTests.ApiEndpoints;
+namespace AppTemplate.FunctionalTests.User;
 
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class UserMe(CustomWebApplicationFactory<Program> factory)

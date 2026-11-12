@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Identity;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;

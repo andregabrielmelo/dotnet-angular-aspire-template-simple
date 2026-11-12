@@ -1,4 +1,5 @@
 using System.Text;
+using AppTemplate.FunctionalTests.User;
 using AppTemplate.Web.Configurations;
 
 namespace AppTemplate.FunctionalTests.Security;
@@ -28,7 +29,7 @@ public class CsrfProtection(CustomWebApplicationFactory<Program> factory)
         JsonContent.Create(new { name = "Renamed By Another Site" });
 
     private static async Task<string> NameOf(TestSession session) =>
-        (await session.Client.GetAndDeserializeAsync<ApiEndpoints.UserMe.MeBody>("/users/me")).Name;
+        (await session.Client.GetAndDeserializeAsync<UserMe.MeBody>("/users/me")).Name;
 
     [Fact]
     public async Task AcceptsASignedInRequestWithTheToken()

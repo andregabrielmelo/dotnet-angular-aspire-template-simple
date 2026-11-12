@@ -1,6 +1,6 @@
 using AppTemplate.Web.Endpoints.Users;
 
-namespace AppTemplate.FunctionalTests.ApiEndpoints;
+namespace AppTemplate.FunctionalTests.User;
 
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class UserUpdate(CustomWebApplicationFactory<Program> factory)
