@@ -88,7 +88,7 @@ public static class OptionConfigurations
             )
             .ValidateOnStart();
 
-        logger.LogInformation("{Project} were configured", "Options");
+        StartupLog.Configured(logger, "Options");
 
         return services;
     }

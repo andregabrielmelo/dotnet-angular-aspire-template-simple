@@ -9,7 +9,7 @@ builder.AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and healt
 
 var startupLogger = new SerilogLoggerFactory(serilogLogger).CreateLogger<Program>();
 
-startupLogger.LogInformation("Starting web host");
+StartupLog.StartingWebHost(startupLogger);
 
 builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger);
 builder.Services.AddServiceConfigurations(startupLogger, builder);

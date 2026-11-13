@@ -13,7 +13,7 @@ namespace AppTemplate.Web.Behaviors;
 /// always reaches the handler. Concurrent misses for one key still share one handler call. Writes
 /// drop entries by tag (<see cref="CacheTags"/>). Misses are logged at Debug, by key.
 /// </summary>
-public class CachingBehavior<TMessage, TResponse>(
+public partial class CachingBehavior<TMessage, TResponse>(
     HybridCache cache,
     IOptions<CachingSettings> settings,
     ILogger<CachingBehavior<TMessage, TResponse>> logger
@@ -39,7 +39,7 @@ public class CachingBehavior<TMessage, TResponse>(
                 static async (state, token) =>
                 {
                     // The factory only runs on a miss.
-                    state.logger.LogDebug("Cache miss for {CacheKey}", state.CacheKey);
+                    LogCacheMiss(state.logger, state.CacheKey);
                     var response = await state.next(state.message, token);
                     return response is Ardalis.Result.IResult { Status: not ResultStatus.Ok }
                         ? throw new NotCachedException(response)
@@ -57,6 +57,9 @@ public class CachingBehavior<TMessage, TResponse>(
             return notCached.Response;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Cache miss for {CacheKey}")]
+    private static partial void LogCacheMiss(ILogger logger, string cacheKey);
 
     private sealed class NotCachedException(TResponse response) : Exception
     {

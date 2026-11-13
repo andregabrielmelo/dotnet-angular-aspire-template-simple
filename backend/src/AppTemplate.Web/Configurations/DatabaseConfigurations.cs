@@ -39,10 +39,10 @@ public static class DatabaseConfigurations
             var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
             if (pendingMigrations.Any())
             {
-                logger.LogInformation("Applying database migrations...");
+                StartupLog.ApplyingMigrations(logger);
                 foreach (var migration in pendingMigrations)
                 {
-                    logger.LogInformation("Pending migration: {migration}", migration);
+                    StartupLog.PendingMigration(logger, migration);
                 }
 
                 await context.Database.MigrateAsync();
@@ -50,11 +50,7 @@ public static class DatabaseConfigurations
         }
         catch (Exception ex)
         {
-            logger.LogError(
-                ex,
-                "An error occurred migrating the DB. {exceptionMessage}",
-                ex.Message
-            );
+            StartupLog.MigrationFailed(logger, ex, ex.Message);
             throw; // Re-throw to make startup fail if migrations fail
         }
     }
@@ -67,17 +63,17 @@ public static class DatabaseConfigurations
 
         try
         {
-            logger.LogInformation("Seeding database...");
+            StartupLog.SeedingDatabase(logger);
             var context = services.GetRequiredService<ApplicationDatabaseContext>();
             await SeedData.InitializeAsync(
                 context,
                 services.GetRequiredService<IIdentityService>()
             );
-            logger.LogInformation("Database seeded successfully");
+            StartupLog.DatabaseSeeded(logger);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "An error occurred seeding the DB. {exceptionMessage}", ex.Message);
+            StartupLog.SeedingFailed(logger, ex, ex.Message);
             // Don't re-throw for seeding errors - it's not critical
         }
     }

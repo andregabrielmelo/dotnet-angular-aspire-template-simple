@@ -21,8 +21,8 @@ public static class AuthenticationConfigurations
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
-        logger.LogInformation(
-            "{Project} were configured ({Permissions} permissions)",
+        StartupLog.AuthorizationConfigured(
+            logger,
             "Authentication and authorization",
             Permission.List.Count
         );

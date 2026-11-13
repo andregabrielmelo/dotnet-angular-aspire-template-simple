@@ -9,7 +9,7 @@ namespace AppTemplate.Web.Behaviors;
 /// logs. Never log the request, the response or their properties here (<c>{@Request}</c>,
 /// reflection over their properties): nothing redacts them.
 /// </summary>
-public class LoggingBehavior<TRequest, TResponse>(
+public partial class LoggingBehavior<TRequest, TResponse>(
     ILogger<LoggingBehavior<TRequest, TResponse>> logger
 ) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IMessage
@@ -22,10 +22,7 @@ public class LoggingBehavior<TRequest, TResponse>(
     {
         Guard.Against.Null(request);
 
-        if (logger.IsEnabled(LogLevel.Information))
-        {
-            logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
-        }
+        LogHandling(logger, typeof(TRequest).Name);
 
         var sw = Stopwatch.StartNew();
 
@@ -33,15 +30,21 @@ public class LoggingBehavior<TRequest, TResponse>(
 
         sw.Stop();
 
-        if (logger.IsEnabled(LogLevel.Information))
-        {
-            logger.LogInformation(
-                "Handled {RequestName} in {ElapsedMilliseconds} ms",
-                typeof(TRequest).Name,
-                sw.ElapsedMilliseconds
-            );
-        }
+        LogHandled(logger, typeof(TRequest).Name, sw.ElapsedMilliseconds);
 
         return response;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Handling {RequestName}")]
+    private static partial void LogHandling(ILogger logger, string requestName);
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Handled {RequestName} in {ElapsedMilliseconds} ms"
+    )]
+    private static partial void LogHandled(
+        ILogger logger,
+        string requestName,
+        long elapsedMilliseconds
+    );
 }

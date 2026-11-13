@@ -12,7 +12,7 @@ public static class MediatorConfigurations
         Microsoft.Extensions.Logging.ILogger logger
     )
     {
-        logger.LogInformation("Registering Mediator SourceGen and Behaviors");
+        StartupLog.RegisteringMediator(logger);
         services.AddMediator(options =>
         {
             // Lifetime: Singleton is fastest per docs; Scoped/Transient also supported.

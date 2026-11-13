@@ -116,7 +116,7 @@ public static class RateLimitingConfigurations
                 }
             );
 
-        logger.LogInformation("{Project} were configured", "Rate limiting and forwarded headers");
+        StartupLog.Configured(logger, "Rate limiting and forwarded headers");
         return services;
     }
 }
