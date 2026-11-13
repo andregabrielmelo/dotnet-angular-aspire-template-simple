@@ -54,6 +54,8 @@ Everything is an environment variable (`Section__Key`); `appsettings.json` only 
 | `ConnectionStrings__cache` | no | Redis for HybridCache's L2. Without it, each instance caches in memory only. With several instances, set it, or another instance may serve a stale entry for up to the local lifetime. |
 | `Mailserver__Hostname`, `Mailserver__Port`, `Mailserver__FromAddress` | yes | The sender connects without credentials (`MimeKitEmailSender`, `SecureSocketOptions.Auto`). Use a relay that accepts the API, or add a user name and password to `MailserverConfiguration` first. |
 | `AccountLinks__ClientUrl` | yes | The public URL of the app (`https://app.example.com`). Confirmation and reset links open it. |
+| `Authentication__Jwt__SigningKey` | yes | Signs the bearer tokens of `POST /auth/token` ([ADR 018]({{< relref "architecture-decisions/adr-018-bearer-tokens-for-non-browser-clients" >}})). At least 32 random bytes (`openssl rand -base64 32`), the same on every instance. A secret: anyone holding it can sign a token for any user. Rotating it invalidates every token. |
+| `Authentication__Jwt__TokenLifetimeMinutes` | no | 15 by default. Tokens can't be revoked before they expire, so keep it short. |
 | `ForwardedHeaders__KnownProxies__0`, ... | behind a proxy | The proxy's addresses. |
 | `RateLimiting__*` | no | Defaults: 600/min per user, 120/min per address, 5/min on the account endpoints. They count per instance. |
 | `Caching__Expiration`, `Caching__LocalExpiration`, `Caching__Profiles__{Name}__*` | no | Cache lifetimes ([ADR 017]({{< relref "architecture-decisions/adr-017-hybrid-cache" >}})). |

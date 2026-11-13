@@ -115,7 +115,7 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 - HTTP calls live in feature services, not components.
 - Guards are UX, not authorization.
 - The SPA must run under a strict CSP, sent by the production host: no inline scripts, inline event handlers or `eval`. New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Production deployment).
-- The session is an HttpOnly cookie the app never reads ([ADR 015](docs/content/architecture-decisions/adr-015-cookie-sessions-aspnetcore-identity.md)); `AuthService` only knows whether the API returns a profile. Never store a credential in `localStorage`, add an `Authorization` header, or turn off HttpClient's XSRF support: it sends the antiforgery token. After anything that changes who is signed in, fetch a new token (`fetchAntiforgeryToken()`).
+- The session is an HttpOnly cookie the app never reads ([ADR 015](docs/content/architecture-decisions/adr-015-cookie-sessions-aspnetcore-identity.md)); `AuthService` only knows whether the API returns a profile. Never store a credential in `localStorage`, call `POST /auth/token` or add an `Authorization` header (bearer tokens are for non-browser clients, [ADR 018](docs/content/architecture-decisions/adr-018-bearer-tokens-for-non-browser-clients.md)), or turn off HttpClient's XSRF support: it sends the antiforgery token. After anything that changes who is signed in, fetch a new token (`fetchAntiforgeryToken()`).
 
 ## 11. Code style
 

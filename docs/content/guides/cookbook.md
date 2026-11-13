@@ -199,6 +199,20 @@ In Development, migrations apply on startup. In production, run a migration bund
 3. Show the link only when it's allowed: in the component, `protected readonly canX = () => this.currentUser.hasPermission(Permission.X);`, then `@if (canX()) { ... }` in the template. See `features/home/home-page.ts`.
 4. Handle a 403 from the API anyway. The guard is a convenience, and the API is what enforces it (see `features/users/users-page.ts`).
 
+## Call the API from a script or an app
+
+Browsers use the session cookie. A client that isn't a browser on the app's origin (a script, a mobile or desktop app, another service) gets a bearer token instead ([ADR 018]({{< relref "architecture-decisions/adr-018-bearer-tokens-for-non-browser-clients" >}})):
+
+```bash
+TOKEN=$(curl -s https://localhost:7243/auth/token -H 'Content-Type: application/json' \
+  -d '{"email":"admin@example.com","password":"Admin123!"}' | jq -r .accessToken)
+curl -s https://localhost:7243/users/me -H "Authorization: Bearer $TOKEN"
+```
+
+- It authorizes exactly what the user's session would, with the same permissions, and needs no antiforgery token.
+- It expires after `Authentication:Jwt:TokenLifetimeMinutes` (15); then ask for a new one. Nothing revokes it sooner, not even signing out or changing the password, so don't raise the lifetime to avoid asking.
+- In tests, get one with `POST /auth/token` as `Security/BearerAuthentication` does.
+
 ## Need more than this template has?
 
 The full template, [dotnet-angular-aspire-template](https://github.com/andregabrielmelo/dotnet-angular-aspire-template), has these built, tested and documented. Copy the code, its tests and its ADR together:
