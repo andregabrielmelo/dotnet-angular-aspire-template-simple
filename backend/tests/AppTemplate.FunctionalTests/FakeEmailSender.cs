@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace AppTemplate.FunctionalTests;
 
-public sealed record SentEmail(string To, string Subject, string Body);
+public sealed record SentEmail(string To, string From, string Subject, string Body);
 
 public sealed class FakeEmailSender : IEmailSender
 {
@@ -13,6 +13,7 @@ public sealed class FakeEmailSender : IEmailSender
 
     public Task SendAsync(
         string to,
+        string from,
         string subject,
         string body,
         CancellationToken cancellationToken = default
@@ -22,7 +23,7 @@ public sealed class FakeEmailSender : IEmailSender
         {
             throw FailWith;
         }
-        Sent.Enqueue(new SentEmail(to, subject, body));
+        Sent.Enqueue(new SentEmail(to, from, subject, body));
         return Task.CompletedTask;
     }
 

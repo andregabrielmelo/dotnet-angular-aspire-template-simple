@@ -1,6 +1,7 @@
 using AppTemplate.Infrastructure.Caching;
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.Infrastructure.Logging;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Settings;
 using Microsoft.Extensions.Configuration;
@@ -72,7 +73,10 @@ public class OptionsValidationAtStartup
             )
             .Build();
         using var provider = new ServiceCollection()
-            .AddOptionConfigurations(configuration, NullLogger.Instance)
+            .AddOptionConfigurations(
+                configuration,
+                new LoggerAdapter<OptionsRegistration>(NullLoggerFactory.Instance)
+            )
             .BuildServiceProvider();
 
         var exception = Should.Throw<OptionsValidationException>(() =>
@@ -95,7 +99,10 @@ public class OptionsValidationAtStartup
             )
             .Build();
         using var provider = new ServiceCollection()
-            .AddOptionConfigurations(configuration, NullLogger.Instance)
+            .AddOptionConfigurations(
+                configuration,
+                new LoggerAdapter<OptionsRegistration>(NullLoggerFactory.Instance)
+            )
             .BuildServiceProvider();
 
         Should.NotThrow(() => provider.GetRequiredService<IStartupValidator>().Validate());

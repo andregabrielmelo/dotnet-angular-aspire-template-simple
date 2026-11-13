@@ -1,4 +1,5 @@
 using System.Net;
+using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure.Caching;
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
@@ -12,7 +13,7 @@ public static class OptionConfigurations
     public static IServiceCollection AddOptionConfigurations(
         this IServiceCollection services,
         IConfiguration configuration,
-        Microsoft.Extensions.Logging.ILogger logger
+        ILoggerAdapter logger
     )
     {
         services
@@ -88,7 +89,7 @@ public static class OptionConfigurations
             )
             .ValidateOnStart();
 
-        StartupLog.Configured(logger, "Options");
+        logger.LogInformation("{Project} were configured", "Options");
 
         return services;
     }

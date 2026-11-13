@@ -1,4 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
 using AppTemplate.UseCases.Users.Commands.Register;
 using AppTemplate.Web.Behaviors;
@@ -9,10 +10,10 @@ public static class MediatorConfigurations
 {
     public static IServiceCollection AddMediatorSourceGenerator(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger
+        ILoggerAdapter logger
     )
     {
-        StartupLog.RegisteringMediator(logger);
+        logger.LogInformation("Registering Mediator SourceGen and Behaviors");
         services.AddMediator(options =>
         {
             // Lifetime: Singleton is fastest per docs; Scoped/Transient also supported.

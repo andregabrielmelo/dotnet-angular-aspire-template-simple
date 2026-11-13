@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AppTemplate.Core.Interfaces;
 using Ardalis.GuardClauses;
 
 namespace AppTemplate.Web.Behaviors;
@@ -9,8 +10,8 @@ namespace AppTemplate.Web.Behaviors;
 /// logs. Never log the request, the response or their properties here (<c>{@Request}</c>,
 /// reflection over their properties): nothing redacts them.
 /// </summary>
-public partial class LoggingBehavior<TRequest, TResponse>(
-    ILogger<LoggingBehavior<TRequest, TResponse>> logger
+public class LoggingBehavior<TRequest, TResponse>(
+    ILoggerAdapter<LoggingBehavior<TRequest, TResponse>> logger
 ) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IMessage
 {
@@ -22,7 +23,7 @@ public partial class LoggingBehavior<TRequest, TResponse>(
     {
         Guard.Against.Null(request);
 
-        LogHandling(logger, typeof(TRequest).Name);
+        logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
 
         var sw = Stopwatch.StartNew();
 
@@ -30,21 +31,12 @@ public partial class LoggingBehavior<TRequest, TResponse>(
 
         sw.Stop();
 
-        LogHandled(logger, typeof(TRequest).Name, sw.ElapsedMilliseconds);
+        logger.LogInformation(
+            "Handled {RequestName} in {ElapsedMilliseconds} ms",
+            typeof(TRequest).Name,
+            sw.ElapsedMilliseconds
+        );
 
         return response;
     }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Handling {RequestName}")]
-    private static partial void LogHandling(ILogger logger, string requestName);
-
-    [LoggerMessage(
-        Level = LogLevel.Information,
-        Message = "Handled {RequestName} in {ElapsedMilliseconds} ms"
-    )]
-    private static partial void LogHandled(
-        ILogger logger,
-        string requestName,
-        long elapsedMilliseconds
-    );
 }

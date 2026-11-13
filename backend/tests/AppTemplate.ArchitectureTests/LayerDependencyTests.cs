@@ -50,6 +50,15 @@ public class LayerDependencyTests
         AssertNoDependencies(Layers.Web, "Microsoft.AspNetCore.Identity");
 
     [Fact]
+    public void CoreAndUseCases_LogThroughIAppLogger()
+    {
+        // Logging goes through Core's IAppLogger<T>; only Infrastructure's LoggerAdapter (and
+        // Web, which configures the providers) know Microsoft.Extensions.Logging.
+        AssertNoDependencies(Layers.Core, "Microsoft.Extensions.Logging");
+        AssertNoDependencies(Layers.UseCases, "Microsoft.Extensions.Logging");
+    }
+
+    [Fact]
     public void Infrastructure_DoesNotDependOnWeb() =>
         AssertNoDependencies(Layers.Infrastructure, Layers.WebNamespace);
 

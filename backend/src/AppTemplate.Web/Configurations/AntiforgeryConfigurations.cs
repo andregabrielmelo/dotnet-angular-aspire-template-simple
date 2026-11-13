@@ -1,3 +1,4 @@
+using AppTemplate.Core.Interfaces;
 using Microsoft.AspNetCore.Antiforgery;
 
 namespace AppTemplate.Web.Configurations;
@@ -20,7 +21,7 @@ public static class AntiforgeryConfigurations
 
     public static IServiceCollection AddAntiforgeryConfigurations(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger
+        ILoggerAdapter logger
     )
     {
         services.AddAntiforgery(options =>
@@ -34,7 +35,7 @@ public static class AntiforgeryConfigurations
             options.SuppressXFrameOptionsHeader = true;
         });
 
-        StartupLog.ConfiguredOne(logger, "Antiforgery");
+        logger.LogInformation("{Project} was configured", "Antiforgery");
         return services;
     }
 

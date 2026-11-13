@@ -8,7 +8,7 @@ public static class ServiceConfigurations
 {
     public static IServiceCollection AddServiceConfigurations(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger,
+        ILoggerAdapter logger,
         WebApplicationBuilder builder
     )
     {
@@ -17,7 +17,10 @@ public static class ServiceConfigurations
 
         services.AddScoped<IEmailSender, MimeKitEmailSender>();
 
-        StartupLog.ServicesRegistered(logger, "Mediator Source Generator and Email Sender");
+        logger.LogInformation(
+            "{Project} services registered",
+            "Mediator Source Generator and Email Sender"
+        );
 
         return services;
     }

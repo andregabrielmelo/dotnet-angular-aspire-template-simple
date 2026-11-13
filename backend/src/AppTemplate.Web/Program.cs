@@ -1,15 +1,20 @@
-﻿using AppTemplate.ServiceDefaults;
+﻿using AppTemplate.Infrastructure.Logging;
+using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
+using Serilog;
 using Serilog.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var serilogLogger = builder.AddLoggerConfigs(); // Serilog to the console
-builder.AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
+builder
+    .AddLoggerConfigs() // Serilog to the console
+    .AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
 
-var startupLogger = new SerilogLoggerFactory(serilogLogger).CreateLogger<Program>();
+// The host's loggers don't exist until it is built, so startup logs through the console logger.
+using var startupLoggerFactory = new SerilogLoggerFactory(Log.Logger);
+var startupLogger = new LoggerAdapter<Program>(startupLoggerFactory);
 
-StartupLog.StartingWebHost(startupLogger);
+startupLogger.LogInformation("Starting web host");
 
 builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger);
 builder.Services.AddServiceConfigurations(startupLogger, builder);

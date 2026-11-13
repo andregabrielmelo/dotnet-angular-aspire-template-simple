@@ -275,6 +275,17 @@ dotnet_diagnostic.CA1720.severity = suggestion
 # and `ct`; endpoints use `request` and `cancellationToken`, like the rest of the code.
 dotnet_diagnostic.CA1725.severity = none
 
+# CA1848, CA1873: logging through LoggerMessage delegates, and arguments that are evaluated even
+# when the level is off. Every layer logs through IAppLogger<T> (Core/Interfaces), whose adapter
+# checks the level before formatting; shown in the IDE, not enforced.
+dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA1873.severity = suggestion
+
+# CA1305: an explicit IFormatProvider. Culture is chosen case by case: invariant for anything
+# parsed back or stored, the default for text people read, such as the console log. Shown in the
+# IDE, not enforced.
+dotnet_diagnostic.CA1305.severity = suggestion
+
 # EF Core's generated migrations aren't analyzed.
 [**/Migrations/*.cs]
 generated_code = true

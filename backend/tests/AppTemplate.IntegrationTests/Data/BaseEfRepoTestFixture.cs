@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.Infrastructure.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -44,7 +45,10 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings());
         builder.Configuration["ConnectionStrings:apptemplate"] = connectionString;
         builder.Services.AddLogging();
-        builder.AddInfrastructureServices(builder.Configuration, NullLogger.Instance);
+        builder.AddInfrastructureServices(
+            builder.Configuration,
+            new LoggerAdapter<BaseEfRepoTestFixture>(NullLoggerFactory.Instance)
+        );
 
         var services = builder.Services;
         services.Replace(ServiceDescriptor.Scoped(_ => Substitute.For<IDomainEventDispatcher>()));
@@ -102,6 +106,7 @@ public sealed class RecordingEmailSender : IEmailSender
 
     public Task SendAsync(
         string to,
+        string from,
         string subject,
         string body,
         CancellationToken cancellationToken = default
