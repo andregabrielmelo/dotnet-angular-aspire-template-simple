@@ -5,6 +5,7 @@ using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.UseCases.Caching;
 using AppTemplate.Web.Settings;
+using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -88,6 +89,15 @@ public static class OptionConfigurations
                 $"Caching:Profiles needs every cache profile ({string.Join(", ", CacheProfile.List.Where(profile => profile != CacheProfile.None).Select(profile => profile.Name))}) with a positive Expiration and a LocalExpiration no longer than it."
             )
             .ValidateOnStart();
+
+        // Bearer tokens (ADR 018): the key is required outside Development, where a random one is
+        // made up per process when none is set.
+        services
+            .AddOptions<JwtSettings>()
+            .Bind(configuration.GetSection(JwtSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<JwtSettings>, JwtSettingsValidator>();
+        services.AddSingleton<IPostConfigureOptions<JwtSettings>, DevelopmentJwtSigningKey>();
 
         logger.LogInformation("{Project} were configured", "Options");
 

@@ -157,9 +157,13 @@ public static class InfrastructureServiceExtensions
             };
         });
 
+        // Bearer tokens for non-browser clients, next to the cookie (ADR 018).
+        builder.Services.AddTokenAuthentication();
+
         builder
             .Services.AddScoped<IEmailSender<ApplicationUser>, AccountEmailSender>()
-            .AddTransient<IIdentityService, IdentityService>();
+            .AddTransient<IIdentityService, IdentityService>()
+            .AddTransient<ITokenClaimsService, IdentityTokenClaimService>();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
