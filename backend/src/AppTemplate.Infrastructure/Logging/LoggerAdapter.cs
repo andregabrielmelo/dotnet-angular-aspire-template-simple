@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace AppTemplate.Infrastructure.Logging;
 
 /// <summary>
-/// <see cref="IAppLogger{T}"/> over <c>Microsoft.Extensions.Logging</c>, so the logs reach every
+/// <see cref="ILoggerAdapter{T}"/> over <c>Microsoft.Extensions.Logging</c>, so the logs reach every
 /// provider (Serilog's console, OpenTelemetry's exporter) with their structured properties.
 /// Registered as an open generic in <c>AddInfrastructureServices</c>.
 /// </summary>
@@ -14,7 +14,7 @@ namespace AppTemplate.Infrastructure.Logging;
     "CA2254:Template should be a static expression",
     Justification = "The adapter forwards its callers' templates, which are constants at the call sites."
 )]
-public sealed class LoggerAdapter<T>(ILoggerFactory loggerFactory) : IAppLogger<T>
+public sealed class LoggerAdapter<T>(ILoggerFactory loggerFactory) : ILoggerAdapter<T>
 {
     private readonly ILogger _logger = loggerFactory.CreateLogger<T>();
 

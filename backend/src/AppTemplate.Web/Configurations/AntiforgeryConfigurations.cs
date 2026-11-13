@@ -21,7 +21,7 @@ public static class AntiforgeryConfigurations
 
     public static IServiceCollection AddAntiforgeryConfigurations(
         this IServiceCollection services,
-        IAppLogger logger
+        ILoggerAdapter logger
     )
     {
         services.AddAntiforgery(options =>

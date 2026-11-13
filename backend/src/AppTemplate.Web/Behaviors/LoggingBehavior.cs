@@ -11,7 +11,7 @@ namespace AppTemplate.Web.Behaviors;
 /// reflection over their properties): nothing redacts them.
 /// </summary>
 public class LoggingBehavior<TRequest, TResponse>(
-    IAppLogger<LoggingBehavior<TRequest, TResponse>> logger
+    ILoggerAdapter<LoggingBehavior<TRequest, TResponse>> logger
 ) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IMessage
 {

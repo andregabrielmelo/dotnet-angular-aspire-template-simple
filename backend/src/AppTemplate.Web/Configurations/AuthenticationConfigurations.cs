@@ -15,7 +15,7 @@ public static class AuthenticationConfigurations
     /// </summary>
     public static IServiceCollection AddAuthenticationConfigurations(
         this IServiceCollection services,
-        IAppLogger logger
+        ILoggerAdapter logger
     )
     {
         services.AddAuthorization();

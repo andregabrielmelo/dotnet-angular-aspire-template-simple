@@ -8,7 +8,7 @@ namespace AppTemplate.Core.Interfaces;
 /// each value stays a structured property in the logs. Never pass requests, DTOs, passwords,
 /// codes or email addresses: nothing redacts them.
 /// </summary>
-public interface IAppLogger
+public interface ILoggerAdapter
 {
     void LogDebug(string message, params object?[] args);
 
@@ -26,7 +26,7 @@ public interface IAppLogger
 }
 
 /// <summary>
-/// An <see cref="IAppLogger"/> whose category is <typeparamref name="T"/>, the class that logs;
+/// An <see cref="ILoggerAdapter"/> whose category is <typeparamref name="T"/>, the class that logs;
 /// resolve this one from DI, as with <c>ILogger&lt;T&gt;</c>.
 /// </summary>
-public interface IAppLogger<out T> : IAppLogger;
+public interface ILoggerAdapter<out T> : ILoggerAdapter;

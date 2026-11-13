@@ -4,10 +4,10 @@ using Mediator;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate.Handlers;
 
-public class UserNameUpdatedEventHandler(IAppLogger<UserNameUpdatedEventHandler> logger)
+public class UserNameUpdatedEventHandler(ILoggerAdapter<UserNameUpdatedEventHandler> logger)
     : INotificationHandler<UserNameUpdatedEvent>
 {
-    private readonly IAppLogger<UserNameUpdatedEventHandler> _logger = logger;
+    private readonly ILoggerAdapter<UserNameUpdatedEventHandler> _logger = logger;
 
     // Example of implementation of domain event
     public ValueTask Handle(UserNameUpdatedEvent notification, CancellationToken cancellationToken)

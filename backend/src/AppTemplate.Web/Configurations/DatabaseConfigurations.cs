@@ -32,7 +32,7 @@ public static class DatabaseConfigurations
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<IAppLogger<Program>>();
+        var logger = services.GetRequiredService<ILoggerAdapter<Program>>();
         var context = services.GetRequiredService<ApplicationDatabaseContext>();
 
         try
@@ -64,7 +64,7 @@ public static class DatabaseConfigurations
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<IAppLogger<Program>>();
+        var logger = services.GetRequiredService<ILoggerAdapter<Program>>();
 
         try
         {

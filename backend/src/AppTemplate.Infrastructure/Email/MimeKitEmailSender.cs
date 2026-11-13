@@ -7,7 +7,7 @@ using MimeKit;
 namespace AppTemplate.Infrastructure.Email;
 
 public sealed class MimeKitEmailSender(
-    IAppLogger<MimeKitEmailSender> logger,
+    ILoggerAdapter<MimeKitEmailSender> logger,
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender
 {

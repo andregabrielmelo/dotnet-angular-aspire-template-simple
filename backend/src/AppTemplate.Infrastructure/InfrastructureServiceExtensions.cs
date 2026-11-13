@@ -29,7 +29,7 @@ public static class InfrastructureServiceExtensions
     public static IServiceCollection AddInfrastructureServices(
         this IHostApplicationBuilder builder,
         IConfigurationManager config,
-        IAppLogger logger
+        ILoggerAdapter logger
     )
     {
         // Set by the AppHost (WithReference) in development, and by the environment elsewhere.
@@ -39,7 +39,7 @@ public static class InfrastructureServiceExtensions
         );
         // Every layer logs through IAppLogger<T> (Core), which this adapter forwards to
         // Microsoft.Extensions.Logging's providers.
-        builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(LoggerAdapter<>));
+        builder.Services.AddSingleton(typeof(ILoggerAdapter<>), typeof(LoggerAdapter<>));
 
         builder.Services.AddScoped<ISaveChangesInterceptor, EventDispatchInterceptor>();
         builder.Services.AddScoped<IDomainEventDispatcher, MediatorDomainEventDispatcher>();

@@ -24,7 +24,7 @@ public static class RateLimitingConfigurations
 
     public static IServiceCollection AddRateLimitingConfigurations(
         this IServiceCollection services,
-        IAppLogger logger
+        ILoggerAdapter logger
     )
     {
         services.AddRateLimiter(_ => { });

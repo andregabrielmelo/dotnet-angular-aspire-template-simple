@@ -17,7 +17,7 @@ namespace AppTemplate.Web.Behaviors;
 public class CachingBehavior<TMessage, TResponse>(
     HybridCache cache,
     IOptions<CachingSettings> settings,
-    IAppLogger<CachingBehavior<TMessage, TResponse>> logger
+    ILoggerAdapter<CachingBehavior<TMessage, TResponse>> logger
 ) : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IMessage
 {
