@@ -71,7 +71,7 @@ public static class HttpContextExtensions
 
         if (links.Count > 0)
         {
-            context.Response.Headers["Link"] = string.Join(", ", links);
+            context.Response.Headers.Link = string.Join(", ", links);
         }
     }
 }

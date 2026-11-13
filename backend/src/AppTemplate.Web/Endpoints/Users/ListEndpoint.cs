@@ -44,11 +44,10 @@ public class ListEndpoint(IMediator mediator)
                 "Retrieves a paginated list of all users. Supports GitHub-style pagination with 1-based page indexing and configurable page size.";
             s.ExampleRequest = new ListUsersRequest { Page = 1, PerPage = 10 };
             s.ResponseExamples[200] = new UserListResponse(
-                new List<UserRecord>
-                {
+                [
                     new(1, "Sample User 1", null),
                     new(2, "Sample User 2", null),
-                },
+                ],
                 1,
                 10,
                 2,

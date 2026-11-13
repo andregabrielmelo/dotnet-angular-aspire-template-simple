@@ -256,18 +256,21 @@ dotnet_diagnostic.CA2200.severity = error
 # Directory.Build.props).
 dotnet_diagnostic.IDE0005.severity = error
 
-# Off, because they fight this template's conventions:
 # CA1707: underscores in names. Primary-constructor parameters are `_repository`, constants are
 # SCREAMING_CASE (PaginationConstants), and some test methods read `Subject_Behavior`.
 dotnet_diagnostic.CA1707.severity = none
+
 # CA1711: reserved type-name suffixes. Mediator handlers end in `EventHandler`
 # (UserNameUpdatedEventHandler, IDomainEventHandler), and `Permission` is a domain name.
-dotnet_diagnostic.CA1711.severity = none
+dotnet_diagnostic.CA1711.severity = suggestion
+
 # CA1716: names that are keywords in other .NET languages (the `Get` use-case namespaces,
 # IEmailSender's `to`). The template is C# only.
-dotnet_diagnostic.CA1716.severity = none
+dotnet_diagnostic.CA1716.severity = suggestion
+
 # CA1720: identifiers containing type names. CacheProfile.Short and Long name lifetimes.
-dotnet_diagnostic.CA1720.severity = none
+dotnet_diagnostic.CA1720.severity = suggestion
+
 # CA1725: parameter names that differ from the base declaration. FastEndpoints names them `req`
 # and `ct`; endpoints use `request` and `cancellationToken`, like the rest of the code.
 dotnet_diagnostic.CA1725.severity = none

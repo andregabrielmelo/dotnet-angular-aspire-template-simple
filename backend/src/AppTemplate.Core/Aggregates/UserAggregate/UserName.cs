@@ -1,7 +1,7 @@
 ﻿namespace AppTemplate.Core.Aggregates.UserAggregate;
 
 [ValueObject<string>(conversions: Conversions.SystemTextJson)]
-public partial struct UserName
+public readonly partial struct UserName
 {
     public const int MaxLength = 100;
 

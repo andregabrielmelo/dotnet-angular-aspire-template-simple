@@ -44,6 +44,7 @@ public sealed class IdentityService(
         var profile = User.Create(name);
         var account = new ApplicationUser
         {
+            ProfileId = profile.Id,
             Profile = profile,
             // The email is the user name, as Identity's own endpoints do; its unique index
             // stops two concurrent registrations with one address.
