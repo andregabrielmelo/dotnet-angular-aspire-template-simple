@@ -21,3 +21,6 @@ Thumbs.db
 
 # Angular CLI cache (when the CLI runs from the repo root)
 .angular/
+
+# The dev container's development certificate, exported for the host to trust
+.devcontainer/dev-cert.crt
