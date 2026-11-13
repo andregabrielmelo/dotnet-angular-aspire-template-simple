@@ -6,23 +6,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
-public class ListUsersQueryService : IListUsersQueryService
+public class ListUsersQueryService(ApplicationDatabaseContext db) : IListUsersQueryService
 {
-    // You can use EF, Dapper, SqlClient, etc. for queries
-    private readonly ApplicationDatabaseContext _db;
-
-    public ListUsersQueryService(ApplicationDatabaseContext db)
-    {
-        _db = db;
-    }
-
     public async Task<PagedResult<UserDto>> ListAsync(
         int page,
         int perPage,
         CancellationToken cancellationToken
     )
     {
-        var items = await _db
+        var items = await db
             // EF Core materializes User from this SQL, so it must return every mapped column
             // (snake_case names, see UseSnakeCaseNamingConvention) - not just the projected ones.
             .UserProfiles.FromSqlRaw(
@@ -35,7 +27,7 @@ public class ListUsersQueryService : IListUsersQueryService
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        int totalCount = await _db.UserProfiles.CountAsync(cancellationToken);
+        int totalCount = await db.UserProfiles.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling(totalCount / (double)perPage);
         var result = new PagedResult<UserDto>(items, page, perPage, totalCount, totalPages);
 

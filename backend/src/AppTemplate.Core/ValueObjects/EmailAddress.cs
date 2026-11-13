@@ -4,12 +4,9 @@ using Ardalis.GuardClauses;
 namespace AppTemplate.Core.ValueObjects;
 
 // https://www.w3.org/Protocols/rfc822/#z8
-public class EmailAddress : ValueObject
+public partial class EmailAddress : ValueObject
 {
-    private static readonly Regex EmailRegex = new(
-        @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-        RegexOptions.Compiled
-    );
+    private static readonly Regex EmailRegex = EmailValidationRegex();
     public string Value { get; private set; }
 
     public EmailAddress(string value)
@@ -38,4 +35,7 @@ public class EmailAddress : ValueObject
     {
         yield return Value;
     }
+
+    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled)]
+    private static partial Regex EmailValidationRegex();
 }
