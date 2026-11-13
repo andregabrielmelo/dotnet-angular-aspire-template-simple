@@ -44,6 +44,14 @@ dotnet run --project src/YourProjectName.AppHost
 
 The Aspire dashboard opens and starts Postgres (in a container, with a persistent data volume), Mailpit (catching development emails, such as the confirmation and reset links), the Web API, and the Angular frontend (via `npm ci` + `npm start`; its dev server proxies `/api` to the API - see the [CORS/proxy notes]({{< relref "notes/cors-and-proxy" >}})). Open the app from the `angular` resource's `https://` URL in the dashboard, then register and open the confirmation link from Mailpit (its web UI is the `mailpit` resource's URL), or sign in as the development admin, `admin@example.com` / `Admin123!`. On first run in Development, EF Core migrations are applied and the database is seeded automatically (see [`DatabaseConfigurations`](https://github.com/andregabrielmelo/dotnet-angular-aspire-template-simple/blob/main/backend/src/AppTemplate.Web/Configurations/DatabaseConfigurations.cs)).
 
+Before pushing, run what CI runs in one go, from the repository root:
+
+```bash
+dotnet scripts/BuildTestFormat.cs
+```
+
+It restores, checks formatting, builds, runs every test project, checks that the generated API files are current, and runs the frontend's format check, lint, tests and build, then prints a pass/fail summary. Add `--no-docker` to skip the tests that need Docker, or `--backend`/`--frontend` for one side.
+
 ## 5. Add your own feature
 
 The `User` aggregate/feature (`Core/Aggregates/UserAggregate`, `UseCases/Users`, `Web/Endpoints/Users`) is the reference example - a full vertical slice from domain entity to HTTP endpoint. Copy its shape for your first real feature, then delete `User` once you no longer need it as a reference.

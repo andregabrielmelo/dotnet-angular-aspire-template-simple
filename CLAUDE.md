@@ -20,6 +20,8 @@ Full documentation (architecture, design decisions, ADRs) lives in `docs/` (a Hu
 
 All backend commands run from `backend/`; all frontend commands from `frontend/`.
 
+To run every CI check locally (restore, csharpier, build, each test project, the OpenAPI and API types staleness checks, prettier, eslint, vitest, the Angular build) with a pass/fail summary, run `dotnet scripts/BuildTestFormat.cs` from the repository root, a .NET 10 file-based app. `--backend` or `--frontend` runs one side, `--no-docker` skips the `RequiresDocker` tests. It regenerates a stale `v1.json` or `api-types.ts` and reports it; review and commit the result. It runs `npm ci` only when `frontend/node_modules` isn't a finished install.
+
 ### Backend (.NET 10)
 
 ```bash
