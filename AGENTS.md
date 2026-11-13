@@ -149,6 +149,8 @@ npm run build
 npm run test
 ```
 
+Or run all of it, as CI does, with `dotnet scripts/BuildTestFormat.cs` from the repository root (`--backend`, `--frontend`, `--no-docker`); it also checks that the two generated API files are current, and prints a pass/fail summary.
+
 If you changed an endpoint, request or response, also run `scripts/export-openapi.sh` and `npm run api:generate`, and commit `backend/openapi/v1.json` and `frontend/src/app/core/api/api-types.ts`. CI fails when either is stale.
 
 Then:
