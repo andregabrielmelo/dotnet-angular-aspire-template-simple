@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
@@ -311,7 +312,7 @@ public sealed class IdentityService(
             $"{_links.Value.ClientUrl.TrimEnd('/')}{_links.Value.ConfirmEmailPath}",
             new Dictionary<string, string?>
             {
-                ["userId"] = account.ProfileId.Value.ToString(),
+                ["userId"] = account.ProfileId.Value.ToString(CultureInfo.InvariantCulture),
                 ["code"] = code,
             }
         );

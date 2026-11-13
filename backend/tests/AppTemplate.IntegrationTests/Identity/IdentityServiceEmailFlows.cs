@@ -1,3 +1,4 @@
+using System.Globalization;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
 using AppTemplate.UseCases.Interfaces;
@@ -62,7 +63,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
         var query = LastLinkQuery(email);
 
         link.AbsolutePath.ShouldBe("/auth/confirm-email");
-        query["userId"].ShouldBe(id.Value.ToString());
+        query["userId"].ShouldBe(id.Value.ToString(CultureInfo.InvariantCulture));
         (
             await Identity.ConfirmEmailAsync(id, query["code"], Cancellation)
         ).IsSuccess.ShouldBeTrue();

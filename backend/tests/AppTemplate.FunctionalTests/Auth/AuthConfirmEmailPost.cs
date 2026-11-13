@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace AppTemplate.FunctionalTests.Auth;
 
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
@@ -14,7 +16,11 @@ public class AuthConfirmEmailPost(CustomWebApplicationFactory<Program> factory)
 
         var response = await session.Client.PostAsJsonAsync(
             "/auth/confirm-email",
-            new { userId = int.Parse(link["userId"]), code = "bm90LXRoZS1jb2Rl" },
+            new
+            {
+                userId = int.Parse(link["userId"], CultureInfo.InvariantCulture),
+                code = "bm90LXRoZS1jb2Rl",
+            },
             TestContext.Current.CancellationToken
         );
 

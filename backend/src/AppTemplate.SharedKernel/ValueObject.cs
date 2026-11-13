@@ -129,7 +129,10 @@ public abstract class ValueObject : IComparable, IComparable<ValueObject>
         var type = obj.GetType();
         var typeString = type.ToString();
 
-        if (typeString.Contains(EFCoreProxyPrefix) || typeString.EndsWith(NHibernateProxyPostfix))
+        if (
+            typeString.Contains(EFCoreProxyPrefix)
+            || typeString.EndsWith(NHibernateProxyPostfix, StringComparison.Ordinal)
+        )
             return type.BaseType!;
 
         return type;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using AppTemplate.FunctionalTests.User;
 
 namespace AppTemplate.FunctionalTests.Auth;
@@ -36,7 +37,13 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
         (
             await session.Client.PostAsync(
                 "/auth/confirm-email",
-                JsonContent.Create(new { userId = int.Parse(link["userId"]), code = link["code"] })
+                JsonContent.Create(
+                    new
+                    {
+                        userId = int.Parse(link["userId"], CultureInfo.InvariantCulture),
+                        code = link["code"],
+                    }
+                )
             )
         ).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
