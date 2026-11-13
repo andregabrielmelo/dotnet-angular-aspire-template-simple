@@ -105,7 +105,8 @@ Dependencies point inward:
   - Sign in for real: `factory.CreateSignedInSessionAsync(role)` (a `Role`, `Member` by default) returns the user and a `TestSession` whose `Client` is a cookie jar holding the session, and sends the antiforgery token as the SPA does; `TestSession` also drives login, register, change password and logout. `factory.CreateUserAsync(role)` creates an account. There is no test authentication handler.
   - Assert status codes with `Ardalis.HttpClientTestExtensions` (`GetAndEnsureNotFoundAsync`, ...). Emails go to `factory.EmailSender`, a fake that records them.
 - **Architecture tests** (`AppTemplate.ArchitectureTests`) enforce section 2 and the placement rules in sections 3 and 4. If one fails, fix the code, not the rule. Only change a rule together with the ADR that justifies it.
-- **The Aspire smoke test** (`AppTemplate.AspireTests`) starts the real AppHost and waits for the API to be healthy. Keep it to that one startup path; it needs Docker and a trusted development certificate. When you add a resource with a persistent lifetime or a data volume, keep the test's throwaway override working (`UseThrowawayContainers`).
+- **The Aspire smoke test** (`AppTemplate.AspireTests`) starts the real AppHost and waits for the API to be healthy. Keep it to that one startup path; it needs Docker and a trusted development certificate. When you add a resource with a persistent lifetime or a data volume, keep the test's throwaway override working (`ThrowawayContainers`).
+- **Browser tests** (`AppTemplate.AspireTests/EndToEnd`, Playwright, sharing the smoke test's AppHost) cover critical user journeys through the browser only. Use role, label and text locators (`GetByRole`, `GetByLabel`), assert what the user sees, and keep rules and their combinations in the unit and functional tests.
 - Tests follow Arrange-Act-Assert, one behavior per test. Change tests whenever observable behavior changes.
 
 ## 10. Frontend (`frontend/`)

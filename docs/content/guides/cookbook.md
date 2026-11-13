@@ -215,4 +215,3 @@ The full template, [dotnet-angular-aspire-template](https://github.com/andregabr
 | Keycloak sign-in through a backend for frontend, external sign-in | `AppTemplate.BackendForFrontend`, the Keycloak realm, ADR 007 |
 | Log redaction, a global request timeout | `ServiceDefaults/Logging/`, `RequestTimeoutConfigurations` |
 | Business metrics | `UseCases/Telemetry/ApplicationMetrics.cs` |
-| Browser end-to-end tests | `tests/AppTemplate.EndToEndTests` (Playwright) |

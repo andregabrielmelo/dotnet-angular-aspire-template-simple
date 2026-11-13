@@ -72,7 +72,7 @@ A template should *support* a capability without *requiring* every application t
 - URL-versioned endpoints
 - Keycloak (OpenID Connect) with a backend for frontend and third-party sign-in
 - log redaction and a global request timeout
-- business metrics and end-to-end browser tests
+- business metrics, and a larger browser test suite (this variant has one example, ADR 006)
 
 A capability added to a project later should stay **opt-in**: registered through one `Add<Capability>()` extension, with the app building and its tests passing without it, and no feature referencing its types unless that feature uses it.
 
