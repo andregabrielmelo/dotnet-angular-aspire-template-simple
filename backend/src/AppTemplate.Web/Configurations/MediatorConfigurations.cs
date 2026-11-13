@@ -1,7 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
-using AppTemplate.UseCases.Users.Commands.Register;
+using AppTemplate.UseCases.Users.Register;
 using AppTemplate.Web.Behaviors;
 
 namespace AppTemplate.Web.Configurations;

@@ -1,5 +1,5 @@
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication.Commands.Login;
+using AppTemplate.UseCases.Authentication.Login;
 using AppTemplate.UseCases.Constants;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;

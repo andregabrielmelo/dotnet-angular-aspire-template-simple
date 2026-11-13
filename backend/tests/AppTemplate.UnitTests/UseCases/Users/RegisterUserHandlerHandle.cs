@@ -2,7 +2,7 @@ using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Interfaces;
-using AppTemplate.UseCases.Users.Commands.Register;
+using AppTemplate.UseCases.Users.Register;
 using Mediator;
 using Microsoft.Extensions.Caching.Hybrid;
 

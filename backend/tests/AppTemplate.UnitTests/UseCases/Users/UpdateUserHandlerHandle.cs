@@ -1,7 +1,7 @@
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Commands.Update;
+using AppTemplate.UseCases.Users.Update;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UnitTests.UseCases.Users;

@@ -6,7 +6,7 @@ using AppTemplate.Infrastructure.Identity;
 using AppTemplate.Infrastructure.Logging;
 using AppTemplate.UseCases.Constants;
 using AppTemplate.UseCases.Interfaces;
-using AppTemplate.UseCases.Users.Queries.List;
+using AppTemplate.UseCases.Users.List;
 using Ardalis.GuardClauses;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;

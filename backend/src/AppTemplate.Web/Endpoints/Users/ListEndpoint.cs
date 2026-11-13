@@ -1,7 +1,7 @@
 ﻿using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Constants;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Queries.List;
+using AppTemplate.UseCases.Users.List;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Users;

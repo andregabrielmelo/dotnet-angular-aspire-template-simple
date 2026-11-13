@@ -1,7 +1,7 @@
 ﻿using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Queries.List;
+using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data.Queries;

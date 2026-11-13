@@ -1,6 +1,6 @@
 using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Queries.GetCurrent;
+using AppTemplate.UseCases.Users.GetCurrent;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UnitTests.UseCases.Caching;

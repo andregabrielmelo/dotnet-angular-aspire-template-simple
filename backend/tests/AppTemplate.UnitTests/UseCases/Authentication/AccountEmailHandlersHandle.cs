@@ -1,7 +1,7 @@
-using AppTemplate.UseCases.Authentication.Commands.ConfirmEmail;
-using AppTemplate.UseCases.Authentication.Commands.ForgotPassword;
-using AppTemplate.UseCases.Authentication.Commands.ResendConfirmation;
-using AppTemplate.UseCases.Authentication.Commands.ResetPassword;
+using AppTemplate.UseCases.Authentication.ConfirmEmail;
+using AppTemplate.UseCases.Authentication.ForgotPassword;
+using AppTemplate.UseCases.Authentication.ResendConfirmation;
+using AppTemplate.UseCases.Authentication.ResetPassword;
 using AppTemplate.UseCases.Interfaces;
 
 namespace AppTemplate.UnitTests.UseCases.Authentication;

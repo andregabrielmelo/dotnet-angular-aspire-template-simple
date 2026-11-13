@@ -1,6 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Commands.Update;
+using AppTemplate.UseCases.Users.Update;
 using AppTemplate.Web.Extensions;
 using AppTemplate.Web.Validation;
 

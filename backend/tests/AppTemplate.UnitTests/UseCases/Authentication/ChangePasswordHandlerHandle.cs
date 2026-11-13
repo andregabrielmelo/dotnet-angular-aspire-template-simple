@@ -1,4 +1,4 @@
-using AppTemplate.UseCases.Authentication.Commands.ChangePassword;
+using AppTemplate.UseCases.Authentication.ChangePassword;
 using AppTemplate.UseCases.Interfaces;
 
 namespace AppTemplate.UnitTests.UseCases.Authentication;

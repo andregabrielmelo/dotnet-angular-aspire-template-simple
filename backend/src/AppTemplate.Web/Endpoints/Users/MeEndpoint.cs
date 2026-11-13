@@ -1,6 +1,6 @@
 ﻿using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
-using AppTemplate.UseCases.Users.Queries.GetCurrent;
+using AppTemplate.UseCases.Users.GetCurrent;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Users;

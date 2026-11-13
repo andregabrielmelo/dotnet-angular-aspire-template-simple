@@ -1,7 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Constants;
-using AppTemplate.UseCases.Users.Commands.Register;
+using AppTemplate.UseCases.Users.Register;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
