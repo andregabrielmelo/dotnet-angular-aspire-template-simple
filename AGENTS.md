@@ -22,8 +22,8 @@ Dependencies point inward:
 | Project | Contains | May depend on |
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
-| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports for external resources in `Core/Interfaces` (`IEmailSender`) | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and their handlers; domain event handlers (`UseCases/<Feature>/Handlers/`, where the ports they need are visible); list query-service interfaces (`IListUsersQueryService`), the accounts port and the request context (`UseCases/Interfaces`: `IIdentityService`, `ICurrentUser`), the `Role`/`Permission` smart enums, and the caching contract (`ICacheable`, `CacheTags`, `CacheProfile`) | Core, SharedKernel |
+| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; domain event handlers that need only Core, next to their aggregate (`Core/Aggregates/<Aggregate>/Handlers/`); ports for external resources in `Core/Interfaces` (`IEmailSender`) | SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and their handlers; domain event handlers that need a UseCases port (`UseCases/<Feature>/Handlers/`); list query-service interfaces (`IListUsersQueryService`), the accounts port and the request context (`UseCases/Interfaces`: `IIdentityService`, `ICurrentUser`), the `Role`/`Permission` smart enums, and the caching contract (`ICacheable`, `CacheTags`, `CacheProfile`) | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, ASP.NET Core Identity (`ApplicationUser`, `IdentityService`) | Core, UseCases, SharedKernel |
 | `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`: logging, and caching `ICacheable` queries), the antiforgery check, composition root | everything above |
 
@@ -52,7 +52,7 @@ Dependencies point inward:
 ## 4. Use cases
 
 - Use [Mediator](https://github.com/martinothamar/Mediator) (source-generated). Never MediatR, and never a second dispatch mechanism.
-- One folder per use case: commands in `UseCases/<Feature>/Commands/<UseCase>/`, queries in `UseCases/<Feature>/Queries/<UseCase>/`; domain event handlers go in `UseCases/<Feature>/Handlers/`.
+- One folder per use case: commands in `UseCases/<Feature>/Commands/<UseCase>/`, queries in `UseCases/<Feature>/Queries/<UseCase>/`; domain event handlers go in `UseCases/<Feature>/Handlers/` when they need a UseCases port (`SendConfirmationOnUserRegistered` needs `IIdentityService`), or next to their aggregate in `Core/Aggregates/<Aggregate>/Handlers/` when Core is all they need (`UserNameUpdatedEventHandler`).
 - Guard method arguments and invariants with `Ardalis.GuardClauses` (`Guard.Against.Null`, `NullOrWhiteSpace`, `InvalidInput`, `NotFound`) in SharedKernel, Core and Infrastructure. Value objects keep Vogen's `Validate`, and expected failures stay `Result`s. The command or query record has its own file (`UpdateUserCommand.cs`) next to its handler (`UpdateUserHandler.cs`).
 - Handlers return `Ardalis.Result`. Use `Result.NotFound()`, `Result.Forbidden()`, `Result.Conflict()` or `Result.Invalid(...)` for expected outcomes; their messages reach the caller. `Result.Error()` and `Result.Unavailable()` become a generic 500 or 503, so log the details in the handler. Throw only for unexpected failures.
 - Resource-based authorization ("may update their own profile, or anyone's with `users:write`") lives in the handler, through `ICurrentUser`, and returns `Result.Forbidden()`.
