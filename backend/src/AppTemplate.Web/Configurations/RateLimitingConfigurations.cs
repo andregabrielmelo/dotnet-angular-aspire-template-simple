@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Threading.RateLimiting;
+using AppTemplate.Core.Interfaces;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.Web.Settings;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -23,7 +24,7 @@ public static class RateLimitingConfigurations
 
     public static IServiceCollection AddRateLimitingConfigurations(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger
+        IAppLogger logger
     )
     {
         services.AddRateLimiter(_ => { });
@@ -116,7 +117,7 @@ public static class RateLimitingConfigurations
                 }
             );
 
-        StartupLog.Configured(logger, "Rate limiting and forwarded headers");
+        logger.LogInformation("{Project} were configured", "Rate limiting and forwarded headers");
         return services;
     }
 }

@@ -1,14 +1,13 @@
 ﻿using AppTemplate.Core.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
 namespace AppTemplate.Infrastructure.Email;
 
 public sealed class MimeKitEmailSender(
-    ILogger<MimeKitEmailSender> logger,
+    IAppLogger<MimeKitEmailSender> logger,
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender
 {
@@ -38,6 +37,7 @@ public sealed class MimeKitEmailSender(
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(quit: true, cancellationToken);
 
-        logger.LogWarning("Sending email to {to} from {from} with subject {subject} using {type}.", to, from, subject, this.ToString());
+        // Addresses are personal data - log the subject, not who it went to or came from.
+        logger.LogInformation("Sent email '{Subject}' via {Host}", subject, _mailserver.Hostname);
     }
 }

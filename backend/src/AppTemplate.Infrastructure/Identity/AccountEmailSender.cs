@@ -10,7 +10,10 @@ namespace AppTemplate.Infrastructure.Identity;
 /// application's <see cref="IEmailSender"/> (MailKit). The links come from
 /// <see cref="IdentityService"/>; they carry single-use codes, so never log them.
 /// </summary>
-public sealed class AccountEmailSender(IEmailSender _emailSender, IOptions<MailserverConfiguration> mailserverOptions) : IEmailSender<ApplicationUser>
+public sealed class AccountEmailSender(
+    IEmailSender _emailSender,
+    IOptions<MailserverConfiguration> mailserverOptions
+) : IEmailSender<ApplicationUser>
 {
     private readonly MailserverConfiguration _mailserver = mailserverOptions.Value;
 

@@ -1,3 +1,4 @@
+using AppTemplate.Core.Interfaces;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.Web.Services;
@@ -14,15 +15,15 @@ public static class AuthenticationConfigurations
     /// </summary>
     public static IServiceCollection AddAuthenticationConfigurations(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger
+        IAppLogger logger
     )
     {
         services.AddAuthorization();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
-        StartupLog.AuthorizationConfigured(
-            logger,
+        logger.LogInformation(
+            "{Project} were configured ({Permissions} permissions)",
             "Authentication and authorization",
             Permission.List.Count
         );

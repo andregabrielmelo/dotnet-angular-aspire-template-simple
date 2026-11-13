@@ -1,3 +1,4 @@
+using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure.Caching;
 using AppTemplate.UseCases.Caching;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -16,7 +17,7 @@ namespace AppTemplate.Web.Behaviors;
 public class CachingBehavior<TMessage, TResponse>(
     HybridCache cache,
     IOptions<CachingSettings> settings,
-    ILogger<CachingBehavior<TMessage, TResponse>> logger
+    IAppLogger<CachingBehavior<TMessage, TResponse>> logger
 ) : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IMessage
 {
@@ -39,7 +40,7 @@ public class CachingBehavior<TMessage, TResponse>(
                 static async (state, token) =>
                 {
                     // The factory only runs on a miss.
-                    state.logger.LogInformation("Cache miss for {CacheKey}", state.CacheKey);
+                    state.logger.LogDebug("Cache miss for {CacheKey}", state.CacheKey);
                     var response = await state.next(state.message, token);
                     return response is Ardalis.Result.IResult { Status: not ResultStatus.Ok }
                         ? throw new NotCachedException(response)

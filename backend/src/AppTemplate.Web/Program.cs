@@ -1,13 +1,18 @@
-﻿using AppTemplate.ServiceDefaults;
+﻿using AppTemplate.Infrastructure.Logging;
+using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
+using Serilog;
+using Serilog.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddLoggerConfigs() // Serilog to the console
+builder
+    .AddLoggerConfigs() // Serilog to the console
     .AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
 
-using var loggerFactory = LoggerFactory.Create(config => config.AddConsole());
-var startupLogger = loggerFactory.CreateLogger<Program>();
+// The host's loggers don't exist until it is built, so startup logs through the console logger.
+using var startupLoggerFactory = new SerilogLoggerFactory(Log.Logger);
+var startupLogger = new LoggerAdapter<Program>(startupLoggerFactory);
 
 startupLogger.LogInformation("Starting web host");
 
@@ -30,6 +35,9 @@ builder
             // Generated clients (the Angular types) get non-optional fields for non-nullable ones.
             s.MarkNonNullablePropsAsRequired();
         };
+        // No bearer scheme: the reference pages are same-origin, so the browser sends the session
+        // cookie set by POST /auth/login.
+        o.EnableJWTBearerAuth = false;
     });
 
 // TODO: Add response compression if needed. Prefer server-based response compression technologies, probably better.

@@ -1,7 +1,9 @@
+using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure.Caching;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.Infrastructure.Logging;
 using AppTemplate.UseCases.Constants;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users.Queries.List;
@@ -15,7 +17,6 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
@@ -28,7 +29,7 @@ public static class InfrastructureServiceExtensions
     public static IServiceCollection AddInfrastructureServices(
         this IHostApplicationBuilder builder,
         IConfigurationManager config,
-        ILogger logger
+        IAppLogger logger
     )
     {
         // Set by the AppHost (WithReference) in development, and by the environment elsewhere.
@@ -36,6 +37,10 @@ public static class InfrastructureServiceExtensions
             config.GetConnectionString("apptemplate"),
             "ConnectionStrings:apptemplate"
         );
+        // Every layer logs through IAppLogger<T> (Core), which this adapter forwards to
+        // Microsoft.Extensions.Logging's providers.
+        builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(LoggerAdapter<>));
+
         builder.Services.AddScoped<ISaveChangesInterceptor, EventDispatchInterceptor>();
         builder.Services.AddScoped<IDomainEventDispatcher, MediatorDomainEventDispatcher>();
 
@@ -96,8 +101,8 @@ public static class InfrastructureServiceExtensions
                     }
             );
 
-        InfrastructureLog.Configured(
-            logger,
+        logger.LogInformation(
+            "{Project} were configured",
             useRedis ? "HybridCache with Redis" : "HybridCache in memory"
         );
 
@@ -156,7 +161,7 @@ public static class InfrastructureServiceExtensions
             .Services.AddScoped<IEmailSender<ApplicationUser>, AccountEmailSender>()
             .AddTransient<IIdentityService, IdentityService>();
 
-        InfrastructureLog.ServicesRegistered(logger, "Infrastructure");
+        logger.LogInformation("{Project} services registered", "Infrastructure");
 
         return builder.Services;
     }
