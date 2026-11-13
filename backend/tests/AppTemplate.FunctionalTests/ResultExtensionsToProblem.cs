@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace AppTemplate.FunctionalTests;
 
 /// <summary>
-/// <see cref="ResultExtensions.ToProblem"/> on its own, for every result status, including ones
+/// <see cref="AppTemplate.Web.Extensions.ResultExtensions.ToProblem"/> on its own, for every result status, including ones
 /// no current endpoint produces. Writes each response into a bare HttpContext; no Docker.
 /// </summary>
 public class ResultExtensionsToProblem

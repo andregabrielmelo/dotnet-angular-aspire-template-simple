@@ -6,10 +6,9 @@ namespace AppTemplate.Infrastructure.Identity;
 public static class IdentityResultExtensions
 {
     /// <summary>
-    /// Identity's errors as the API's results: a taken email is <c>Conflict</c>; a wrong current
-    /// password, a bad code and the password rules are field errors keyed by the request field
-    /// (<paramref name="passwordField"/> for the password being set); anything else is
-    /// <c>Error</c>, with Identity's error codes only, because descriptions can quote the input.
+    /// Identity's result as the API's: <c>Success</c>, or <c>Error</c> carrying Identity's error
+    /// descriptions. An <c>Error</c> answers a generic 500, so the descriptions never reach the
+    /// client (ResultExtensions).
     /// </summary>
     public static Result ToApplicationResult(this IdentityResult result)
     {

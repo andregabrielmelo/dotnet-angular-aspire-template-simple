@@ -4,9 +4,8 @@ namespace AppTemplate.UseCases.Authorization;
 
 /// <summary>
 /// The roles accounts can have, and what each one may do. Accounts hold them as ASP.NET Core
-/// Identity roles: the <see cref="SmartEnum{TEnum}.Name"/> is the Identity role name, and the
-/// <see cref="SmartEnum{TEnum}.Value"/> its seeded id (the migrations seed
-/// <see cref="SmartEnum{TEnum}.List"/>). Identity's claims factory writes the permissions into the
+/// Identity roles: the <c>Name</c> is the Identity role name, and the <c>Value</c> its seeded id
+/// (the migrations seed <c>List</c>). Identity's claims factory writes the permissions into the
 /// session at sign-in and at every security stamp check, so a role change reaches the user within
 /// that interval (five minutes). Ownership
 /// ("update your own profile") is not a permission: handlers check it against
