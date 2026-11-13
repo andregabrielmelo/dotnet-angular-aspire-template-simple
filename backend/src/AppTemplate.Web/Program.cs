@@ -35,9 +35,8 @@ builder
             // Generated clients (the Angular types) get non-optional fields for non-nullable ones.
             s.MarkNonNullablePropsAsRequired();
         };
-        // No bearer scheme: the reference pages are same-origin, so the browser sends the session
-        // cookie set by POST /auth/login.
-        o.EnableJWTBearerAuth = false;
+        // The document declares the bearer scheme (POST /auth/token, ADR 018); the reference pages
+        // themselves are same-origin, so the browser also sends the session cookie.
     });
 
 // TODO: Add response compression if needed. Prefer server-based response compression technologies, probably better.
