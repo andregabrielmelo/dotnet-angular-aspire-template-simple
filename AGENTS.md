@@ -119,6 +119,8 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 ## 11. Code style
 
 - C#: `backend/.editorconfig`, CSharpier, central package versions in `backend/Directory.Packages.props`, and LF line endings.
+- **Code analysis fails the build.** `backend/Directory.Build.props` turns on the recommended .NET analyzers (`AnalysisLevel` `latest-recommended`) and makes their warnings errors. `.editorconfig` also makes `throw ex;` (CA2200) and unused usings (IDE0005) errors. Fix the code; don't silence the rule. Suppress only where the rule is wrong for the case: in `.editorconfig` with a comment saying why, or with `[SuppressMessage(..., Justification = "...")]`. Never use a bare `#pragma warning disable`.
+- Log through `[LoggerMessage]` partial methods (CA1848), as `StartupLog`, `LoggingBehavior` and `MimeKitEmailSender` do, with PascalCase placeholders. Format and compare strings with an explicit culture or `StringComparison` (CA1305, CA1310).
 - After changing a package version, run `dotnet restore` and commit the regenerated `packages.lock.json` files.
 - Inject `ILogger<T>` and use message templates (`"{UserId} created"`), never string interpolation. Log ids and names, never tokens, passwords, personal data, request bodies, commands or DTOs (`{@Command}` or a record's `ToString()` prints every property): nothing redacts logs. See `docs/content/best-practices.md`, Logging.
 - Comments explain *why*, not *what*. Don't add a dependency when the framework or an existing library already solves the problem.
