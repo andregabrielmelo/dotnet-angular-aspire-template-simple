@@ -7,7 +7,7 @@ using MimeKit;
 
 namespace AppTemplate.Infrastructure.Email;
 
-public sealed partial class MimeKitEmailSender(
+public sealed class MimeKitEmailSender(
     ILogger<MimeKitEmailSender> logger,
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender
@@ -16,13 +16,14 @@ public sealed partial class MimeKitEmailSender(
 
     public async Task SendAsync(
         string to,
+        string from,
         string subject,
         string body,
         CancellationToken cancellationToken = default
     )
     {
         var message = new MimeMessage();
-        message.From.Add(MailboxAddress.Parse(_mailserver.FromAddress));
+        message.From.Add(MailboxAddress.Parse(from));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
         message.Body = new TextPart("plain") { Text = body };
@@ -37,10 +38,6 @@ public sealed partial class MimeKitEmailSender(
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(quit: true, cancellationToken);
 
-        // Addresses are personal data - log the subject, not who it went to.
-        LogEmailSent(logger, subject, _mailserver.Hostname);
+        logger.LogWarning("Sending email to {to} from {from} with subject {subject} using {type}.", to, from, subject, this.ToString());
     }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Sent email '{Subject}' via {Host}")]
-    private static partial void LogEmailSent(ILogger logger, string subject, string host);
 }

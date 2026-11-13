@@ -13,18 +13,15 @@ public static class LoggerConfigs
     /// Requests carry passwords and tokens, so log names and ids, never request bodies or DTOs.
     /// </summary>
     /// <returns>The logger, for the startup log lines written before the host is built.</returns>
-    public static Serilog.ILogger AddLoggerConfigs(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder AddLoggerConfigs(this WebApplicationBuilder builder)
     {
-        var logger = new LoggerConfiguration()
-            .ReadFrom.Configuration(builder.Configuration)
-            .Enrich.FromLogContext()
-            .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
-            .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-            .CreateLogger();
+        builder.Logging.AddSerilog(new LoggerConfiguration()
+          .ReadFrom.Configuration(builder.Configuration)
+          .Enrich.FromLogContext()
+          .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
+          .WriteTo.Console()
+          .CreateLogger());
 
-        // Called before AddServiceDefaults, so clearing the defaults keeps OpenTelemetry's provider.
-        builder.Logging.ClearProviders().AddSerilog(logger, dispose: true);
-
-        return logger;
+        return builder;
     }
 }

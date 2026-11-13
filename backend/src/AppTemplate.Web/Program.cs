@@ -1,15 +1,15 @@
 ﻿using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
-using Serilog.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var serilogLogger = builder.AddLoggerConfigs(); // Serilog to the console
-builder.AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
+builder.AddLoggerConfigs() // Serilog to the console
+    .AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
 
-var startupLogger = new SerilogLoggerFactory(serilogLogger).CreateLogger<Program>();
+using var loggerFactory = LoggerFactory.Create(config => config.AddConsole());
+var startupLogger = loggerFactory.CreateLogger<Program>();
 
-StartupLog.StartingWebHost(startupLogger);
+startupLogger.LogInformation("Starting web host");
 
 builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger);
 builder.Services.AddServiceConfigurations(startupLogger, builder);
@@ -30,9 +30,6 @@ builder
             // Generated clients (the Angular types) get non-optional fields for non-nullable ones.
             s.MarkNonNullablePropsAsRequired();
         };
-        // No bearer scheme: the reference pages are same-origin, so the browser sends the session
-        // cookie set by POST /auth/login.
-        o.EnableJWTBearerAuth = false;
     });
 
 // TODO: Add response compression if needed. Prefer server-based response compression technologies, probably better.
