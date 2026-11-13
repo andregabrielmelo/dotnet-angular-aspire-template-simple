@@ -106,6 +106,14 @@ jobs:
           dotnet dev-certs https --trust || [ $? -eq 4 ]
           echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
 
+      # The browser tests (AppTemplate.AspireTests/EndToEnd) drive the Angular app in Chromium,
+      # which needs the browser and its system libraries. The Windows and macOS jobs skip them
+      # (RequiresDocker).
+      - name: Install Chromium for the end-to-end tests
+        if: runner.os == 'Linux'
+        working-directory: backend
+        run: pwsh tests/AppTemplate.AspireTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
       # Functional tests run against a real Postgres via Testcontainers, which needs a Docker
       # daemon that runs Linux containers - only the Linux runners have one. Windows and macOS
       # run everything else (unit tests, and functional tests that don't touch the database).
@@ -118,6 +126,16 @@ jobs:
         if: runner.os != 'Linux'
         working-directory: backend
         run: dotnet test AppTemplate.slnx --configuration Release --no-build --filter "Category!=RequiresDocker" --logger "console;verbosity=normal"
+
+      # A failed end-to-end test saves a Playwright trace (open it with `playwright.ps1
+      # show-trace` or trace.playwright.dev) and a screenshot.
+      - name: Upload Playwright traces
+        if: failure() && runner.os == 'Linux'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-traces
+          path: backend/tests/AppTemplate.AspireTests/bin/Release/net10.0/TestResults/playwright/
+          if-no-files-found: ignore
 
       # backend/openapi/v1.json is the committed API contract the Angular types are generated
       # from. Regenerate it and fail if it differs: an endpoint or DTO changed without
