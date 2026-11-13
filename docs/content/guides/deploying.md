@@ -82,6 +82,7 @@ The probes (`/alive`, `/health`) are mapped only in Development. To use them for
 
 - **Logs** go to the console (Serilog) and, with `OTEL_EXPORTER_OTLP_ENDPOINT`, to your collector. Nothing is redacted, which is why the code never logs request or response contents.
 - **Traces and metrics** (ASP.NET Core, HttpClient, EF Core, Npgsql, runtime) go to the same collector.
+- **Per user:** a signed-in request's trace carries a `user.id` tag, and its logs a `UserId` property (`UserContextEnrichmentMiddleware`), so you can follow one user's requests. It's the profile id, not the email or the name.
 
 ## 7. Back up
 

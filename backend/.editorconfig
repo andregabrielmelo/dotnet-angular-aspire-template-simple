@@ -276,7 +276,7 @@ dotnet_diagnostic.CA1720.severity = suggestion
 dotnet_diagnostic.CA1725.severity = none
 
 # CA1848, CA1873: logging through LoggerMessage delegates, and arguments that are evaluated even
-# when the level is off. Every layer logs through IAppLogger<T> (Core/Interfaces), whose adapter
+# when the level is off. Every layer logs through ILoggerAdapter<T> (Core/Interfaces), whose adapter
 # checks the level before formatting; shown in the IDE, not enforced.
 dotnet_diagnostic.CA1848.severity = suggestion
 dotnet_diagnostic.CA1873.severity = suggestion
