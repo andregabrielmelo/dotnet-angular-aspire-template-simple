@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -21,8 +20,14 @@ var cache = builder
     .WithLifetime(ContainerLifetime.Persistent)
     .WithRedisInsight();
 
-// register the API project and link the DB. HTTPS only (its "https" launch profile), with the
-// ASP.NET Core development certificate (ADR 016).
+// The API project, linked to the database and the cache. HTTPS only (its "https" launch profile),
+// with the ASP.NET Core development certificate (ADR 016).
+//
+// What the AppHost passes the API is only what depends on this composition: connection strings
+// (WithReference), the Angular app's address and the SMTP server (WithEnvironment, below), and
+// outside Development the deployment's values (AddParameter). Everything else, development defaults
+// included (the sender address, loopback as a known proxy), is the API's own configuration, in
+// AppTemplate.Web/appsettings.Development.json.
 var api = builder
     .AddProject<Projects.AppTemplate_Web>("web", launchProfileName: "https")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", builder.Environment.EnvironmentName)
@@ -32,24 +37,6 @@ var api = builder
     .WaitFor(cache)
     // Readiness (Postgres reachable): resources that WaitFor(api) start only once it's ready.
     .WithHttpHealthCheck("/health", endpointName: "https");
-
-// The API's settings kept in the AppHost's appsettings ("web" section), passed on as environment
-// variables: Mailserver:FromAddress becomes Mailserver__FromAddress, and an array element such as
-// ForwardedHeaders:KnownProxies:0 becomes ForwardedHeaders__KnownProxies__0. In development they
-// are Mailpit's sender and loopback as a known proxy: the Angular dev server's proxy reaches the
-// API from loopback, so trusting its X-Forwarded-For makes rate limits count the browser's
-// address (ADR 014).
-foreach (
-    var (key, value) in builder
-        .Configuration.GetSection("web")
-        .AsEnumerable(makePathsRelative: true)
-)
-{
-    if (value is not null)
-    {
-        api.WithEnvironment(key.Replace(":", "__"), value);
-    }
-}
 
 // The Angular dev server is the browser's single origin: its proxy (frontend/proxy.conf.mjs)
 // forwards /api to the Web API, found through the services__web__https__0 variable that
@@ -98,7 +85,9 @@ if (builder.Environment.IsDevelopment())
 }
 else
 {
-    // The SMTP server the API's emails (IEmailSender) go to.
+    // The SMTP server the API's emails (IEmailSender) go to, and their sender: the deployment's
+    // values, as parameters (Parameters:mailserver-hostname, ... in configuration, or environment
+    // variables).
     var mailserverHostname = builder.AddParameter("mailserver-hostname");
     var mailserverPort = builder.AddParameter("mailserver-port");
     var mailserverFromAddress = builder.AddParameter("mailserver-from-address");
