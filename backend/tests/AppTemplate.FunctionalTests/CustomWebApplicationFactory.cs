@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Identity;
@@ -26,6 +27,11 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
 
     /// <summary>Where account emails link to (AccountLinks:ClientUrl).</summary>
     public const string ClientUrl = "https://app.test";
+
+    /// <summary>The bearer tokens' signing key (Authentication:Jwt:SigningKey), random per run.</summary>
+    public static readonly string JwtSigningKey = Convert.ToBase64String(
+        RandomNumberGenerator.GetBytes(JwtSettings.MinimumKeyBytes)
+    );
 
     protected string? ConnectionString { get; set; }
 
@@ -56,6 +62,7 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
         );
         builder.UseSetting("Mailserver:FromAddress", "noreply@app.test");
         builder.UseSetting("AccountLinks:ClientUrl", ClientUrl);
+        builder.UseSetting("Authentication:Jwt:SigningKey", JwtSigningKey);
         // Tests sign in many times from one address; RateLimitingTests set their own limits.
         builder.UseSetting("RateLimiting:AnonymousPermitLimit", "100000");
         builder.UseSetting("RateLimiting:AuthenticatedPermitLimit", "100000");
