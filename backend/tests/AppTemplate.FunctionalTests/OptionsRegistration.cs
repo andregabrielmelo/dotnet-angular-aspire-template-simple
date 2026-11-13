@@ -5,6 +5,8 @@ using AppTemplate.Infrastructure.Logging;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Settings;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -25,6 +27,7 @@ public class OptionsRegistration(CustomWebApplicationFactory<Program> factory)
             typeof(RateLimitSettings),
             typeof(ForwardedHeadersSettings),
             typeof(CachingSettings),
+            typeof(JwtSettings),
         ];
 
     [Theory]
@@ -59,6 +62,9 @@ public class OptionsValidationAtStartup
     [InlineData("Caching:LocalExpiration", "00:20:00", "Caching")]
     [InlineData("Caching:Profiles:Short:LocalExpiration", "00:00:00", "Caching:Profiles")]
     [InlineData("Caching:Profiles:Short:LocalExpiration", "00:02:00", "Caching:Profiles")]
+    [InlineData("Authentication:Jwt:SigningKey", "", "Authentication:Jwt:SigningKey")]
+    [InlineData("Authentication:Jwt:SigningKey", "too-short", "Authentication:Jwt:SigningKey")]
+    [InlineData("Authentication:Jwt:TokenLifetimeMinutes", "0", "TokenLifetimeMinutes")]
     public void FailsGivenAnInvalidSetting(string key, string value, string named)
     {
         var configuration = new ConfigurationBuilder()
@@ -68,16 +74,13 @@ public class OptionsValidationAtStartup
                     // Valid values for the required settings, so only the one under test fails.
                     ["Mailserver:FromAddress"] = "noreply@app.test",
                     ["AccountLinks:ClientUrl"] = CustomWebApplicationFactory<Program>.ClientUrl,
+                    ["Authentication:Jwt:SigningKey"] =
+                        CustomWebApplicationFactory<Program>.JwtSigningKey,
                     [key] = value,
                 }
             )
             .Build();
-        using var provider = new ServiceCollection()
-            .AddOptionConfigurations(
-                configuration,
-                new LoggerAdapter<OptionsRegistration>(NullLoggerFactory.Instance)
-            )
-            .BuildServiceProvider();
+        using var provider = Register(configuration, Environments.Production);
 
         var exception = Should.Throw<OptionsValidationException>(() =>
             provider.GetRequiredService<IStartupValidator>().Validate()
@@ -95,16 +98,45 @@ public class OptionsValidationAtStartup
                 {
                     ["Mailserver:FromAddress"] = "noreply@app.test",
                     ["AccountLinks:ClientUrl"] = CustomWebApplicationFactory<Program>.ClientUrl,
+                    ["Authentication:Jwt:SigningKey"] =
+                        CustomWebApplicationFactory<Program>.JwtSigningKey,
                 }
             )
             .Build();
-        using var provider = new ServiceCollection()
+        using var provider = Register(configuration, Environments.Production);
+
+        Should.NotThrow(() => provider.GetRequiredService<IStartupValidator>().Validate());
+    }
+
+    [Fact]
+    public void MakesUpASigningKeyInDevelopmentWhenNoneIsSet()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["Mailserver:FromAddress"] = "noreply@app.test",
+                    ["AccountLinks:ClientUrl"] = CustomWebApplicationFactory<Program>.ClientUrl,
+                }
+            )
+            .Build();
+        using var provider = Register(configuration, Environments.Development);
+
+        Should.NotThrow(() => provider.GetRequiredService<IStartupValidator>().Validate());
+        provider
+            .GetRequiredService<IOptions<JwtSettings>>()
+            .Value.SigningKey.Length.ShouldBeGreaterThanOrEqualTo(JwtSettings.MinimumKeyBytes);
+    }
+
+    /// <summary>The Web host's option registrations, in <paramref name="environment"/>.</summary>
+    private static ServiceProvider Register(IConfiguration configuration, string environment) =>
+        new ServiceCollection()
+            .AddSingleton<IHostEnvironment>(
+                new HostingEnvironment { EnvironmentName = environment }
+            )
             .AddOptionConfigurations(
                 configuration,
                 new LoggerAdapter<OptionsRegistration>(NullLoggerFactory.Instance)
             )
             .BuildServiceProvider();
-
-        Should.NotThrow(() => provider.GetRequiredService<IStartupValidator>().Validate());
-    }
 }

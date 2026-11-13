@@ -19,6 +19,11 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
 {
     public const string ClientUrl = "https://app.test";
 
+    /// <summary>The bearer tokens' signing key, random per run.</summary>
+    public static readonly string JwtSigningKey = Convert.ToBase64String(
+        System.Security.Cryptography.RandomNumberGenerator.GetBytes(JwtSettings.MinimumKeyBytes)
+    );
+
     public ServiceProvider Services { get; private set; } = null!;
 
     public RecordingEmailSender Emails { get; } = new();
@@ -52,10 +57,11 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
 
         var services = builder.Services;
         services.Replace(ServiceDescriptor.Scoped(_ => Substitute.For<IDomainEventDispatcher>()));
-        // What Web provides: the email sender, account links, and the authentication services
-        // SignInManager is built with (it issues nothing here).
+        // What Web provides: the email sender, account links, the token settings, and the
+        // authentication services SignInManager is built with (it issues nothing here).
         services.AddSingleton<IEmailSender>(emails);
         services.Configure<AccountLinkSettings>(links => links.ClientUrl = ClientUrl);
+        services.Configure<JwtSettings>(jwt => jwt.SigningKey = JwtSigningKey);
         services.AddAuthentication();
         services.AddHttpContextAccessor();
         return Task.FromResult(services.BuildServiceProvider());

@@ -1,4 +1,5 @@
 using AppTemplate.Core.Interfaces;
+using AppTemplate.Infrastructure.Identity;
 using Microsoft.AspNetCore.Antiforgery;
 
 namespace AppTemplate.Web.Configurations;
@@ -52,13 +53,19 @@ public static class AntiforgeryConfigurations
 
     /// <summary>
     /// Refuses an unsafe request (anything but GET, HEAD, OPTIONS and TRACE) from a signed-in
-    /// session without a valid token, with a 400 problem. Runs after authentication.
+    /// session without a valid token, with a 400 problem. Requests with a bearer token are exempt.
+    /// Runs after authentication.
     /// </summary>
     public static IApplicationBuilder UseSessionAntiforgery(this IApplicationBuilder app) =>
         app.Use(
             async (context, next) =>
             {
-                if (context.User.Identity?.IsAuthenticated == true)
+                // A bearer token is sent deliberately by the client, never attached by a browser
+                // on its own, so it needs no CSRF defense (ADR 018).
+                if (
+                    context.User.Identity?.IsAuthenticated == true
+                    && !context.User.IsBearerAuthenticated()
+                )
                 {
                     var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
                     if (!await antiforgery.IsRequestValidAsync(context))
