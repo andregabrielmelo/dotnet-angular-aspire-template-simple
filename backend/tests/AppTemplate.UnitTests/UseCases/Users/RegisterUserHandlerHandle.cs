@@ -2,7 +2,7 @@ using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Interfaces;
-using AppTemplate.UseCases.Users.Commands.Register;
+using AppTemplate.UseCases.Users.Register;
 using Mediator;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -73,6 +73,22 @@ public class RegisterUserHandlerHandle
     }
 
     [Fact]
+    public async Task EmailsTheConfirmationLinkBeforeAnnouncingTheRegistration()
+    {
+        CreationReturns(UserId.From(5));
+
+        await Register();
+
+        Received.InOrder(() =>
+        {
+            _ = _identity.SendEmailConfirmationAsync(UserId.From(5), Arg.Any<CancellationToken>());
+            _ = _mediator
+                .Publish(Arg.Any<UserRegisteredDomainEvent>(), Arg.Any<CancellationToken>())
+                .AsTask();
+        });
+    }
+
+    [Fact]
     public async Task AddsTheNewAccountToMember()
     {
         CreationReturns(UserId.From(5));
@@ -89,7 +105,7 @@ public class RegisterUserHandlerHandle
     }
 
     [Fact]
-    public async Task PassesOnAFailedRoleAdditionAndPublishesNothing()
+    public async Task PassesOnAFailedRoleAdditionAndSendsAndPublishesNothing()
     {
         CreationReturns(UserId.From(5));
         RoleAdditionReturns(Result.Error());
@@ -97,13 +113,16 @@ public class RegisterUserHandlerHandle
         var result = await Register();
 
         result.Status.ShouldBe(ResultStatus.Error);
+        await _identity
+            .DidNotReceiveWithAnyArgs()
+            .SendEmailConfirmationAsync(UserId.From(1), CancellationToken.None);
         await _mediator
             .DidNotReceive()
             .Publish(Arg.Any<UserRegisteredDomainEvent>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task PassesOnAConflictAndPublishesNothing()
+    public async Task PassesOnAConflictAndSendsAndPublishesNothing()
     {
         CreationReturns(UserErrors.EmailNotUnique);
 
@@ -113,6 +132,9 @@ public class RegisterUserHandlerHandle
         await _identity
             .DidNotReceiveWithAnyArgs()
             .AddToRolesAsync(UserId.From(1), [], CancellationToken.None);
+        await _identity
+            .DidNotReceiveWithAnyArgs()
+            .SendEmailConfirmationAsync(UserId.From(1), CancellationToken.None);
         await _mediator
             .DidNotReceive()
             .Publish(Arg.Any<UserRegisteredDomainEvent>(), Arg.Any<CancellationToken>());

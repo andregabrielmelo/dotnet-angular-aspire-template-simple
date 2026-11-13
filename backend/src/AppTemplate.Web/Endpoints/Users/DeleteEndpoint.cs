@@ -1,6 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Users.Commands.Delete;
+using AppTemplate.UseCases.Users.Delete;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Users;

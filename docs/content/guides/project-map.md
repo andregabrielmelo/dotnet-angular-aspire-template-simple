@@ -26,7 +26,7 @@ Dependencies point inward: each project may use the ones listed above it, never 
 |---|---|---|
 | `AppTemplate.SharedKernel` | Base types every layer uses: `EntityBase`, `IRepository<T>`, domain event plumbing, the persistence exceptions use cases catch | `IRepository.cs` |
 | `AppTemplate.Core` | The domain: aggregates, value objects, specifications, domain events, and interfaces ("ports") for things outside the process | `Aggregates/UserAggregate/User.cs`, `Interfaces/IEmailSender.cs` |
-| `AppTemplate.UseCases` | What the application does: one folder per command or query, with its handler. Also list query-service interfaces, the `Role` and `Permission` smart enums and the accounts port `IIdentityService` | `Users/Commands/Update/UpdateUserHandler.cs` |
+| `AppTemplate.UseCases` | What the application does: one folder per command or query, with its handler. Also list query-service interfaces, the `Role` and `Permission` smart enums and the accounts port `IIdentityService` | `Users/Update/UpdateUserHandler.cs` |
 | `AppTemplate.Infrastructure` | How it's done: EF Core and Postgres, repository and query-service implementations, ASP.NET Core Identity for accounts, email over SMTP | `Data/Queries/ListUsersQueryService.cs` |
 | `AppTemplate.Web` | The HTTP API: endpoints, validation, authentication, error responses, and the composition root (`Program.cs`, `Configurations/`) | `Endpoints/Users/UpdateEndpoint.cs` |
 | `AppTemplate.ServiceDefaults` | Shared by every host: OpenTelemetry (logs, traces, metrics), health checks, service discovery | `Extensions.cs` |
@@ -96,8 +96,8 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 | To change... | Look in |
 |---|---|
 | The sign-in and registration pages, and the account pages (confirm email, forgot and reset password) | `frontend/src/app/features/auth/`: `login-page/`, `register-page/`, the account pages, `resend-confirmation/` (shared by both), `auth-messages.ts` (error messages, safe `returnUrl`) and `account.service.ts` for the account flows; the change-password form in `features/profile/` |
-| Sign-in, registration and sign-out | `Web/Endpoints/Authentication/`, `UseCases/Authentication/Commands/`, `UseCases/Users/Commands/Register/` |
-| Email confirmation, password reset and change | the endpoints and use cases above, `Infrastructure/Identity/` (`IdentityService`, `AccountEmailSender`, `AccountLinkSettings`, `IdentityResultExtensions`), `UseCases/Users/Handlers/SendConfirmationOnUserRegistered.cs` |
+| Sign-in, registration and sign-out | `Web/Endpoints/Authentication/`, `UseCases/Authentication/`, `UseCases/Users/Register/` |
+| Email confirmation, password reset and change | the endpoints and use cases above, `Infrastructure/Identity/` (`IdentityService`, `AccountEmailSender`, `AccountLinkSettings`, `IdentityResultExtensions`), `UseCases/Users/Register/RegisterUserHandler.cs` |
 | Rate limits | `Web/Configurations/RateLimitingConfigurations.cs` (the `authentication` policy, forwarded headers), the `RateLimiting` and `ForwardedHeaders` settings (`Web/Settings/`), ADR 014 |
 | Accounts: passwords, lockout, roles, the security stamp | `Infrastructure/Identity/` (`IdentityService`, `ApplicationUser`), the Identity options in `InfrastructureServiceExtensions`, `UseCases/Interfaces/IIdentityService.cs`, `UseCases/Constants/PasswordConstants.cs` |
 | The roles, their permissions and their seeding | `UseCases/Authorization/Role.cs` (a smart enum), `Infrastructure/Data/Configurations/IdentityRoleConfiguration.cs` |
@@ -123,9 +123,9 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 |---|---|
 | Aggregate | `Core/Aggregates/<Name>Aggregate/<Name>.cs`, with `<Name>Id.cs` and its value objects next to it |
 | Specification | `Core/Aggregates/<Name>Aggregate/Specifications/<Name>By<What>Specification.cs` |
-| Command or query | `UseCases/<Plural>/Commands/<UseCase>/<UseCase>Command.cs` or `UseCases/<Plural>/Queries/<UseCase>/<UseCase>Query.cs`, plus `<UseCase>Handler.cs`; domain event handlers in `UseCases/<Plural>/Handlers/` |
+| Command or query | `UseCases/<Plural>/<UseCase>/<UseCase>Command.cs` or `<UseCase>Query.cs`, plus `<UseCase>Handler.cs`; domain event handlers in Core, `Core/Aggregates/<Aggregate>/Handlers/` |
 | DTO | `UseCases/<Plural>/<Name>Dto.cs` |
-| List query service | `UseCases/<Plural>/Queries/List/IList<Plural>QueryService.cs`, implemented in `Infrastructure/Data/Queries/` |
+| List query service | `UseCases/<Plural>/List/IList<Plural>QueryService.cs`, implemented in `Infrastructure/Data/Queries/` |
 | Endpoint | `Web/Endpoints/<Plural>/<Verb>Endpoint.cs` (namespace `AppTemplate.Web.Endpoints.<Plural>`), with its request, validator and mapper in the same file |
 | EF configuration | `Infrastructure/Data/Configurations/<Name>Configuration.cs` |
 | Tests | One class per member or behavior: `UnitTests/Core/<Name>Aggregate/<Name><Member>.cs`, `UnitTests/UseCases/<Plural>/<UseCase>HandlerHandle.cs`, `IntegrationTests/Data/` (or `Identity/`), `FunctionalTests/ApiEndpoints/<Name><Verb>.cs` (`UserGetById`) |

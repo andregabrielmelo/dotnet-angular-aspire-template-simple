@@ -1,4 +1,4 @@
-using AppTemplate.UseCases.Users.Commands.Delete;
+using AppTemplate.UseCases.Users.Delete;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UnitTests.UseCases.Users;

@@ -1,5 +1,5 @@
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication.Commands.ForgotPassword;
+using AppTemplate.UseCases.Authentication.ForgotPassword;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 

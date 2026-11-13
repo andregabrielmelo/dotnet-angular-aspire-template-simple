@@ -1,8 +1,8 @@
 using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Constants;
-using AppTemplate.UseCases.Users.Queries.Get;
-using AppTemplate.UseCases.Users.Queries.GetCurrent;
-using AppTemplate.UseCases.Users.Queries.List;
+using AppTemplate.UseCases.Users.Get;
+using AppTemplate.UseCases.Users.GetCurrent;
+using AppTemplate.UseCases.Users.List;
 
 namespace AppTemplate.UnitTests.UseCases.Caching;
 
