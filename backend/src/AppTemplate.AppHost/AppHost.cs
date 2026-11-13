@@ -95,6 +95,11 @@ else
     api.WithEnvironment("Mailserver__Hostname", mailserverHostname)
         .WithEnvironment("Mailserver__Port", mailserverPort)
         .WithEnvironment("Mailserver__FromAddress", mailserverFromAddress);
+
+    // The key that signs the bearer tokens (ADR 018), a secret. In Development the API makes up
+    // its own.
+    var jwtSigningKey = builder.AddParameter("jwt-signing-key", secret: true);
+    api.WithEnvironment("Authentication__Jwt__SigningKey", jwtSigningKey);
 }
 
 builder.Build().Run();
