@@ -5,7 +5,10 @@ using Xunit;
 
 namespace AppTemplate.ArchitectureTests;
 
-/// <summary>Where things go: endpoints in Web's feature namespaces, handlers in UseCases (ADR 003).</summary>
+/// <summary>
+/// Where things go: endpoints in Web's feature namespaces, command and query handlers in UseCases
+/// (ADR 003), domain event handlers in Core.
+/// </summary>
 public class ConventionTests
 {
     [Fact]
@@ -63,6 +66,26 @@ public class ConventionTests
     }
 
     [Fact]
+    public void DomainEventHandlers_LiveInCore()
+    {
+        // A domain event handler sits next to its aggregate and uses only Core. Work that needs a
+        // UseCases port (sending an account email, say) belongs in the use case itself, as
+        // RegisterUserHandler does.
+        var misplaced = Layers
+            .All.Where(assembly => assembly != Layers.Core)
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(IsDomainEventHandler)
+            .Select(type => type.FullName)
+            .ToList();
+
+        Assert.True(
+            misplaced.Count == 0,
+            "Domain event handlers belong in Core (Core/Aggregates/<Aggregate>/Handlers/): "
+                + string.Join(", ", misplaced)
+        );
+    }
+
+    [Fact]
     public void CommandsAndQueries_AreInTheirOwnFileNamedAfterThem()
     {
         // A record's file can't be read from the assembly, but its name can: every command or
@@ -114,6 +137,16 @@ public class ConventionTests
 
     private static bool IsCommandOrQueryHandler(Type type) =>
         !type.IsInterface && ImplementsAny(type, HandlerInterfaces);
+
+    private static bool IsDomainEventHandler(Type type) =>
+        !type.IsInterface
+        && !type.IsGenericTypeDefinition
+        && type.GetInterfaces()
+            .Any(i =>
+                i.IsGenericType
+                && i.GetGenericTypeDefinition().FullName == "Mediator.INotificationHandler`1"
+                && typeof(SharedKernel.IDomainEvent).IsAssignableFrom(i.GetGenericArguments()[0])
+            );
 
     private static bool IsCommandOrQuery(Type type) =>
         !type.IsInterface && ImplementsAny(type, RequestInterfaces);
