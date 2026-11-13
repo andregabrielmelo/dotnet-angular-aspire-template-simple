@@ -43,7 +43,7 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
                         userId = int.Parse(link["userId"], CultureInfo.InvariantCulture),
                         code = link["code"],
                     }
-                ),
+                )
             )
         ).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
