@@ -35,6 +35,25 @@ This is a plain find-and-replace across the repo (not a `dotnet new` template en
   - **`aspire certs trust`** does the same with the Aspire CLI.
 - The [Aspire CLI/workload](https://learn.microsoft.com/dotnet/aspire/fundamentals/setup-tooling), or just run the AppHost project from your IDE
 
+### Or: the dev container
+
+Instead of installing those, open the repository in the dev container (`.devcontainer/`): in VS Code, **Reopen in Container** (Dev Containers extension), or create a GitHub Codespace. It has the .NET 10 SDK, Node 22 (as CI uses), a Docker engine for Aspire's containers and the tests, PowerShell for Playwright, and the C#, CSharpier, Angular, ESLint and Prettier extensions. On creation, `post-create.sh`:
+
+- creates and trusts a development certificate inside the container, and sets `SSL_CERT_DIR` so Node and .NET trust it
+- restores the .NET tools and packages, and runs `npm ci`
+
+Then run the AppHost as in step 4; VS Code forwards the dashboard (port 17243) and the app's ports to your machine.
+
+**The browser on your machine** doesn't trust the container's certificate, so it warns on the app's `https://localhost` pages. To trust it, import `.devcontainer/dev-cert.crt` (its public part, exported on creation and ignored by git) into your machine's trusted root certificates once:
+
+- **Windows:** `certutil -user -addstore Root .devcontainer\dev-cert.crt`, then restart the browser.
+- **macOS:** `security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db .devcontainer/dev-cert.crt`
+- **Linux:** add it to the browser's certificate store (Chromium and Firefox: Settings, Certificates, Authorities, Import).
+
+A new container creates a new certificate, so do this again after rebuilding it. Remove the old one when you do.
+
+The browser tests (`AppTemplate.AspireTests`) also need Chromium's system libraries: run `pwsh backend/tests/AppTemplate.AspireTests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium` once, after the first build.
+
 ## 4. Run it
 
 ```bash
