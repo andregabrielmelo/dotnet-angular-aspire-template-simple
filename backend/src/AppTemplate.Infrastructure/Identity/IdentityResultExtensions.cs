@@ -12,6 +12,7 @@ public static class IdentityResultExtensions
     /// </summary>
     public static Result ToApplicationResult(this IdentityResult result)
     {
+        // TODO: This can be improved to return a more specific error code or message based on the IdentityResult errors.
         return result.Succeeded
             ? Result.Success()
             : Result.Error(new ErrorList(result.Errors.Select(e => e.Description)));

@@ -195,6 +195,7 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     ) => await SendEmailConfirmationAsync(await FindAsync(userId, cancellationToken));
 
+    // TODO: I think it should only work by passing userId instead of e-mail
     public async Task SendEmailConfirmationAsync(
         EmailAddress email,
         CancellationToken cancellationToken
@@ -286,12 +287,14 @@ public sealed class IdentityService(
         return changed.ToApplicationResult();
     }
 
+    // TODO: Remove this function. Each function should be responsible for getting the user and checking for null, not this function.
     private Task<ApplicationUser?> FindAsync(UserId userId, CancellationToken cancellationToken) =>
         _userManager.Users.SingleOrDefaultAsync(
             account => account.ProfileId == userId,
             cancellationToken
         );
 
+    // TODO: Remove this function. Each function should be responsible for getting the user and checking for null, not this function.
     private async Task<ApplicationUser> FindRequiredAsync(
         UserId userId,
         CancellationToken cancellationToken
