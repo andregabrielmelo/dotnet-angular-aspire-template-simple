@@ -308,6 +308,7 @@ export interface components {
       id: number;
       name: string;
       email: string;
+      /** @description What the caller may do - lets clients show or hide actions. The API still enforces every permission itself. */
       permissions: string[];
     };
     UpdateUserResponse: {
@@ -324,9 +325,15 @@ export interface components {
     UpdateUserRequest: {
       /** @example Sample User */
       name: string;
-      /** @example 555 0100 */
+      /**
+       * @description Leave empty to keep the current phone number.
+       * @example 555 0100
+       */
       phoneNumber?: string | null;
-      /** @example +1 */
+      /**
+       * @description E.164 country calling code, e.g. "+55". Required with PhoneNumber.
+       * @example +1
+       */
       phoneCountryCode?: string | null;
       /** @example null */
       phoneExtension?: string | null;
@@ -564,7 +571,10 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
-        /** @example 1 */
+        /**
+         * @description Bound from the route - FastEndpoints lets route values override the body.
+         * @example 1
+         */
         id: number;
       };
       cookie?: never;

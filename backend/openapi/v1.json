@@ -143,6 +143,7 @@
             "name": "id",
             "in": "path",
             "required": true,
+            "description": "Bound from the route - FastEndpoints lets route values override the body.",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -885,6 +886,7 @@
           },
           "permissions": {
             "type": "array",
+            "description": "What the caller may do - lets clients show or hide actions. The API still enforces every permission itself.",
             "items": {
               "type": "string"
             }
@@ -925,11 +927,13 @@
           },
           "phoneNumber": {
             "type": "string",
+            "description": "Leave empty to keep the current phone number.",
             "nullable": true,
             "example": "555 0100"
           },
           "phoneCountryCode": {
             "type": "string",
+            "description": "E.164 country calling code, e.g. \"+55\". Required with PhoneNumber.",
             "nullable": true,
             "example": "+1"
           },

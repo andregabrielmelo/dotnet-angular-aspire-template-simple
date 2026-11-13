@@ -71,7 +71,10 @@ public class ConventionTests
             .UseCases.GetTypes()
             .Where(IsCommandOrQuery)
             .Where(type =>
-                !(type.Name.EndsWith("Command") || type.Name.EndsWith("Query"))
+                !(
+                    type.Name.EndsWith("Command", StringComparison.Ordinal)
+                    || type.Name.EndsWith("Query", StringComparison.Ordinal)
+                )
                 || type.Namespace?.Split('.').Length < 4
             )
             .Select(type => type.FullName)

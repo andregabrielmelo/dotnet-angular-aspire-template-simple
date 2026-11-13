@@ -17,10 +17,7 @@ public static class ServiceConfigurations
 
         services.AddScoped<IEmailSender, MimeKitEmailSender>();
 
-        logger.LogInformation(
-            "{Project} services registered",
-            "Mediator Source Generator and Email Sender"
-        );
+        StartupLog.ServicesRegistered(logger, "Mediator Source Generator and Email Sender");
 
         return services;
     }

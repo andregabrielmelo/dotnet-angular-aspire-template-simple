@@ -1,3 +1,4 @@
+using System.Globalization;
 using Serilog;
 
 namespace AppTemplate.Web.Configurations;
@@ -18,7 +19,7 @@ public static class LoggerConfigs
             .ReadFrom.Configuration(builder.Configuration)
             .Enrich.FromLogContext()
             .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
-            .WriteTo.Console()
+            .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
             .CreateLogger();
 
         // Called before AddServiceDefaults, so clearing the defaults keeps OpenTelemetry's provider.

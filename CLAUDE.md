@@ -45,6 +45,8 @@ Migrations apply automatically on startup only in the `Development` environment 
 
 There is no pre-commit hook: run `dotnet csharpier format .` before committing (CI runs `dotnet csharpier check .`). Format again after generating code, for example EF migrations.
 
+The build runs the recommended .NET analyzers and fails on any analyzer warning (`Directory.Build.props`: `AnalysisLevel` `latest-recommended`, `CodeAnalysisTreatWarningsAsErrors`, `EnforceCodeStyleInBuild`, `GenerateDocumentationFile`). `.editorconfig` makes CA2200 (`throw ex;`) and IDE0005 (unused usings) errors, turns off the naming rules that fight the template's conventions (CA1707, CA1711, CA1716, CA1720, CA1725) with a comment each, and leaves `Migrations/` unanalyzed. `dotnet build` shows the findings. Fix them; suppress only in `.editorconfig` with a reason, or with a justified `[SuppressMessage]`. The compiled XML comments also feed the OpenAPI document, so changing a documented request field changes `backend/openapi/v1.json`.
+
 The API contract is committed: after changing an endpoint, request or response, run `scripts/export-openapi.sh` (from the repo root; writes `backend/openapi/v1.json` without needing any services) and then `npm run api:generate` in `frontend/` (writes `src/app/core/api/api-types.ts`). CI fails if either file is stale.
 
 ### Frontend (Angular)

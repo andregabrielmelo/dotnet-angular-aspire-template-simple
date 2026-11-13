@@ -5,6 +5,8 @@ namespace AppTemplate.UnitTests.UseCases.Users;
 
 public class DeleteUserHandlerHandle
 {
+    private static readonly string[] UserAndListTags = ["users:1", "users:list"];
+
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
 
@@ -23,12 +25,12 @@ public class DeleteUserHandlerHandle
         Received.InOrder(() =>
         {
             _ = _repository.DeleteAsync(user, Arg.Any<CancellationToken>());
-            _ = _cache.RemoveByTagAsync(
-                Arg.Is<IEnumerable<string>>(tags =>
-                    tags.SequenceEqual(new[] { "users:1", "users:list" })
-                ),
-                Arg.Any<CancellationToken>()
-            );
+            _ = _cache
+                .RemoveByTagAsync(
+                    Arg.Is<IEnumerable<string>>(tags => tags.SequenceEqual(UserAndListTags)),
+                    Arg.Any<CancellationToken>()
+                )
+                .AsTask();
         });
     }
 

@@ -96,8 +96,8 @@ public static class InfrastructureServiceExtensions
                     }
             );
 
-        logger.LogInformation(
-            "{Project} were configured",
+        InfrastructureLog.Configured(
+            logger,
             useRedis ? "HybridCache with Redis" : "HybridCache in memory"
         );
 
@@ -156,7 +156,7 @@ public static class InfrastructureServiceExtensions
             .Services.AddScoped<IEmailSender<ApplicationUser>, AccountEmailSender>()
             .AddTransient<IIdentityService, IdentityService>();
 
-        logger.LogInformation("{Project} services registered", "Infrastructure");
+        InfrastructureLog.ServicesRegistered(logger, "Infrastructure");
 
         return builder.Services;
     }

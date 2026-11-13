@@ -125,7 +125,7 @@ public static class Extensions
     /// the dependencies themselves:
     /// <list type="bullet">
     /// <item><c>/alive</c> (liveness): the process is up. Failing means "restart me".</item>
-    /// <item><c>/health</c> (readiness): every required dependency (<see cref=""ready""/>,
+    /// <item><c>/health</c> (readiness): every required dependency (<c>ready</c>,
     /// such as Postgres) is reachable. Failing (503) means "send no traffic here".</item>
     /// </list>
     /// </summary>

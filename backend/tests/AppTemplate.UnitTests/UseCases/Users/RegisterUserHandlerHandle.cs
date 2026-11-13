@@ -127,11 +127,10 @@ public class RegisterUserHandlerHandle
 
         Received.InOrder(() =>
         {
-            _ = _mediator.Publish(
-                Arg.Any<UserRegisteredDomainEvent>(),
-                Arg.Any<CancellationToken>()
-            );
-            _ = _cache.RemoveByTagAsync(CacheTags.UserList, Arg.Any<CancellationToken>());
+            _ = _mediator
+                .Publish(Arg.Any<UserRegisteredDomainEvent>(), Arg.Any<CancellationToken>())
+                .AsTask();
+            _ = _cache.RemoveByTagAsync(CacheTags.UserList, Arg.Any<CancellationToken>()).AsTask();
         });
     }
 

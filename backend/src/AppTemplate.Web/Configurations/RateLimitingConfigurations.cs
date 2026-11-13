@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Threading.RateLimiting;
 using AppTemplate.UseCases.Authorization;
@@ -68,7 +69,7 @@ public static class RateLimitingConfigurations
                         {
                             rejected.HttpContext.Response.Headers.RetryAfter = (
                                 (int)Math.Ceiling(retryAfter.TotalSeconds)
-                            ).ToString();
+                            ).ToString(CultureInfo.InvariantCulture);
                         }
 
                         await TypedResults
@@ -115,7 +116,7 @@ public static class RateLimitingConfigurations
                 }
             );
 
-        logger.LogInformation("{Project} were configured", "Rate limiting and forwarded headers");
+        StartupLog.Configured(logger, "Rate limiting and forwarded headers");
         return services;
     }
 }

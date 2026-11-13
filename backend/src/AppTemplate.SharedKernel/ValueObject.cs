@@ -119,6 +119,21 @@ public abstract class ValueObject : IComparable, IComparable<ValueObject>
         return !(a == b);
     }
 
+    // Ordering follows CompareTo: by type name first, then component by component.
+    public static bool operator <(ValueObject left, ValueObject right) => Compare(left, right) < 0;
+
+    public static bool operator <=(ValueObject left, ValueObject right) =>
+        Compare(left, right) <= 0;
+
+    public static bool operator >(ValueObject left, ValueObject right) => Compare(left, right) > 0;
+
+    public static bool operator >=(ValueObject left, ValueObject right) =>
+        Compare(left, right) >= 0;
+
+    // null sorts first, as Comparer<T>.Default does.
+    private static int Compare(ValueObject? left, ValueObject? right) =>
+        left is null ? (right is null ? 0 : -1) : left.CompareTo(right);
+
     internal static Type GetUnproxiedType(object obj)
     {
         Guard.Against.Null(obj);
@@ -129,7 +144,10 @@ public abstract class ValueObject : IComparable, IComparable<ValueObject>
         var type = obj.GetType();
         var typeString = type.ToString();
 
-        if (typeString.Contains(EFCoreProxyPrefix) || typeString.EndsWith(NHibernateProxyPostfix))
+        if (
+            typeString.Contains(EFCoreProxyPrefix)
+            || typeString.EndsWith(NHibernateProxyPostfix, StringComparison.Ordinal)
+        )
             return type.BaseType!;
 
         return type;

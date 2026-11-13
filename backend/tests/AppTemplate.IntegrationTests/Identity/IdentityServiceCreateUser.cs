@@ -93,9 +93,11 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
         results
             .Single(result => !result.IsSuccess)
             .Status.ShouldBeOneOf(ResultStatus.Error, ResultStatus.Conflict);
+        // Identity stores the email upper-cased (UserManager.NormalizeEmail).
+        var normalizedEmail = email.Value.ToUpperInvariant();
         (
             await DbContext.Users.CountAsync(
-                account => account.NormalizedEmail == email.Value.ToUpperInvariant(),
+                account => account.NormalizedEmail == normalizedEmail,
                 cancellationToken
             )
         ).ShouldBe(1);

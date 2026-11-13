@@ -88,7 +88,11 @@ public abstract class BaseEfRepoTestFixture(PostgresDatabaseFixture database)
 
     protected static EmailAddress NewEmail() => new($"user-{Guid.NewGuid():N}@example.com");
 
-    public void Dispose() => _scope.Dispose();
+    public void Dispose()
+    {
+        _scope.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }
 
 /// <summary>Records sent emails, so tests can follow the links in them.</summary>

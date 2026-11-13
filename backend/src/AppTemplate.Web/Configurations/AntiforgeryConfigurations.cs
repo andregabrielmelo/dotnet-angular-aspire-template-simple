@@ -34,7 +34,7 @@ public static class AntiforgeryConfigurations
             options.SuppressXFrameOptionsHeader = true;
         });
 
-        logger.LogInformation("{Project} was configured", "Antiforgery");
+        StartupLog.ConfiguredOne(logger, "Antiforgery");
         return services;
     }
 

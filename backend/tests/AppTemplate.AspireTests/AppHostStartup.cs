@@ -3,7 +3,6 @@ using AppTemplate.Tests;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 

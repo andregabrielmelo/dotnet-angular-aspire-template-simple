@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate.Handlers;
 
-public class UserNameUpdatedEventHandler(ILogger<UserNameUpdatedEventHandler> logger)
+public partial class UserNameUpdatedEventHandler(ILogger<UserNameUpdatedEventHandler> logger)
     : INotificationHandler<UserNameUpdatedEvent>
 {
     private readonly ILogger<UserNameUpdatedEventHandler> _logger = logger;
@@ -12,9 +12,13 @@ public class UserNameUpdatedEventHandler(ILogger<UserNameUpdatedEventHandler> lo
     // Example of implementation of domain event
     public ValueTask Handle(UserNameUpdatedEvent notification, CancellationToken cancellationToken)
     {
-        var userId = notification.User.Id;
-        string newName = notification.User.Name.Value;
-        _logger.LogInformation("User {userId}'s name was updated to {newName}", userId, newName);
+        LogNameUpdated(_logger, notification.User.Id, notification.User.Name.Value);
         return ValueTask.CompletedTask;
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "User {UserId}'s name was updated to {NewName}"
+    )]
+    private static partial void LogNameUpdated(ILogger logger, UserId userId, string newName);
 }

@@ -2,5 +2,18 @@
   <PropertyGroup>
     <!-- Commit a packages.lock.json per project so CI can restore with locked-mode and cache NuGet packages by lock-file hash, https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <!-- Code analysis (AGENTS.md, Code analysis): the recommended .NET analyzers, and any analyzer
+         (CA) warning fails the build. NuGet audit and Aspire SDK warnings stay warnings. Rules
+         that fight the template's conventions are turned off in .editorconfig, each with a reason. -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <!-- Code style rules (IDE*) that .editorconfig raises to warning or error run in the build too. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Compile the XML documentation comments: broken crefs and malformed comments are reported,
+         and IDE0005 (unused usings) can run in the build. Missing comments (CS1591) and records
+         documenting only some parameters (CS1573) are fine. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
   </PropertyGroup>
 </Project>
