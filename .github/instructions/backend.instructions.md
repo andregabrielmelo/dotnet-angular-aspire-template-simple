@@ -50,10 +50,10 @@ public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, U
 ## Use case shape
 
 ```
-UseCases/<Feature>/Commands/<UseCase>/   // or Queries/<UseCase>/ for a query
+UseCases/<Feature>/<UseCase>/   // one folder per use case, command or query alike
   <UseCase>Command.cs   // or <UseCase>Query.cs: record : ICommand<Result<T>> / IQuery<Result<T>>
   <UseCase>Handler.cs   // ICommandHandler / IQueryHandler, one Handle method
-UseCases/<Feature>/Handlers/   // domain event handlers
+Core/Aggregates/<Aggregate>/Handlers/   // domain event handlers, Core only (ConventionTests)
 ```
 
 - **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types.

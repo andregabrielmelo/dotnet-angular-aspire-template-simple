@@ -36,7 +36,7 @@ ASP.NET Core Identity provides all of them, maintained and tested. The [FastEndp
   - A wrong password, an unknown email and a locked-out account get the same 401, and an unknown email still costs a hash.
   - Only the right password on an unconfirmed email gets 403. Identity checks confirmation before the password, so `IdentityService` checks the password itself in that case, and counts a wrong one toward lockout.
 - **Email confirmation is required** (`SignIn.RequireConfirmedEmail`).
-  - Registration returns 201 without tokens. `UserRegisteredDomainEvent`'s handler (`SendConfirmationOnUserRegistered`, UseCases) emails a confirmation link, which doubles as the welcome email.
+  - Registration returns 201 without tokens. The use case (`RegisterUserHandler`) emails a confirmation link, which doubles as the welcome email, then publishes `UserRegisteredDomainEvent`.
   - `POST /auth/confirm-email` takes its `userId` and `code`; `POST /auth/resend-confirmation` sends another, always answering 202.
 - **Password reset:** `POST /auth/forgot-password` emails a reset link to a confirmed account, always answering 202. `POST /auth/reset-password` sets the new password and lifts a lockout. Reset and confirmation links both use Identity's default token provider, so they expire after a day.
 - **Links:**

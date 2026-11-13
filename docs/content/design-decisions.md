@@ -85,12 +85,12 @@ What happens, and in what order, when a use case changes data and something else
 - Inside `Database.BeginTransactionAsync()`, nothing is visible to anyone else until `CommitAsync`. A rollback undoes every `SaveChanges` since the transaction began.
 
 **Domain events are in-process and best-effort.**
-- An entity registers one with `RegisterDomainEvent` (`User.MarkRegistered()` registers `UserRegisteredDomainEvent`). `EventDispatchInterceptor` publishes it through Mediator **right after `SaveChanges` succeeds**, in the same request. A use case can also dispatch right after saving (`RegisterUserHandler` does, because the event carries the id the insert assigned); it's just as best-effort.
-- **A failing handler doesn't fail the request.** The change is already saved, so the error is logged and the request carries on. A 500 for a committed write would invite the client to repeat it. (`DomainEventDispatchTests`)
-- **Inside an explicit transaction, handlers run before the commit,** so they also run when it later rolls back. (`DomainEventDispatchTests`)
+- An entity registers one with `RegisterDomainEvent` (`User.UpdateName` registers `UserNameUpdatedEvent`). `EventDispatchInterceptor` publishes it through Mediator **right after `SaveChanges` succeeds**, in the same request. A use case can also dispatch right after saving (`RegisterUserHandler` does, because the event carries the id the insert assigned); it's just as best-effort.
+- **A failing handler doesn't fail the request.** The change is already saved, so the error is logged and the request carries on. A 500 for a committed write would invite the client to repeat it.
+- **Inside an explicit transaction, handlers run before the commit,** so they also run when it later rolls back.
 - **Nothing retries them,** and a crash right after the commit loses them.
 
-So a domain event handler that sends an email works, but the email can be lost, and it adds its latency to the request. That's acceptable for a confirmation email, which the user can ask for again (`POST /auth/resend-confirmation`). When it isn't, or for calls to other systems that must happen, use a transactional outbox: the full template's ADR 016 and its `Infrastructure/Outbox/` are the reference.
+So a domain event handler that sends an email works, but the email can be lost, and it adds its latency to the request. The confirmation email is sent by the registration use case itself (it needs `IIdentityService`, which Core's handlers can't see), with the same trade-off: acceptable, since the user can ask for another (`POST /auth/resend-confirmation`). When it isn't, or for calls to other systems that must happen, use a transactional outbox: the full template's ADR 016 and its `Infrastructure/Outbox/` are the reference.
 
 # The Frontend
 

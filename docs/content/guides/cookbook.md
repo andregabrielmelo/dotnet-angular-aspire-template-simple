@@ -13,7 +13,7 @@ Short recipes for things that come up after the first feature. Each one lists th
 2. Grant it to the roles that should have it in `UseCases/Authorization/Role.cs` (`Admin` gets `[.. Permission.List]` already). Users get it at their next sign-in or security stamp check, within 30 minutes (`ApplicationClaimsPrincipalFactory` writes it as a `permissions` claim).
 3. Protect the endpoint in the way that fits:
    - **Who you are** decides it: `Permissions(Permission.X)` in `Configure()`. See `Web/Endpoints/Users/ListEndpoint.cs`.
-   - **What you touch** decides it ("the owner, or anyone with X"): check in the handler with `ICurrentUser`, and return `Result.Forbidden()`. See `UseCases/Users/Commands/Update/UpdateUserHandler.cs`.
+   - **What you touch** decides it ("the owner, or anyone with X"): check in the handler with `ICurrentUser`, and return `Result.Forbidden()`. See `UseCases/Users/Update/UpdateUserHandler.cs`.
 4. Add it to `frontend/src/app/core/auth/permissions.ts`, so the UI can hide what the user can't do.
 5. In functional tests, sign in with a role that has it and one that doesn't (`factory.CreateSignedInSessionAsync(Role.Admin)` and `factory.CreateSignedInSessionAsync()`), and test both. Add a case to `RolePermissionsFor` (unit tests) for the roles that get it. In text, write `Permission.X.Value`: its `ToString()` is the C# name.
 
@@ -66,25 +66,29 @@ Never log the link, the code or the address. The codes are protected with Data P
 
 ## React to a domain event
 
-A domain event lets one part of the system react to something without the aggregate knowing who listens. The template has one, end to end: registering raises `UserRegisteredDomainEvent`, and its handler emails the confirmation link.
+A domain event lets one part of the system react to something without the aggregate knowing who listens. The template has two, end to end: renaming a user raises `UserNameUpdatedEvent`, and registering publishes `UserRegisteredDomainEvent`; each has a handler in Core that logs it.
 
 ```csharp
 // Core/Aggregates/UserAggregate/Events/UserRegisteredDomainEvent.cs
 public sealed record UserRegisteredDomainEvent(UserId UserId, UserName Name, EmailAddress Email)
     : DomainEventBase;
 
-// UseCases/Users/Handlers/SendConfirmationOnUserRegistered.cs
-public sealed class SendConfirmationOnUserRegistered(IIdentityService _identity)
-    : IDomainEventHandler<UserRegisteredDomainEvent>
+// Core/Aggregates/UserAggregate/Handlers/UserRegisteredEventHandler.cs
+public class UserRegisteredEventHandler(ILoggerAdapter<UserRegisteredEventHandler> logger)
+    : INotificationHandler<UserRegisteredDomainEvent>
 {
-    public async ValueTask Handle(
-        UserRegisteredDomainEvent domainEvent,
+    public ValueTask Handle(
+        UserRegisteredDomainEvent notification,
         CancellationToken cancellationToken
-    ) => await _identity.SendEmailConfirmationAsync(domainEvent.UserId, cancellationToken);
+    )
+    {
+        logger.LogInformation("User {UserId} registered", notification.UserId);
+        return ValueTask.CompletedTask;
+    }
 }
 ```
 
-`AuthRegisterPost` (functional tests) checks that registering sends it; `SendConfirmationOnUserRegisteredHandle` (unit tests) covers the handler on its own. It lives in UseCases because it needs `IIdentityService`; a handler that only needs a Core port (such as `IEmailSender`) can live next to the event in Core. To add a second reaction, add another `IDomainEventHandler<UserRegisteredDomainEvent>`. A handler must be `public`: Mediator's source generator registers it from the Web project.
+`UserRegisteredEventHandlerHandle` (unit tests) covers it. **Handlers live in Core**, next to their aggregate, and use only Core ports (`ILoggerAdapter`, `IEmailSender`); `ConventionTests.DomainEventHandlers_LiveInCore` fails the build otherwise. A reaction that needs a UseCases port belongs in the use case: `RegisterUserHandler` sends the confirmation email itself, because that needs `IIdentityService` (`AuthRegisterPost` checks it arrives). To add a second reaction, add another `INotificationHandler<UserRegisteredDomainEvent>` in Core. A handler must be `public`: Mediator's source generator registers it from the Web project.
 
 **How this works:**
 - **Registration is automatic.** Mediator's source generator finds every handler.
