@@ -5,7 +5,7 @@ namespace AppTemplate.SharedKernel;
 /// change that raised them is saved, so a failing handler is logged and never fails the caller
 /// (a 500 for a write that happened invites the client to repeat it). Work that must happen
 /// reliably needs a transactional outbox, which this template leaves out.
-/// The one class that logs through <c>ILogger</c> rather than Core's <c>IAppLogger</c>:
+/// The one class that logs through <c>ILogger</c> rather than Core's <c>ILoggerAdapter</c>:
 /// SharedKernel sits below Core and can't see it.
 /// </summary>
 public partial class MediatorDomainEventDispatcher(

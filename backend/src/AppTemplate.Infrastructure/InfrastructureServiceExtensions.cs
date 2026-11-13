@@ -37,7 +37,7 @@ public static class InfrastructureServiceExtensions
             config.GetConnectionString("apptemplate"),
             "ConnectionStrings:apptemplate"
         );
-        // Every layer logs through IAppLogger<T> (Core), which this adapter forwards to
+        // Every layer logs through ILoggerAdapter<T> (Core), which this adapter forwards to
         // Microsoft.Extensions.Logging's providers.
         builder.Services.AddSingleton(typeof(ILoggerAdapter<>), typeof(LoggerAdapter<>));
 
