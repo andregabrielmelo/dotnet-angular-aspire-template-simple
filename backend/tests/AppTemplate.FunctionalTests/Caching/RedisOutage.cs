@@ -67,7 +67,7 @@ public class RedisOutage(RedisOutage.RedisFactory factory) : IClassFixture<Redis
     /// <summary>The usual factory, with a real Redis as HybridCache's L2.</summary>
     public sealed class RedisFactory : CustomWebApplicationFactory<Program>
     {
-        public RedisContainer Redis { get; } = new RedisBuilder("redis:8.2").Build();
+        public RedisContainer Redis { get; } = new RedisBuilder("redis:8.6").Build();
 
         public override async ValueTask InitializeAsync()
         {
