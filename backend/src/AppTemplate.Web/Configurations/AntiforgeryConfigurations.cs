@@ -22,7 +22,7 @@ public static class AntiforgeryConfigurations
 
     public static IServiceCollection AddAntiforgeryConfigurations(
         this IServiceCollection services,
-        ILoggerAdapter logger
+        ILoggerAdapter<Program> logger
     )
     {
         services.AddAntiforgery(options =>

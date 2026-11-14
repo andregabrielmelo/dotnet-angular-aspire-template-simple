@@ -14,7 +14,7 @@ public static class OptionConfigurations
     public static IServiceCollection AddOptionConfigurations(
         this IServiceCollection services,
         IConfiguration configuration,
-        ILoggerAdapter logger
+        ILoggerAdapter<Program> logger
     )
     {
         services
