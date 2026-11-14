@@ -96,28 +96,6 @@ public sealed class IdentityService(
         return added.ToApplicationResult();
     }
 
-    // Avoid using this function. Created for seeding data and tests
-    // TODO: Think of a better way to seed data and tests and remove this function
-    public async Task<Result> MarkEmailConfirmedAsync(
-        UserId userId,
-        CancellationToken cancellationToken
-    )
-    {
-        var account = await _userManager.Users.SingleOrDefaultAsync(
-            candidate => candidate.ProfileId == userId,
-            cancellationToken
-        );
-        if (account is null)
-        {
-            return Result.NotFound();
-        }
-
-        // Identity's own confirmation, with a code made here instead of emailed.
-        var token = await _userManager.GenerateEmailConfirmationTokenAsync(account);
-        var confirmed = await _userManager.ConfirmEmailAsync(account, token);
-        return confirmed.ToApplicationResult();
-    }
-
     public async Task<Result<AccountDto>> CheckPasswordAsync(
         EmailAddress email,
         string password,

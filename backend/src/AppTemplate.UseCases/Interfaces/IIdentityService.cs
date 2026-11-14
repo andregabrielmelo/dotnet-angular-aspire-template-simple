@@ -41,13 +41,6 @@ public interface IIdentityService
     );
 
     /// <summary>
-    /// Confirms the account's email without a code and without sending anything: for seed data
-    /// and tests. Never call it while serving a request, since it skips the proof that the user
-    /// reads that address. <c>NotFound</c> for an unknown user.
-    /// </summary>
-    Task<Result> MarkEmailConfirmedAsync(UserId userId, CancellationToken cancellationToken);
-
-    /// <summary>
     /// Checks a sign-in attempt, counting failures toward lockout. A wrong password, an unknown
     /// email and a locked-out account all get the same <c>Unauthorized</c>; a correct password
     /// on an unconfirmed email gets <c>Forbidden</c>.
