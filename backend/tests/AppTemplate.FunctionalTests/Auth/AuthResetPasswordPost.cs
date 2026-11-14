@@ -51,6 +51,19 @@ public class AuthResetPasswordPost(CustomWebApplicationFactory<Program> factory)
     }
 
     [Fact]
+    public async Task ReturnsBadRequestForCodeGivenAMangledOne()
+    {
+        var user = await factory.CreateUserAsync();
+
+        var response = await Reset(user.Email.Value, "not base64!", NewPassword);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
+        ).ShouldContain("\"code\"");
+    }
+
+    [Fact]
     public async Task ReturnsBadRequestForCodeGivenAWrongOne()
     {
         var user = await factory.CreateUserAsync();

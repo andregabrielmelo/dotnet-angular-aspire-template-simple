@@ -216,10 +216,7 @@ public sealed class IdentityService(
             candidate => candidate.ProfileId == userId,
             cancellationToken
         );
-        if (
-            account is null
-            || Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code)) is not { } token
-        )
+        if (account is null || TryDecodeCode(code) is not { } token)
         {
             return IdentityErrors.InvalidCodeResult;
         }
@@ -258,10 +255,7 @@ public sealed class IdentityService(
     )
     {
         var account = await _userManager.FindByEmailAsync(email.Value);
-        if (
-            account is null
-            || Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code)) is not { } token
-        )
+        if (account is null || TryDecodeCode(code) is not { } token)
         {
             return IdentityErrors.InvalidCodeResult;
         }
@@ -296,6 +290,22 @@ public sealed class IdentityService(
 
         var changed = await _userManager.ChangePasswordAsync(account, currentPassword, newPassword);
         return changed.ToApplicationResult(passwordField: "newPassword");
+    }
+
+    /// <summary>
+    /// The Identity token inside an emailed code, or <c>null</c> when the code isn't valid
+    /// Base64Url (a mangled or hand-edited link), which callers answer as an invalid code.
+    /// </summary>
+    private static string? TryDecodeCode(string code)
+    {
+        try
+        {
+            return Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
     }
 
     private async Task SendEmailConfirmationAsync(ApplicationUser? account)
