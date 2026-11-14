@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using AppTemplate.Core.Interfaces;
 using AppTemplate.UseCases.Interfaces;
 
 namespace AppTemplate.Web.Middleware;
@@ -9,7 +8,8 @@ namespace AppTemplate.Web.Middleware;
 /// request's trace gets a <c>user.id</c> tag, and every log written while handling it gets a
 /// <c>UserId</c> property, so the Aspire dashboard (or any OpenTelemetry backend) can filter both
 /// by user. Runs right after authentication. Only the id, which isn't personal data: never the
-/// email or the name.
+/// email or the name. It takes <c>ILogger</c> rather than <c>ILoggerAdapter</c>, because it needs a
+/// log scope, which the adapter doesn't have.
 /// </summary>
 public sealed class UserContextEnrichmentMiddleware(RequestDelegate next)
 {
@@ -22,7 +22,7 @@ public sealed class UserContextEnrichmentMiddleware(RequestDelegate next)
     public async Task InvokeAsync(
         HttpContext context,
         ICurrentUser currentUser,
-        ILoggerAdapter<UserContextEnrichmentMiddleware> logger
+        ILogger<UserContextEnrichmentMiddleware> logger
     )
     {
         if (currentUser.Id is not { } userId)

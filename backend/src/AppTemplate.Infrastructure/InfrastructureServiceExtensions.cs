@@ -26,10 +26,15 @@ public static class InfrastructureServiceExtensions
 {
     public const string RedisConnectionName = "cache";
 
-    public static IServiceCollection AddInfrastructureServices(
+    /// <summary>
+    /// Registers the Infrastructure services. <paramref name="logger"/> is the caller's startup
+    /// logger (Web's <c>ILoggerAdapter&lt;Program&gt;</c>): generic in its category, because
+    /// Infrastructure can't name Web's types.
+    /// </summary>
+    public static IServiceCollection AddInfrastructureServices<TCategory>(
         this IHostApplicationBuilder builder,
         IConfigurationManager config,
-        ILoggerAdapter logger
+        ILoggerAdapter<TCategory> logger
     )
     {
         // Set by the AppHost (WithReference) in development, and by the environment elsewhere.

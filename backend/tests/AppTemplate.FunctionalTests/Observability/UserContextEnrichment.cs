@@ -29,14 +29,12 @@ public class UserContextEnrichment(UserContextEnrichment.Factory factory)
     {
         var (user, session) = await factory.CreateSignedInSessionAsync();
 
-        var requests = await RecordRequestActivitiesAsync(() =>
-            session.Client.GetAsync("/users/me", TestContext.Current.CancellationToken)
+        var request = await RecordRequestActivityAsync(
+            "/users/me",
+            () => session.Client.GetAsync("/users/me", TestContext.Current.CancellationToken)
         );
 
-        requests
-            .Single(activity => activity.GetTagItem("url.path") is "/users/me")
-            .GetTagItem(UserContextEnrichmentMiddleware.UserIdTag)
-            .ShouldBe(user.Id.Value);
+        request.GetTagItem(UserContextEnrichmentMiddleware.UserIdTag).ShouldBe(user.Id.Value);
     }
 
     [Fact]
@@ -67,29 +65,36 @@ public class UserContextEnrichment(UserContextEnrichment.Factory factory)
     {
         factory.Logs.Clear();
 
-        var requests = await RecordRequestActivitiesAsync(() =>
-            new TestSession(factory).Client.GetAsync(
-                "/auth/antiforgery-token",
-                TestContext.Current.CancellationToken
-            )
+        var request = await RecordRequestActivityAsync(
+            "/auth/antiforgery-token",
+            () =>
+                new TestSession(factory).Client.GetAsync(
+                    "/auth/antiforgery-token",
+                    TestContext.Current.CancellationToken
+                )
         );
 
-        requests
-            .Single(activity => activity.GetTagItem("url.path") is "/auth/antiforgery-token")
-            .GetTagItem(UserContextEnrichmentMiddleware.UserIdTag)
-            .ShouldBeNull();
+        request.GetTagItem(UserContextEnrichmentMiddleware.UserIdTag).ShouldBeNull();
         factory
             .Logs.GetSnapshot()
             .SelectMany(ScopeValues)
             .ShouldNotContain(pair => pair.Key == UserContextEnrichmentMiddleware.UserIdProperty);
     }
 
-    /// <summary>The ASP.NET Core request activities that finish while <paramref name="send"/> runs.</summary>
-    private static async Task<List<Activity>> RecordRequestActivitiesAsync(
+    /// <summary>
+    /// The ASP.NET Core activity of the request to <paramref name="path"/> that
+    /// <paramref name="send"/> makes. The test server can hand the client its response before the
+    /// request's activity stops, so this waits for the activity rather than reading right after
+    /// the response.
+    /// </summary>
+    private static async Task<Activity> RecordRequestActivityAsync(
+        string path,
         Func<Task<HttpResponseMessage>> send
     )
     {
-        var stopped = new List<Activity>();
+        var stopped = new TaskCompletionSource<Activity>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == "Microsoft.AspNetCore",
@@ -97,9 +102,9 @@ public class UserContextEnrichment(UserContextEnrichment.Factory factory)
                 ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity =>
             {
-                lock (stopped)
+                if (activity.GetTagItem("url.path") as string == path)
                 {
-                    stopped.Add(activity);
+                    stopped.TrySetResult(activity);
                 }
             },
         };
@@ -107,10 +112,10 @@ public class UserContextEnrichment(UserContextEnrichment.Factory factory)
 
         (await send()).EnsureSuccessStatusCode();
 
-        lock (stopped)
-        {
-            return [.. stopped];
-        }
+        return await stopped.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken
+        );
     }
 
     private static IEnumerable<KeyValuePair<string, object?>> ScopeValues(FakeLogRecord record) =>

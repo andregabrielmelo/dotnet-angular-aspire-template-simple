@@ -6,7 +6,7 @@ namespace AppTemplate.IntegrationTests.Logging;
 
 /// <summary>
 /// <see cref="LoggerAdapter{T}"/> forwards to Microsoft.Extensions.Logging with the level, the
-/// template's structured values, the category and the scope intact. No database involved.
+/// template's structured values and the category intact. No database involved.
 /// </summary>
 public class LoggerAdapterLog
 {
@@ -46,23 +46,6 @@ public class LoggerAdapterLog
 
         _logs.LatestRecord.Level.ShouldBe(LogLevel.Error);
         _logs.LatestRecord.Exception.ShouldBeSameAs(exception);
-    }
-
-    [Fact]
-    public void AddsTheScopeToEveryLogInside()
-    {
-        using (_logger.BeginScope(new Dictionary<string, object?> { ["UserId"] = 7 }))
-        {
-            _logger.LogInformation("Inside");
-        }
-        _logger.LogInformation("Outside");
-
-        var records = _logs.GetSnapshot();
-        records[0]
-            .Scopes.OfType<IEnumerable<KeyValuePair<string, object?>>>()
-            .SelectMany(scope => scope)
-            .ShouldContain(new KeyValuePair<string, object?>("UserId", 7));
-        records[1].Scopes.ShouldBeEmpty();
     }
 
     [Fact]

@@ -136,7 +136,7 @@ public class OptionsValidationAtStartup
             )
             .AddOptionConfigurations(
                 configuration,
-                new LoggerAdapter<OptionsRegistration>(NullLoggerFactory.Instance)
+                new LoggerAdapter<Program>(NullLoggerFactory.Instance)
             )
             .BuildServiceProvider();
 }

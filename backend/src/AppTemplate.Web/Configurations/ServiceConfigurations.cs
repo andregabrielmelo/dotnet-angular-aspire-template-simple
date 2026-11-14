@@ -8,7 +8,7 @@ public static class ServiceConfigurations
 {
     public static IServiceCollection AddServiceConfigurations(
         this IServiceCollection services,
-        ILoggerAdapter logger,
+        ILoggerAdapter<Program> logger,
         WebApplicationBuilder builder
     )
     {

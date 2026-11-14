@@ -10,7 +10,7 @@ public static class MediatorConfigurations
 {
     public static IServiceCollection AddMediatorSourceGenerator(
         this IServiceCollection services,
-        ILoggerAdapter logger
+        ILoggerAdapter<Program> logger
     )
     {
         logger.LogInformation("Registering Mediator SourceGen and Behaviors");
