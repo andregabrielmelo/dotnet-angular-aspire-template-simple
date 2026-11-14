@@ -12,7 +12,7 @@ public class ListUsersQueryServiceList(PostgresDatabaseFixture database)
         // column only breaks it at runtime, so run it for real.
         var cancellationToken = TestContext.Current.CancellationToken;
         var user = NewUser();
-        user.UpdatePhoneNumber(new PhoneNumber("+1", "555 0100", null));
+        user.UpdatePhoneNumber(PhoneNumber.Create("+1", "555 0100", null));
         await GetRepository<User>().AddAsync(user, cancellationToken);
 
         var page = await Services

@@ -21,7 +21,7 @@ public class GetUserHandlerHandle
     public async Task ReturnsTheUserWithTheirPhoneNumber()
     {
         var user = TestUsers.Saved();
-        user.UpdatePhoneNumber(new PhoneNumber("+44", "5551234", "7"));
+        user.UpdatePhoneNumber(PhoneNumber.Create("+44", "5551234", "7"));
         RepositoryReturns(user);
 
         var result = await Get();

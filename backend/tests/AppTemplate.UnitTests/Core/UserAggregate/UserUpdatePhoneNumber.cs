@@ -6,7 +6,7 @@ public class UserUpdatePhoneNumber
     public void SetsThePhoneNumber()
     {
         var user = TestUsers.Saved();
-        var phoneNumber = new PhoneNumber("+1", "5551234", null);
+        var phoneNumber = PhoneNumber.Create("+1", "5551234", null);
 
         user.UpdatePhoneNumber(phoneNumber);
 

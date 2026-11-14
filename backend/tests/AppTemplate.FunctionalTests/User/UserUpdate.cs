@@ -46,8 +46,9 @@ public class UserUpdate(CustomWebApplicationFactory<Program> factory)
     [InlineData("11 98765 4321", "55", null)] // country code without '+'
     [InlineData("call me", "+55", null)] // not a phone number
     [InlineData("11 98765 4321", "+55", "ext12")] // extension isn't digits
+    [InlineData(null, "+55", null)] // a country code needs a phone number
     public async Task ReturnsBadRequestGivenInvalidPhoneParts(
-        string phoneNumber,
+        string? phoneNumber,
         string? phoneCountryCode,
         string? phoneExtension
     )

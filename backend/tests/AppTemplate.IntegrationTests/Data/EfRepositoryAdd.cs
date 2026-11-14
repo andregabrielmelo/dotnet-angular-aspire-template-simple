@@ -53,7 +53,7 @@ public class EfRepositoryAdd(PostgresDatabaseFixture database) : BaseEfRepoTestF
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var user = NewUser();
-        user.UpdatePhoneNumber(new PhoneNumber("+55", "11 98765 4321", "12"));
+        user.UpdatePhoneNumber(PhoneNumber.Create("+55", "11 98765 4321", "12"));
 
         await GetRepository<User>().AddAsync(user, cancellationToken);
 
@@ -62,6 +62,6 @@ public class EfRepositoryAdd(PostgresDatabaseFixture database) : BaseEfRepoTestF
             .ServiceProvider.GetRequiredService<ApplicationDatabaseContext>()
             .UserProfiles.AsNoTracking()
             .SingleAsync(saved => saved.Id == user.Id, cancellationToken);
-        stored.PhoneNumber.ShouldBe(new PhoneNumber("+55", "11 98765 4321", "12"));
+        stored.PhoneNumber.ShouldBe(PhoneNumber.Create("+55", "11 98765 4321", "12"));
     }
 }
