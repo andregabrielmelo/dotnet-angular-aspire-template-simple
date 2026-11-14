@@ -76,7 +76,10 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await FindAsync(userId, cancellationToken);
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         if (account is null)
         {
             return Result.NotFound();
@@ -100,7 +103,10 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await FindAsync(userId, cancellationToken);
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         if (account is null)
         {
             return Result.NotFound();
@@ -162,20 +168,35 @@ public sealed class IdentityService(
         return Result.Unauthorized();
     }
 
-    public async Task SignInAsync(UserId userId, CancellationToken cancellationToken) =>
+    public async Task SignInAsync(UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         await _signInManager.SignInAsync(
-            await FindRequiredAsync(userId, cancellationToken),
+            Guard.Against.NotFound(userId, account),
             isPersistent: true
         );
+    }
 
-    public async Task RefreshSignInAsync(UserId userId, CancellationToken cancellationToken) =>
-        await _signInManager.RefreshSignInAsync(await FindRequiredAsync(userId, cancellationToken));
+    public async Task RefreshSignInAsync(UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
+        await _signInManager.RefreshSignInAsync(Guard.Against.NotFound(userId, account));
+    }
 
     public Task SignOutAsync() => _signInManager.SignOutAsync();
 
     public async Task<AccountDto?> GetUserAsync(UserId userId, CancellationToken cancellationToken)
     {
-        var account = await FindAsync(userId, cancellationToken);
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         if (account is null)
         {
             return null;
@@ -190,10 +211,14 @@ public sealed class IdentityService(
         );
     }
 
-    public async Task SendEmailConfirmationAsync(
-        UserId userId,
-        CancellationToken cancellationToken
-    ) => await SendEmailConfirmationAsync(await FindAsync(userId, cancellationToken));
+    public async Task SendEmailConfirmationAsync(UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
+        await SendEmailConfirmationAsync(account);
+    }
 
     // TODO: I think it should only work by passing userId instead of e-mail
     public async Task SendEmailConfirmationAsync(
@@ -207,7 +232,10 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await FindAsync(userId, cancellationToken);
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         if (
             account is null
             || Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code)) is not { } token
@@ -277,7 +305,10 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await FindAsync(userId, cancellationToken);
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         if (account is null)
         {
             return Result.NotFound();
@@ -286,19 +317,6 @@ public sealed class IdentityService(
         var changed = await _userManager.ChangePasswordAsync(account, currentPassword, newPassword);
         return changed.ToApplicationResult();
     }
-
-    // TODO: Remove this function. Each function should be responsible for getting the user and checking for null, not this function.
-    private Task<ApplicationUser?> FindAsync(UserId userId, CancellationToken cancellationToken) =>
-        _userManager.Users.SingleOrDefaultAsync(
-            account => account.ProfileId == userId,
-            cancellationToken
-        );
-
-    // TODO: Remove this function. Each function should be responsible for getting the user and checking for null, not this function.
-    private async Task<ApplicationUser> FindRequiredAsync(
-        UserId userId,
-        CancellationToken cancellationToken
-    ) => Guard.Against.NotFound(userId, await FindAsync(userId, cancellationToken));
 
     private async Task SendEmailConfirmationAsync(ApplicationUser? account)
     {
