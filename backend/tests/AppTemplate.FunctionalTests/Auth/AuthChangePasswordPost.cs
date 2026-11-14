@@ -32,14 +32,17 @@ public class AuthChangePasswordPost(CustomWebApplicationFactory<Program> factory
     }
 
     [Fact]
-    public async Task FailsGivenAWrongCurrentPassword()
+    public async Task ReturnsBadRequestForCurrentPasswordGivenAWrongOne()
     {
         var (user, session) = await factory.CreateSignedInSessionAsync();
 
         var response = await session.ChangePasswordAsync("not my password", NewPassword);
 
-        // Identity's errors map to a generic error (IdentityResultExtensions).
-        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        // Identity's PasswordMismatch maps to a 400 on currentPassword (IdentityResultExtensions).
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
+        ).ShouldContain("\"currentPassword\"");
         (
             await new TestSession(factory).LoginAsync(user.Email.Value, NewPassword)
         ).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

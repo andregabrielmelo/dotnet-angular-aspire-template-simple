@@ -55,7 +55,9 @@ public sealed class IdentityService(
         try
         {
             var created = await _userManager.CreateAsync(account, password);
-            return created.Succeeded ? profile.Id : created.ToApplicationResult();
+            return created.Succeeded
+                ? profile.Id
+                : created.ToApplicationResult(passwordField: "password");
         }
         catch (DbUpdateException exception)
             when (exception.InnerException
@@ -267,7 +269,7 @@ public sealed class IdentityService(
         var reset = await _userManager.ResetPasswordAsync(account, token, newPassword);
         if (!reset.Succeeded)
         {
-            return reset.ToApplicationResult();
+            return reset.ToApplicationResult(passwordField: "newPassword");
         }
 
         // Whoever can read the account's email may sign in again at once.
@@ -293,7 +295,7 @@ public sealed class IdentityService(
         }
 
         var changed = await _userManager.ChangePasswordAsync(account, currentPassword, newPassword);
-        return changed.ToApplicationResult();
+        return changed.ToApplicationResult(passwordField: "newPassword");
     }
 
     private async Task SendEmailConfirmationAsync(ApplicationUser? account)
