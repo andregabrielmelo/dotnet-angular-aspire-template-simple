@@ -18,8 +18,8 @@ public class UserNameUpdatedEventHandler(ILoggerAdapter<UserNameUpdatedEventHand
     {
         _logger.LogInformation(
             "User {UserId}'s name was updated to {NewName}",
-            notification.User.Id,
-            notification.User.Name.Value
+            notification.UserId,
+            notification.NewName.Value
         );
         return ValueTask.CompletedTask;
     }
