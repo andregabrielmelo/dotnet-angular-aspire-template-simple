@@ -1,8 +1,7 @@
 namespace AppTemplate.Core.Interfaces;
 
 /// <summary>
-/// Sends a plain-text email from <c>from</c>; account emails use the application's own address
-/// (<c>Mailserver:FromAddress</c>).
+/// Provides an abstraction for sending email messages.
 /// </summary>
 public interface IEmailSender
 {

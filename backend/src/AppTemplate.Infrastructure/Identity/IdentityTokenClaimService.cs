@@ -12,7 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace AppTemplate.Infrastructure.Identity;
 
 /// <summary>
-/// Signs HS256 JWTs (ADR 018), after NimblePros/eShopOnWeb's <c>IdentityTokenClaimService</c>.
+/// Signs HS256 JWTs (ADR 018).
 /// The claims come from the session's own factory (<see cref="ApplicationClaimsPrincipalFactory"/>),
 /// so a token authorizes exactly what the cookie does, minus the security stamp, which nothing
 /// checks in a token and which a readable token shouldn't reveal. Times come from

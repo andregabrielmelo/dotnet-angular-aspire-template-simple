@@ -4,8 +4,8 @@ using AppTemplate.UseCases.Interfaces;
 namespace AppTemplate.Web.Middleware;
 
 /// <summary>
-/// Tags a signed-in request with its user's profile id, as NimblePros/eShopOnWeb does: the
-/// request's trace gets a <c>user.id</c> tag, and every log written while handling it gets a
+/// Tags a signed-in request with its user's profile id: the request's trace gets a
+/// <c>user.id</c> tag, and every log written while handling it gets a
 /// <c>UserId</c> property, so the Aspire dashboard (or any OpenTelemetry backend) can filter both
 /// by user. Runs right after authentication. Only the id, which isn't personal data: never the
 /// email or the name. It takes <c>ILogger</c> rather than <c>ILoggerAdapter</c>, because it needs a
