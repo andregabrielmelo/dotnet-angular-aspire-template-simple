@@ -67,6 +67,10 @@ public sealed class AppHostFixture : IAsyncLifetime
                 IgnoreHTTPSErrors = true,
             }
         );
+        // The Angular dev server compiles each page on first request, so on a cold server the
+        // first page can take well over Playwright's 30 s defaults, both to load and to render.
+        context.SetDefaultNavigationTimeout(60_000);
+        context.SetDefaultTimeout(60_000);
         await context.Tracing.StartAsync(
             new()
             {
