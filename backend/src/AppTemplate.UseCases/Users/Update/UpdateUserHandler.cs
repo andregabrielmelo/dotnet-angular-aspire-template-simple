@@ -32,23 +32,33 @@ public class UpdateUserHandler(
         if (!isOwnProfile && !_currentUser.HasPermission(Permission.UsersWrite))
             return Result<UserDto>.Forbidden();
 
-        PhoneNumber? phoneNumber = null;
-        if (!string.IsNullOrWhiteSpace(command.PhoneNumber))
+        // A phone number needs both its country code and its number. One without the other is
+        // invalid, keyed by the missing field; with neither, the phone number isn't changed.
+        var hasCountryCode = !string.IsNullOrWhiteSpace(command.PhoneCountryCode);
+        var hasNumber = !string.IsNullOrWhiteSpace(command.PhoneNumber);
+        if (hasCountryCode != hasNumber)
         {
-            if (string.IsNullOrWhiteSpace(command.PhoneCountryCode))
-                return Result<UserDto>.Error("Phone country code is required with a phone number");
-
-            phoneNumber = PhoneNumber.Create(
-                command.PhoneCountryCode,
-                command.PhoneNumber,
-                command.PhoneExtension
+            return Result<UserDto>.Invalid(
+                new ValidationError
+                {
+                    Identifier = hasNumber
+                        ? nameof(command.PhoneCountryCode)
+                        : nameof(command.PhoneNumber),
+                    ErrorMessage = "A phone number needs both its country code and its number.",
+                }
             );
         }
 
         user.UpdateName(command.UserName);
-        if (phoneNumber is not null)
+        if (hasCountryCode && hasNumber)
         {
-            user.UpdatePhoneNumber(phoneNumber);
+            user.UpdatePhoneNumber(
+                PhoneNumber.Create(
+                    command.PhoneCountryCode!,
+                    command.PhoneNumber!,
+                    command.PhoneExtension
+                )
+            );
         }
 
         await _repository.UpdateAsync(user, cancellationToken);

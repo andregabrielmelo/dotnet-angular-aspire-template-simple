@@ -105,13 +105,27 @@ public class UpdateUserHandlerHandle
     }
 
     [Fact]
-    public async Task FailsWithoutChangesGivenAPhoneNumberWithoutCountryCode()
+    public async Task IsInvalidWithoutChangesGivenAPhoneNumberWithoutCountryCode()
     {
         _currentUser.Id.Returns(UserId.From(1));
 
         var result = await Update(Command with { PhoneNumber = "11 98765 4321" });
 
-        result.Status.ShouldBe(ResultStatus.Error);
+        result.Status.ShouldBe(ResultStatus.Invalid);
+        result.ValidationErrors.Single().Identifier.ShouldBe(nameof(Command.PhoneCountryCode));
+        _target.Name.ShouldBe(TestUsers.Name);
+        _target.PhoneNumber.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task IsInvalidWithoutChangesGivenACountryCodeWithoutPhoneNumber()
+    {
+        _currentUser.Id.Returns(UserId.From(1));
+
+        var result = await Update(Command with { PhoneCountryCode = "+55" });
+
+        result.Status.ShouldBe(ResultStatus.Invalid);
+        result.ValidationErrors.Single().Identifier.ShouldBe(nameof(Command.PhoneNumber));
         _target.Name.ShouldBe(TestUsers.Name);
         _target.PhoneNumber.ShouldBeNull();
     }
