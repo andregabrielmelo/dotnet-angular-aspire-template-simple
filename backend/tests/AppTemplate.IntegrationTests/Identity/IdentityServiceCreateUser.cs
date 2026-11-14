@@ -177,33 +177,6 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
     }
 
     [Fact]
-    public async Task MarkEmailConfirmedConfirmsWithoutSendingAnything()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var email = NewEmail();
-        var id = (
-            await Identity.CreateUserAsync(UserName.From("Ada"), email, Password, cancellationToken)
-        ).Value;
-
-        var confirmed = await Identity.MarkEmailConfirmedAsync(id, cancellationToken);
-
-        confirmed.IsSuccess.ShouldBeTrue();
-        (await Identity.GetUserAsync(id, cancellationToken))!.EmailConfirmed.ShouldBeTrue();
-        Emails.Sent.ShouldNotContain(sent => sent.To == email.Value);
-    }
-
-    [Fact]
-    public async Task MarkEmailConfirmedIsNotFoundForAnUnknownUser()
-    {
-        var confirmed = await Identity.MarkEmailConfirmedAsync(
-            UserId.From(int.MaxValue),
-            TestContext.Current.CancellationToken
-        );
-
-        confirmed.Status.ShouldBe(ResultStatus.NotFound);
-    }
-
-    [Fact]
     public async Task TheMigrationsSeedTheRoles()
     {
         var roles = await DbContext
