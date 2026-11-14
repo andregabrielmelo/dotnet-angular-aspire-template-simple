@@ -1,5 +1,5 @@
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication.Commands.CreateToken;
+using AppTemplate.UseCases.Authentication.CreateToken;
 using AppTemplate.UseCases.Constants;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;

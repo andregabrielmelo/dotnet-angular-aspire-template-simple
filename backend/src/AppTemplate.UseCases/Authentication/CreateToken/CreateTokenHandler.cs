@@ -1,6 +1,6 @@
 using AppTemplate.UseCases.Interfaces;
 
-namespace AppTemplate.UseCases.Authentication.Commands.CreateToken;
+namespace AppTemplate.UseCases.Authentication.CreateToken;
 
 /// <summary>
 /// Checks the credentials exactly as signing in does (<c>LoginHandler</c>: lockout included, one
