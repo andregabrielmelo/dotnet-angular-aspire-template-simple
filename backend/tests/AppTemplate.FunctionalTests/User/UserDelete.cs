@@ -23,4 +23,14 @@ public class UserDelete(CustomWebApplicationFactory<Program> factory)
 
         await member.Client.DeleteAndEnsureForbiddenAsync($"/users/{target.Id.Value}");
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task ReturnsBadRequestGivenANonPositiveId(int id)
+    {
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
+
+        await admin.Client.DeleteAndEnsureBadRequestAsync($"/users/{id}");
+    }
 }

@@ -1,5 +1,4 @@
-﻿using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases;
+﻿using AppTemplate.UseCases;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +26,7 @@ public class ListUsersQueryService(ApplicationDatabaseContext db) : IListUsersQu
             .OrderBy(c => c.Id)
             .Skip((page - 1) * perPage)
             .Take(perPage)
-            .Select(c => new UserDto(c.Id, c.Name, c.PhoneNumber ?? PhoneNumber.Unknown))
+            .Select(c => new UserDto(c.Id, c.Name, c.PhoneNumber))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 

@@ -21,7 +21,7 @@ public class GetUserHandlerHandle
     public async Task ReturnsTheUserWithTheirPhoneNumber()
     {
         var user = TestUsers.Saved();
-        user.UpdatePhoneNumber(PhoneNumber.Create("+44", "5551234", "7"));
+        user.UpdatePhoneNumber(new PhoneNumber("+44", "5551234", "7"));
         RepositoryReturns(user);
 
         var result = await Get();
@@ -29,6 +29,17 @@ public class GetUserHandlerHandle
         result.IsSuccess.ShouldBeTrue();
         result.Value.Name.ShouldBe(TestUsers.Name);
         result.Value.PhoneNumber!.ToString().ShouldBe("+44 5551234 x7");
+    }
+
+    [Fact]
+    public async Task ReturnsNoPhoneNumberForAUserWithout()
+    {
+        RepositoryReturns(TestUsers.Saved());
+
+        var result = await Get();
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.PhoneNumber.ShouldBeNull();
     }
 
     [Fact]

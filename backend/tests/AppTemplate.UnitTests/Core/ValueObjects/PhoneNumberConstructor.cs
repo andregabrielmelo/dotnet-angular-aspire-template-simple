@@ -1,6 +1,6 @@
 namespace AppTemplate.UnitTests.Core.ValueObjects;
 
-public class PhoneNumberCreate
+public class PhoneNumberConstructor
 {
     [Theory]
     [InlineData("", "5551234")]
@@ -9,20 +9,20 @@ public class PhoneNumberCreate
     [InlineData("+1", "   ")]
     public void ThrowsGivenABlankCountryCodeOrNumber(string countryCode, string number)
     {
-        Should.Throw<ArgumentException>(() => PhoneNumber.Create(countryCode, number, null));
+        Should.Throw<ArgumentException>(() => new PhoneNumber(countryCode, number, null));
     }
 
     [Fact]
     public void ThrowsGivenNoCountryCodeOrNumber()
     {
-        Should.Throw<ArgumentNullException>(() => PhoneNumber.Create(null!, "5551234", null));
-        Should.Throw<ArgumentNullException>(() => PhoneNumber.Create("+1", null!, null));
+        Should.Throw<ArgumentNullException>(() => new PhoneNumber(null!, "5551234", null));
+        Should.Throw<ArgumentNullException>(() => new PhoneNumber("+1", null!, null));
     }
 
     [Fact]
     public void KeepsItsParts()
     {
-        var phoneNumber = PhoneNumber.Create("+55", "11 98765 4321", "12");
+        var phoneNumber = new PhoneNumber("+55", "11 98765 4321", "12");
 
         phoneNumber.CountryCode.ShouldBe("+55");
         phoneNumber.Number.ShouldBe("11 98765 4321");

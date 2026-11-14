@@ -18,7 +18,7 @@ public class UserList(CustomWebApplicationFactory<Program> factory)
             "/users?page=1&per_page=100"
         );
 
-        page.Items.ShouldContain(item => item.Id == target.Id.Value);
+        page.Items.ShouldContain(item => item.Id == target.Id.Value && item.PhoneNumber == null);
         page.TotalCount.ShouldBeGreaterThanOrEqualTo(2);
     }
 

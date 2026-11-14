@@ -57,6 +57,6 @@ public sealed class DeleteUserValidator : Validator<DeleteUserRequest>
 {
     public DeleteUserValidator()
     {
-        RuleFor(x => x.UserId).NotEmpty().WithMessage("Id is required");
+        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Id must be greater than zero");
     }
 }

@@ -40,7 +40,7 @@ public class CachedResultRoundTrip
         Result<UserDto> result = new UserDto(
             UserId.From(1),
             TestUsers.Name,
-            PhoneNumber.Create("+44", "5551234", "7")
+            new PhoneNumber("+44", "5551234", "7")
         );
 
         var cached = await RoundTripAsync(result);
@@ -48,7 +48,7 @@ public class CachedResultRoundTrip
         cached.Status.ShouldBe(ResultStatus.Ok);
         cached.Value.Id.ShouldBe(UserId.From(1));
         cached.Value.Name.ShouldBe(TestUsers.Name);
-        cached.Value.PhoneNumber.ShouldBe(PhoneNumber.Create("+44", "5551234", "7"));
+        cached.Value.PhoneNumber.ShouldBe(new PhoneNumber("+44", "5551234", "7"));
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class CachedResultRoundTrip
     {
         Result<AppTemplate.UseCases.PagedResult<UserDto>> result =
             new AppTemplate.UseCases.PagedResult<UserDto>(
-                [new UserDto(UserId.From(1), TestUsers.Name, PhoneNumber.Unknown)],
+                [new UserDto(UserId.From(1), TestUsers.Name, null)],
                 Page: 1,
                 PerPage: 10,
                 TotalCount: 1,
