@@ -4,9 +4,10 @@ using Testcontainers.PostgreSql;
 namespace AppTemplate.Tests;
 
 /// <summary>
-/// One real Postgres container for the whole test run, started on first use (Testcontainers'
-/// reaper removes it when the run ends). Each test host gets its own database inside it, so
-/// hosts stay isolated without a container each.
+/// One real Postgres container for the whole test run, started on first use and removed when the
+/// test process exits. Testcontainers' reaper (Ryuk) would do that too, but it's off under Podman
+/// (TESTCONTAINERS_RYUK_DISABLED), so without this every run left a container behind. Each test
+/// host gets its own database inside it, so hosts stay isolated without a container each.
 /// </summary>
 public static class PostgresTestDatabase
 {
@@ -41,6 +42,10 @@ public static class PostgresTestDatabase
                 ex
             );
         }
+
+        // A static container has no fixture to dispose it, so the process does it on exit.
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            container.DisposeAsync().AsTask().GetAwaiter().GetResult();
         return container;
     }
 }
