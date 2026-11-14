@@ -31,12 +31,7 @@ public class IdentityServiceCheckPassword(PostgresDatabaseFixture database)
         ).IsSuccess.ShouldBeTrue();
         if (emailConfirmed)
         {
-            (
-                await Identity.MarkEmailConfirmedAsync(
-                    created.Value,
-                    TestContext.Current.CancellationToken
-                )
-            ).IsSuccess.ShouldBeTrue();
+            await ConfirmEmailAsync(created.Value);
         }
 
         return email;

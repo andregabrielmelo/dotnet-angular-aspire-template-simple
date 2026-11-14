@@ -3,6 +3,7 @@ using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.Infrastructure.Logging;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -97,6 +98,21 @@ public abstract class BaseEfRepoTestFixture(PostgresDatabaseFixture database)
     protected static User NewUser() => User.Create(UserName.From("Ada Lovelace"));
 
     protected static EmailAddress NewEmail() => new($"user-{Guid.NewGuid():N}@example.com");
+
+    /// <summary>
+    /// Confirms the account's email directly, as the development seed does, without a code or
+    /// an email.
+    /// </summary>
+    protected async Task ConfirmEmailAsync(UserId userId)
+    {
+        var userManager = Services.GetRequiredService<UserManager<ApplicationUser>>();
+        var account = await userManager.Users.SingleAsync(
+            candidate => candidate.ProfileId == userId,
+            TestContext.Current.CancellationToken
+        );
+        account.EmailConfirmed = true;
+        (await userManager.UpdateAsync(account)).Succeeded.ShouldBeTrue();
+    }
 
     public void Dispose()
     {

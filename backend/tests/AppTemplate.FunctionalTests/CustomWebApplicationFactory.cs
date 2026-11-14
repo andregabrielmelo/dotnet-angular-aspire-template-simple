@@ -82,7 +82,8 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
     }
 
     /// <summary>
-    /// Saves a user (profile and confirmed account, through <see cref="IdentityService"/>) who can
+    /// Saves a user (profile and account through <see cref="IdentityService"/>, confirmed directly
+    /// with <see cref="UserManager{TUser}"/>) who can
     /// sign in with <see cref="Password"/>; a <see cref="Role.Member"/> unless told otherwise.
     /// Drops the cached user list afterwards, as registration does.
     /// </summary>
@@ -106,9 +107,13 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
                 CancellationToken.None
             )
         ).IsSuccess.ShouldBeTrue();
-        (
-            await identity.MarkEmailConfirmedAsync(created.Value, CancellationToken.None)
-        ).IsSuccess.ShouldBeTrue();
+        // Confirmed directly, as the development seed does: no code, no email.
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var account = await userManager.Users.SingleAsync(candidate =>
+            candidate.ProfileId == created.Value
+        );
+        account.EmailConfirmed = true;
+        (await userManager.UpdateAsync(account)).Succeeded.ShouldBeTrue();
         await scope
             .ServiceProvider.GetRequiredService<HybridCache>()
             .RemoveByTagAsync(CacheTags.UserList, CancellationToken.None);

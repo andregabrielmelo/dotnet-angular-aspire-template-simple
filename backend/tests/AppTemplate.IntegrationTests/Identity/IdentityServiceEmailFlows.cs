@@ -40,9 +40,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
         created.IsSuccess.ShouldBeTrue();
         if (emailConfirmed)
         {
-            (
-                await Identity.MarkEmailConfirmedAsync(created.Value, Cancellation)
-            ).IsSuccess.ShouldBeTrue();
+            await ConfirmEmailAsync(created.Value);
         }
 
         return (created.Value, email);
