@@ -73,4 +73,15 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task ReturnsBadRequestWithTheLengthMessageGivenAOneCharacterName()
+    {
+        var response = await new TestSession(factory).RegisterAsync(NewEmail(), name: "A");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
+        ).ShouldContain("Name must be at least 2 characters");
+    }
 }

@@ -117,6 +117,23 @@ public class UserUpdate(CustomWebApplicationFactory<Program> factory)
     }
 
     [Fact]
+    public async Task ReturnsBadRequestWithTheLengthMessageGivenAOneCharacterName()
+    {
+        var (me, session) = await factory.CreateSignedInSessionAsync();
+
+        var response = await session.Client.PutAsync(
+            $"/users/{me.Id.Value}",
+            Body(new { name = "A" }),
+            TestContext.Current.CancellationToken
+        );
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
+        ).ShouldContain("Name must be at least 2 characters");
+    }
+
+    [Fact]
     public async Task UsesTheRouteIdEvenIfTheBodyNamesAnotherUser()
     {
         var other = await factory.CreateUserAsync();
