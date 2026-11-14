@@ -23,13 +23,13 @@ public class GetCurrentUserHandler(IRepository<User> _repository, IIdentityServi
             new UserByIdSpecification(query.UserId),
             cancellationToken
         );
+        if (user is null)
+            return Result.NotFound();
 
-        var account = user is null
-            ? null
-            : await _identity.GetUserAsync(user.Id, cancellationToken);
+        var account = await _identity.GetUserAsync(user.Id, cancellationToken);
+        if (account is null)
+            return Result.NotFound();
 
-        return user is null || account is null
-            ? Result.NotFound()
-            : new CurrentUserDto(user.Id, user.Name, account.Email);
+        return new CurrentUserDto(user.Id, user.Name, account.Email);
     }
 }
