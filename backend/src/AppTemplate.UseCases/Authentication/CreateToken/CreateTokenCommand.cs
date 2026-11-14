@@ -1,6 +1,6 @@
 using AppTemplate.Core.ValueObjects;
 
-namespace AppTemplate.UseCases.Authentication.Commands.CreateToken;
+namespace AppTemplate.UseCases.Authentication.CreateToken;
 
 /// <summary>
 /// Exchanges a password for a bearer token, for clients that can't hold the session cookie

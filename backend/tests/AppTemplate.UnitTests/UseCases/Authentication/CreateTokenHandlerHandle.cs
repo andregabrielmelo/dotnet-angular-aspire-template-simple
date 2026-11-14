@@ -1,5 +1,5 @@
 using AppTemplate.UseCases.Authentication;
-using AppTemplate.UseCases.Authentication.Commands.CreateToken;
+using AppTemplate.UseCases.Authentication.CreateToken;
 using AppTemplate.UseCases.Interfaces;
 
 namespace AppTemplate.UnitTests.UseCases.Authentication;
