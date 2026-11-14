@@ -32,6 +32,17 @@ public class GetUserHandlerHandle
     }
 
     [Fact]
+    public async Task ReturnsNoPhoneNumberForAUserWithout()
+    {
+        RepositoryReturns(TestUsers.Saved());
+
+        var result = await Get();
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.PhoneNumber.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task ReturnsNotFoundGivenAnUnknownId()
     {
         RepositoryReturns(null);

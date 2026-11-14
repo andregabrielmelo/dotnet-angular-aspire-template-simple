@@ -11,7 +11,6 @@ public class PhoneNumber : ValueObject
     public string CountryCode { get; private set; }
     public string Number { get; private set; }
     public string? Extension { get; private set; }
-    public static PhoneNumber Unknown { get; } = new PhoneNumber(String.Empty, String.Empty, null);
 
     private PhoneNumber(string countryCode, string number, string? extension)
     {

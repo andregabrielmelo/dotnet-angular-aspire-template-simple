@@ -71,7 +71,7 @@ public class CachedResultRoundTrip
     {
         Result<AppTemplate.UseCases.PagedResult<UserDto>> result =
             new AppTemplate.UseCases.PagedResult<UserDto>(
-                [new UserDto(UserId.From(1), TestUsers.Name, PhoneNumber.Unknown)],
+                [new UserDto(UserId.From(1), TestUsers.Name, null)],
                 Page: 1,
                 PerPage: 10,
                 TotalCount: 1,

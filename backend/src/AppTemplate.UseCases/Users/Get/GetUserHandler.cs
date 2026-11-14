@@ -1,6 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
-using AppTemplate.Core.ValueObjects;
 
 namespace AppTemplate.UseCases.Users.Get;
 
@@ -17,8 +16,6 @@ public class GetUserHandler(IRepository<User> _repository)
             cancellationToken
         );
 
-        return user is null
-            ? Result.NotFound()
-            : new UserDto(user.Id, user.Name, user.PhoneNumber ?? PhoneNumber.Unknown);
+        return user is null ? Result.NotFound() : new UserDto(user.Id, user.Name, user.PhoneNumber);
     }
 }
