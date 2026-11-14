@@ -35,18 +35,29 @@ public static class DatabaseConfigurations
         var logger = services.GetRequiredService<ILoggerAdapter<Program>>();
         var context = services.GetRequiredService<ApplicationDatabaseContext>();
 
-        // A failure isn't caught here: it stops startup, and Program.cs logs it ("The web host
-        // failed to start").
-        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-        if (pendingMigrations.Any())
+        try
         {
-            logger.LogInformation("Applying database migrations...");
-            foreach (var migration in pendingMigrations)
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            if (pendingMigrations.Any())
             {
-                logger.LogInformation("Pending migration: {Migration}", migration);
-            }
+                logger.LogInformation("Applying database migrations...");
+                foreach (var migration in pendingMigrations)
+                {
+                    logger.LogInformation("Pending migration: {Migration}", migration);
+                }
 
-            await context.Database.MigrateAsync();
+                await context.Database.MigrateAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Logged here because nothing else logs it: the host hasn't started yet.
+            logger.LogError(
+                ex,
+                "An error occurred migrating the DB. {ExceptionMessage}",
+                ex.Message
+            );
+            throw; // Re-throw to make startup fail if migrations fail
         }
     }
 
