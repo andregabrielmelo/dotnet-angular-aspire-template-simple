@@ -14,7 +14,6 @@ public class User(UserName name) : EntityBase<User, UserId>, IAggregateRoot
 
     public PhoneNumber? PhoneNumber { get; private set; }
 
-    /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
     public static User Create(UserName name) => new(name);

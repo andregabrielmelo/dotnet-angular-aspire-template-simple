@@ -1,5 +1,8 @@
 ﻿namespace AppTemplate.Core.Aggregates.UserAggregate;
 
+/// <summary>
+/// Provides predefined errors related to users.
+/// </summary>
 public static class UserErrors
 {
     public static Result NotFound(Guid userId) =>

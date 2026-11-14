@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
+/// <summary>
+/// A service for listing users.
+/// </summary>
+/// <param name="db">The application database context. You can use EF, Dapper, SqlClient, etc. for queries</param>
 public class ListUsersQueryService(ApplicationDatabaseContext db) : IListUsersQueryService
 {
     public async Task<PagedResult<UserDto>> ListAsync(

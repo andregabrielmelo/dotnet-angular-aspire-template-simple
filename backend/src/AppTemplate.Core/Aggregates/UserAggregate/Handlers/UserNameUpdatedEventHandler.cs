@@ -4,6 +4,10 @@ using Mediator;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate.Handlers;
 
+/// <summary>
+/// Handles user name updated events.
+/// </summary>
+/// <param name="logger">The logger used to record user name updates.</param>
 public class UserNameUpdatedEventHandler(ILoggerAdapter<UserNameUpdatedEventHandler> logger)
     : INotificationHandler<UserNameUpdatedEvent>
 {
