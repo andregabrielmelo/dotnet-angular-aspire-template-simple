@@ -103,6 +103,9 @@ public sealed class AppHostFixture : IAsyncLifetime
                         $"Installing Chromium for Playwright failed (exit code {installed})."
                     );
                 }
+                // Expect(...) waits 5 s by default; the first sign-in on a cold CI runner (JIT,
+                // password hashing, the dev server's proxy) can take longer.
+                Assertions.SetDefaultExpectTimeout(15_000);
                 _playwright = await Playwright.CreateAsync();
                 _browser = await _playwright.Chromium.LaunchAsync(new() { Headless = true });
             }
