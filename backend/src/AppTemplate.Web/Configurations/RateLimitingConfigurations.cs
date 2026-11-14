@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.RateLimiting;
 using AppTemplate.Core.Interfaces;
 using AppTemplate.UseCases.Authorization;
@@ -22,6 +23,37 @@ public static class RateLimitingConfigurations
     /// <summary>The policy of sign-in, registration and the account email endpoints.</summary>
     public const string AuthenticationPolicy = "authentication";
 
+    /// <summary>The length of the IPv6 prefix a client is counted by.</summary>
+    public const int IPv6PrefixLength = 64;
+
+    /// <summary>
+    /// The address part of a client's partition. An IPv4 address (or one mapped into IPv6) counts
+    /// on its own, but an IPv6 address counts by its /64 prefix: one subscriber usually gets a
+    /// whole /64 and can pick any address in it, so counting addresses would let one client
+    /// multiply its limit. No address at all is <c>unknown</c>.
+    /// </summary>
+    public static string AddressPartition(IPAddress? address)
+    {
+        if (address is null)
+        {
+            return "unknown";
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            return address.MapToIPv4().ToString();
+        }
+
+        if (address.AddressFamily != AddressFamily.InterNetworkV6)
+        {
+            return address.ToString();
+        }
+
+        var bytes = address.GetAddressBytes();
+        Array.Clear(bytes, IPv6PrefixLength / 8, bytes.Length - IPv6PrefixLength / 8);
+        return $"{new IPAddress(bytes)}/{IPv6PrefixLength}";
+    }
+
     public static IServiceCollection AddRateLimitingConfigurations(
         this IServiceCollection services,
         ILoggerAdapter<Program> logger
@@ -40,7 +72,7 @@ public static class RateLimitingConfigurations
                             var userId = context.User.FindFirst(AppClaimTypes.UserId)?.Value;
                             return userId is null
                                 ? FixedWindow(
-                                    $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+                                    $"ip:{AddressPartition(context.Connection.RemoteIpAddress)}",
                                     settings.Value.AnonymousPermitLimit
                                 )
                                 : FixedWindow(
@@ -54,7 +86,7 @@ public static class RateLimitingConfigurations
                         AuthenticationPolicy,
                         context =>
                             FixedWindow(
-                                $"auth:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+                                $"auth:{AddressPartition(context.Connection.RemoteIpAddress)}",
                                 settings.Value.AuthenticationPermitLimit
                             )
                     );
