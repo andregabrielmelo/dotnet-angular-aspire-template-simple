@@ -1,3 +1,4 @@
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace AppTemplate.Infrastructure.Data;
@@ -18,17 +19,33 @@ internal sealed class EventDispatchInterceptor(IDomainEventDispatcher domainEven
         CancellationToken cancellationToken = default
     )
     {
-        if (eventData.Context is ApplicationDatabaseContext context)
-        {
-            var entitiesWithEvents = context
-                .ChangeTracker.Entries<HasDomainEventsBase>()
-                .Select(entry => entry.Entity)
-                .Where(entity => entity.DomainEvents.Count > 0)
-                .ToArray();
+        await DispatchAsync(eventData.Context);
+        return await base.SavedChangesAsync(eventData, result, cancellationToken);
+    }
 
-            await domainEventDispatcher.DispatchAndClearEvents(entitiesWithEvents);
+    /// <summary>
+    /// A synchronous <c>SaveChanges</c> dispatches too, blocking on the handlers, so its events
+    /// aren't silently left on the entities. The app always saves asynchronously; prefer that.
+    /// </summary>
+    public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
+    {
+        DispatchAsync(eventData.Context).GetAwaiter().GetResult();
+        return base.SavedChanges(eventData, result);
+    }
+
+    private Task DispatchAsync(DbContext? dbContext)
+    {
+        if (dbContext is not ApplicationDatabaseContext context)
+        {
+            return Task.CompletedTask;
         }
 
-        return await base.SavedChangesAsync(eventData, result, cancellationToken);
+        var entitiesWithEvents = context
+            .ChangeTracker.Entries<HasDomainEventsBase>()
+            .Select(entry => entry.Entity)
+            .Where(entity => entity.DomainEvents.Count > 0)
+            .ToArray();
+
+        return domainEventDispatcher.DispatchAndClearEvents(entitiesWithEvents);
     }
 }
