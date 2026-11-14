@@ -53,7 +53,7 @@ public class UpdateUserHandler(
         if (hasCountryCode && hasNumber)
         {
             user.UpdatePhoneNumber(
-                PhoneNumber.Create(
+                new PhoneNumber(
                     command.PhoneCountryCode!,
                     command.PhoneNumber!,
                     command.PhoneExtension
