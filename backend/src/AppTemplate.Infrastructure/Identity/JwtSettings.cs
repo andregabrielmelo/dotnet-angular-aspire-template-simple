@@ -4,8 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 namespace AppTemplate.Infrastructure.Identity;
 
 /// <summary>
-/// The bearer tokens' settings (<c>Authentication:Jwt</c>, ADR 018), after NimblePros/eShopOnWeb's
-/// <c>JwtSettings</c>. Validated at startup (<see cref="JwtSettingsValidator"/>). In Development
+/// The bearer tokens' settings (<c>Authentication:Jwt</c>, ADR 018), validated at startup
+/// (<see cref="JwtSettingsValidator"/>). In Development
 /// with no key set, each process makes up a random one (<see cref="DevelopmentJwtSigningKey"/>),
 /// so there is no development key to leak into production; tokens then don't survive a restart.
 /// </summary>
