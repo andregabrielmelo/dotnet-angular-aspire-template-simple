@@ -10,4 +10,4 @@ public record UpdateUserCommand(
     string? PhoneNumber,
     string? PhoneCountryCode,
     string? PhoneExtension
-) : Mediator.ICommand<Result<UserDto>>;
+) : ICommand<Result<UserDto>>;

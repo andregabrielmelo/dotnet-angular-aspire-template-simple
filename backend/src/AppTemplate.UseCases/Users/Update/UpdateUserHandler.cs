@@ -17,7 +17,7 @@ public class UpdateUserHandler(
     IRepository<User> _repository,
     ICurrentUser _currentUser,
     HybridCache _cache
-) : Mediator.ICommandHandler<UpdateUserCommand, Result<UserDto>>
+) : ICommandHandler<UpdateUserCommand, Result<UserDto>>
 {
     public async ValueTask<Result<UserDto>> Handle(
         UpdateUserCommand command,
