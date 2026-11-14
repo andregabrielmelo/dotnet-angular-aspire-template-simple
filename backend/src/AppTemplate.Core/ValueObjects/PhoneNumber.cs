@@ -1,5 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using Ardalis.GuardClauses;
+﻿using Ardalis.GuardClauses;
 
 namespace AppTemplate.Core.ValueObjects;
 
@@ -14,10 +13,6 @@ public class PhoneNumber : ValueObject
     public string? Extension { get; private set; }
     public static PhoneNumber Unknown { get; } = new PhoneNumber(String.Empty, String.Empty, null);
 
-    // Private: callers go through Create. EF Core binds to it by its parameter names when it
-    // loads the owned type, and System.Text.Json through [JsonConstructor] when HybridCache reads
-    // a cached result back (CachedResultRoundTrip).
-    [JsonConstructor]
     private PhoneNumber(string countryCode, string number, string? extension)
     {
         CountryCode = countryCode;
