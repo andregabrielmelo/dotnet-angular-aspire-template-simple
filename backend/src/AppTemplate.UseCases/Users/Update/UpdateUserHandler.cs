@@ -38,7 +38,7 @@ public class UpdateUserHandler(
             if (string.IsNullOrWhiteSpace(command.PhoneCountryCode))
                 return Result<UserDto>.Error("Phone country code is required with a phone number");
 
-            phoneNumber = new PhoneNumber(
+            phoneNumber = PhoneNumber.Create(
                 command.PhoneCountryCode,
                 command.PhoneNumber,
                 command.PhoneExtension

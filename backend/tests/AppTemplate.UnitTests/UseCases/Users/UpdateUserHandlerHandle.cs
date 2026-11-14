@@ -99,7 +99,7 @@ public class UpdateUserHandlerHandle
             }
         );
 
-        var expected = new PhoneNumber("+55", "11 98765 4321", "12");
+        var expected = PhoneNumber.Create("+55", "11 98765 4321", "12");
         _target.PhoneNumber.ShouldBe(expected);
         result.Value.PhoneNumber.ShouldBe(expected);
     }
