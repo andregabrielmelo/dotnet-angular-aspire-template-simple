@@ -107,6 +107,9 @@ public sealed class IdentityService(
         var account = await _userManager.FindByEmailAsync(email.Value);
         if (account is null)
         {
+            // Hash the attempt anyway, so an unknown email takes as long as a wrong password
+            // and the timing doesn't reveal which emails have accounts.
+            HashForTiming(password);
             return Result.Unauthorized();
         }
 
@@ -115,6 +118,13 @@ public sealed class IdentityService(
             password,
             lockoutOnFailure: true
         );
+        if (signIn.IsLockedOut)
+        {
+            // Identity answers a locked-out account without hashing; hash anyway, so a locked-out
+            // account doesn't answer faster than an unknown email.
+            HashForTiming(password);
+        }
+
         if (signIn.Succeeded)
         {
             var roles = await _userManager.GetRolesAsync(account);
@@ -290,6 +300,20 @@ public sealed class IdentityService(
 
         var changed = await _userManager.ChangePasswordAsync(account, currentPassword, newPassword);
         return changed.ToApplicationResult(passwordField: "newPassword");
+    }
+
+    // An account and a hash to verify against when the email is unknown (CheckPasswordAsync). The
+    // hash is made once, with the configured hasher, so verifying it costs what a real one does.
+    private static readonly ApplicationUser TimingAccount = new() { ProfileId = UserId.From(1) };
+    private static string? s_timingHash;
+
+    private void HashForTiming(string password)
+    {
+        s_timingHash ??= _userManager.PasswordHasher.HashPassword(
+            TimingAccount,
+            Guid.NewGuid().ToString()
+        );
+        _userManager.PasswordHasher.VerifyHashedPassword(TimingAccount, s_timingHash, password);
     }
 
     /// <summary>
