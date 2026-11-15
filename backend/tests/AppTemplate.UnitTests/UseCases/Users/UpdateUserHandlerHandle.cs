@@ -131,6 +131,84 @@ public class UpdateUserHandlerHandle
     }
 
     [Fact]
+    public async Task IsInvalidWithoutChangesGivenOnlyAnExtensionAndNoSavedNumber()
+    {
+        _currentUser.Id.Returns(UserId.From(1));
+
+        var result = await Update(Command with { PhoneExtension = "12" });
+
+        result.Status.ShouldBe(ResultStatus.Invalid);
+        result
+            .ValidationErrors.Select(error => error.Identifier)
+            .ShouldBe([nameof(Command.PhoneCountryCode), nameof(Command.PhoneNumber)]);
+        _target.Name.ShouldBe(TestUsers.Name);
+        _target.PhoneNumber.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task KeepsThePhoneNumberGivenNeitherPart()
+    {
+        var saved = SavedPhoneNumber();
+
+        var result = await Update();
+
+        result.IsSuccess.ShouldBeTrue();
+        _target.PhoneNumber.ShouldBe(saved);
+    }
+
+    [Fact]
+    public async Task KeepsThePhoneNumberGivenBlankParts()
+    {
+        var saved = SavedPhoneNumber();
+
+        var result = await Update(Command with { PhoneNumber = "", PhoneCountryCode = " " });
+
+        result.IsSuccess.ShouldBeTrue();
+        _target.PhoneNumber.ShouldBe(saved);
+    }
+
+    [Fact]
+    public async Task ChangesOnlyTheExtensionGivenOnlyAnExtension()
+    {
+        SavedPhoneNumber();
+
+        var result = await Update(Command with { PhoneExtension = "34" });
+
+        var expected = new PhoneNumber("+55", "11 98765 4321", "34");
+        _target.PhoneNumber.ShouldBe(expected);
+        result.Value.PhoneNumber.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task ChangesOnlyTheNumberGivenOnlyANumber()
+    {
+        SavedPhoneNumber();
+
+        await Update(Command with { PhoneNumber = "21 2345 6789" });
+
+        _target.PhoneNumber.ShouldBe(new PhoneNumber("+55", "21 2345 6789", "12"));
+    }
+
+    [Fact]
+    public async Task RemovesTheExtensionGivenAnEmptyOne()
+    {
+        SavedPhoneNumber();
+
+        await Update(Command with { PhoneExtension = "" });
+
+        _target.PhoneNumber.ShouldBe(new PhoneNumber("+55", "11 98765 4321", null));
+    }
+
+    /// <summary>Signs in as the target and gives them +55 11 98765 4321 x12.</summary>
+    private PhoneNumber SavedPhoneNumber()
+    {
+        _currentUser.Id.Returns(UserId.From(1));
+        var saved = new PhoneNumber("+55", "11 98765 4321", "12");
+        _target.UpdatePhoneNumber(saved);
+        return saved;
+    }
+
+    [Fact]
     public async Task ReturnsNotFoundGivenAnUnknownId()
     {
         _repository.GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>()).Returns((User?)null);

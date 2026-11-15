@@ -16,11 +16,8 @@ public class UserNameUpdatedEventHandler(ILoggerAdapter<UserNameUpdatedEventHand
     // Example of implementation of domain event
     public ValueTask Handle(UserNameUpdatedEvent notification, CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "User {UserId}'s name was updated to {NewName}",
-            notification.User.Id,
-            notification.User.Name.Value
-        );
+        // The id only: the new name is personal data, which never goes into logs.
+        _logger.LogInformation("User {UserId}'s name was updated", notification.UserId);
         return ValueTask.CompletedTask;
     }
 }

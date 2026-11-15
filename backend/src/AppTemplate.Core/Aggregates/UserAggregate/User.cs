@@ -1,4 +1,4 @@
-using AppTemplate.Core.Aggregates.UserAggregate.Events;
+﻿using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using Ardalis.GuardClauses;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate;
@@ -24,8 +24,8 @@ public class User(UserName name) : EntityBase<User, UserId>, IAggregateRoot
         {
             return this;
         }
-        this.RegisterDomainEvent(new UserNameUpdatedEvent(this));
         Name = newName;
+        this.RegisterDomainEvent(new UserNameUpdatedEvent(Id, newName));
         return this;
     }
 
