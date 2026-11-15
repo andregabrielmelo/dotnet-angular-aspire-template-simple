@@ -38,7 +38,7 @@ export interface paths {
     get: operations['AppTemplateWebEndpointsUsersGetByIdEndpoint'];
     /**
      * Update a user
-     * @description Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.
+     * @description Updates a user's name and, optionally, phone number. Phone fields left out keep their saved value; the ones sent replace it. A user without a phone number must send both the country code and the number. Send an empty extension to remove it. Users may update their own profile; updating anyone else's requires the users:write permission.
      */
     put: operations['AppTemplateWebEndpointsUsersUpdateEndpoint'];
     post?: never;
@@ -346,16 +346,19 @@ export interface components {
       /** @example Sample User */
       name: string;
       /**
-       * @description Leave empty to keep the current phone number.
+       * @description The local number. Leave it out to keep the saved one.
        * @example 555 0100
        */
       phoneNumber?: string | null;
       /**
-       * @description E.164 country calling code, e.g. "+55". Required with PhoneNumber.
+       * @description E.164 country calling code, e.g. "+55". Leave it out to keep the saved one.
        * @example +1
        */
       phoneCountryCode?: string | null;
-      /** @example null */
+      /**
+       * @description Digits only. Leave it out to keep the saved one, or send it empty to remove it.
+       * @example null
+       */
       phoneExtension?: string | null;
     };
     /**
