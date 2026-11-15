@@ -1,3 +1,4 @@
+using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure.Caching;
 using AppTemplate.UseCases.Caching;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -16,7 +17,7 @@ namespace AppTemplate.Web.Behaviors;
 public class CachingBehavior<TMessage, TResponse>(
     HybridCache cache,
     IOptions<CachingSettings> settings,
-    ILogger<CachingBehavior<TMessage, TResponse>> logger
+    ILoggerAdapter<CachingBehavior<TMessage, TResponse>> logger
 ) : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IMessage
 {
@@ -58,6 +59,7 @@ public class CachingBehavior<TMessage, TResponse>(
         }
     }
 
+    // TODO: This is workaround for the fact that error results are being cached. Review if there is not a better way to handle this.
     private sealed class NotCachedException(TResponse response) : Exception
     {
         public TResponse Response { get; } = response;

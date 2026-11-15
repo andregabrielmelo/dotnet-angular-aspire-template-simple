@@ -1,4 +1,5 @@
-﻿using Scalar.AspNetCore;
+﻿using AppTemplate.Web.Middleware;
+using Scalar.AspNetCore;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -25,9 +26,14 @@ public static class MiddlewareConfigurations
             app.UseHsts();
         }
 
+        // Right after authentication, the signed-in user's id tags the trace and scopes the logs.
         // The rate limiter runs after authentication, so it can count a signed-in caller by id;
         // then a signed-in session's unsafe requests need an antiforgery token (CSRF, ADR 015).
-        app.UseAuthentication().UseRateLimiter().UseSessionAntiforgery().UseAuthorization();
+        app.UseAuthentication()
+            .UseMiddleware<UserContextEnrichmentMiddleware>()
+            .UseRateLimiter()
+            .UseSessionAntiforgery()
+            .UseAuthorization();
 
         app.UseFastEndpoints();
 

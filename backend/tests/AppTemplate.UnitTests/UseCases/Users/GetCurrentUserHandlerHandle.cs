@@ -1,6 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.UseCases.Interfaces;
-using AppTemplate.UseCases.Users.Queries.GetCurrent;
+using AppTemplate.UseCases.Users.GetCurrent;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 

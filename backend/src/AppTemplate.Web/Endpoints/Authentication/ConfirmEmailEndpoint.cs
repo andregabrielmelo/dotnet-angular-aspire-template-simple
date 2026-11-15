@@ -1,5 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.UseCases.Authentication.Commands.ConfirmEmail;
+using AppTemplate.UseCases.Authentication.ConfirmEmail;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 

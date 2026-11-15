@@ -38,7 +38,7 @@ export interface paths {
     get: operations['AppTemplateWebEndpointsUsersGetByIdEndpoint'];
     /**
      * Update a user
-     * @description Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.
+     * @description Updates a user's name and, optionally, phone number. Phone fields left out keep their saved value; the ones sent replace it. A user without a phone number must send both the country code and the number. Send an empty extension to remove it. Users may update their own profile; updating anyone else's requires the users:write permission.
      */
     put: operations['AppTemplateWebEndpointsUsersUpdateEndpoint'];
     post?: never;
@@ -268,6 +268,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/auth/token': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Get a bearer token
+     * @description Checks the credentials as signing in does and returns a short-lived JWT, for clients that can't hold the session cookie. Send it as `Authorization: Bearer <token>`; nothing revokes it before it expires.
+     */
+    post: operations['AppTemplateWebEndpointsAuthenticationTokenEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -308,6 +328,7 @@ export interface components {
       id: number;
       name: string;
       email: string;
+      /** @description What the caller may do - lets clients show or hide actions. The API still enforces every permission itself. */
       permissions: string[];
     };
     UpdateUserResponse: {
@@ -324,11 +345,20 @@ export interface components {
     UpdateUserRequest: {
       /** @example Sample User */
       name: string;
-      /** @example 555 0100 */
+      /**
+       * @description The local number. Leave it out to keep the saved one.
+       * @example 555 0100
+       */
       phoneNumber?: string | null;
-      /** @example +1 */
+      /**
+       * @description E.164 country calling code, e.g. "+55". Leave it out to keep the saved one.
+       * @example +1
+       */
       phoneCountryCode?: string | null;
-      /** @example null */
+      /**
+       * @description Digits only. Leave it out to keep the saved one, or send it empty to remove it.
+       * @example null
+       */
       phoneExtension?: string | null;
     };
     /**
@@ -432,6 +462,33 @@ export interface components {
       code: string;
       /** @example correct horse battery staple */
       newPassword: string;
+    };
+    /** @description A bearer token: send it as Authorization: Bearer {AccessToken}. */
+    TokenResponse: {
+      /** @description The signed JWT. */
+      accessToken: string;
+      /** @description Always Bearer. */
+      tokenType: string;
+      /**
+       * Format: date-time
+       * @description When the token stops being accepted; sign in again for a new one.
+       */
+      expiresAt: string;
+    };
+    /**
+     * @example {
+     *       "email": "ada@example.com",
+     *       "password": "correct horse battery staple"
+     *     }
+     */
+    TokenRequest: {
+      /**
+       * Format: email
+       * @example ada@example.com
+       */
+      email: string;
+      /** @example correct horse battery staple */
+      password: string;
     };
   };
   responses: never;
@@ -564,7 +621,10 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
-        /** @example 1 */
+        /**
+         * @description Bound from the route - FastEndpoints lets route values override the body.
+         * @example 1
+         */
         id: number;
       };
       cookie?: never;
@@ -1082,6 +1142,66 @@ export interface operations {
       };
       /** @description Invalid request data, a wrong or expired code, or a weak password */
       400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Too many attempts from this address */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsAuthenticationTokenEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        '*/*': components['schemas']['TokenRequest'];
+      };
+    };
+    responses: {
+      /** @description The token and when it expires */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TokenResponse'];
+        };
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Wrong email or password, or too many failed attempts */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description The password is right, but the email isn't confirmed yet */
+      403: {
         headers: {
           [name: string]: unknown;
         };

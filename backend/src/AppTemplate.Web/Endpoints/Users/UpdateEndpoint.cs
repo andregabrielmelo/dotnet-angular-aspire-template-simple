@@ -1,6 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Commands.Update;
+using AppTemplate.UseCases.Users.Update;
 using AppTemplate.Web.Extensions;
 using AppTemplate.Web.Validation;
 
@@ -13,12 +13,13 @@ public sealed class UpdateUserRequest
 
     public required string Name { get; set; }
 
-    /// <summary>Leave empty to keep the current phone number.</summary>
+    /// <summary>The local number. Leave it out to keep the saved one.</summary>
     public string? PhoneNumber { get; set; }
 
-    /// <summary>E.164 country calling code, e.g. "+55". Required with <see cref="PhoneNumber"/>.</summary>
+    /// <summary>E.164 country calling code, e.g. "+55". Leave it out to keep the saved one.</summary>
     public string? PhoneCountryCode { get; set; }
 
+    /// <summary>Digits only. Leave it out to keep the saved one, or send it empty to remove it.</summary>
     public string? PhoneExtension { get; set; }
 }
 
@@ -39,7 +40,10 @@ public class UpdateEndpoint(IMediator _mediator)
         {
             s.Summary = "Update a user";
             s.Description =
-                "Updates a user's name and, optionally, phone number (which needs a country code). "
+                "Updates a user's name and, optionally, phone number. "
+                + "Phone fields left out keep their saved value; the ones sent replace it. "
+                + "A user without a phone number must send both the country code and the number. "
+                + "Send an empty extension to remove it. "
                 + "Users may update their own profile; "
                 + "updating anyone else's requires the users:write permission.";
             s.ExampleRequest = new UpdateUserRequest
@@ -97,15 +101,12 @@ public sealed class UpdateUserValidator : Validator<UpdateUserRequest>
             .NotEmpty()
             .WithMessage("Name is required")
             .MinimumLength(2)
+            .WithMessage("Name must be at least 2 characters")
             .MaximumLength(UserName.MaxLength)
             .WithMessage($"User name must not exceed {UserName.MaxLength} characters");
         // Id comes from the route (route values override the body), so there is no separate
         // body Id to compare it against.
         RuleFor(x => x.Id).GreaterThan(0).WithMessage("Id must be greater than zero");
-        RuleFor(x => x.PhoneCountryCode)
-            .NotEmpty()
-            .WithMessage("Phone country code is required with a phone number")
-            .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
         RuleFor(x => x.PhoneCountryCode).PhoneCountryCode();
         RuleFor(x => x.PhoneNumber).PhoneNumber();
         RuleFor(x => x.PhoneExtension).PhoneExtension();

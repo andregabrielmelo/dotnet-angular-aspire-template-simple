@@ -128,7 +128,7 @@ public class ProjectByIdSpecification : Specification<Project>
 
 Add `.AsNoTracking()` when nothing will change what's loaded. Leave it off when the handler changes the entity and saves it.
 
-If something elsewhere should react when a project is created, raise a domain event with `RegisterDomainEvent`, as `User.MarkRegistered` does with `UserRegisteredDomainEvent`. See the [cookbook]({{< relref "cookbook#react-to-a-domain-event" >}}).
+If something elsewhere should react when a project is created, raise a domain event with `RegisterDomainEvent`, as `User.UpdateName` does with `UserNameUpdatedEvent`, and handle it in Core (`Core/Aggregates/<Aggregate>/Handlers/`). See the [cookbook]({{< relref "cookbook#react-to-a-domain-event" >}}).
 
 ## 3. Infrastructure: the database
 
@@ -199,7 +199,7 @@ Read the generated `Data/Migrations/*_AddProjects.cs`: a `projects` table with s
 ```csharp
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Projects;
-using AppTemplate.UseCases.Projects.Queries.List;
+using AppTemplate.UseCases.Projects.List;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
@@ -254,7 +254,7 @@ services
 
 ## 4. UseCases: commands, queries and handlers
 
-Everything here lives in `backend/src/AppTemplate.UseCases/Projects/`: one folder per use case, commands under `Commands/` and queries under `Queries/`. It mirrors `UseCases/Users/`.
+Everything here lives in `backend/src/AppTemplate.UseCases/Projects/`: one folder per use case (`Create/`, `Get/`, `List/`, `Rename/`), commands and queries alike. It mirrors `UseCases/Users/`.
 
 **Repository or query service?**
 - **Changing something** (load it, call a domain method, save it): use `IRepository<T>`, plus a specification for anything beyond lookup by id.
@@ -284,7 +284,7 @@ public record ProjectDto(ProjectId Id, ProjectName Name, DateTimeOffset CreatedA
 // Create/CreateProjectCommand.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Commands.Create;
+namespace AppTemplate.UseCases.Projects.Create;
 
 public record CreateProjectCommand(ProjectName Name) : ICommand<Result<ProjectDto>>;
 ```
@@ -294,7 +294,7 @@ public record CreateProjectCommand(ProjectName Name) : ICommand<Result<ProjectDt
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Commands.Create;
+namespace AppTemplate.UseCases.Projects.Create;
 
 /// <summary>The caller becomes the project's owner.</summary>
 public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
@@ -326,7 +326,7 @@ public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser
 // Get/GetProjectQuery.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Queries.Get;
+namespace AppTemplate.UseCases.Projects.Get;
 
 public record GetProjectQuery(ProjectId ProjectId) : IQuery<Result<ProjectDto>>;
 ```
@@ -337,7 +337,7 @@ using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.Core.Aggregates.ProjectAggregate.Specifications;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Queries.Get;
+namespace AppTemplate.UseCases.Projects.Get;
 
 /// <summary>
 /// Resource-based authorization: the owner may read their project, and anyone with
@@ -378,7 +378,7 @@ Returning `Forbidden` tells a stranger that the project exists. When that matter
 // List/IListProjectsQueryService.cs
 using AppTemplate.Core.Aggregates.UserAggregate;
 
-namespace AppTemplate.UseCases.Projects.Queries.List;
+namespace AppTemplate.UseCases.Projects.List;
 
 /// <summary>
 /// Reads a page of projects straight into DTOs, without loading aggregates.
@@ -397,7 +397,7 @@ public interface IListProjectsQueryService
 
 ```csharp
 // List/ListProjectsQuery.cs
-namespace AppTemplate.UseCases.Projects.Queries.List;
+namespace AppTemplate.UseCases.Projects.List;
 
 /// <summary>The caller's own projects, a page at a time.</summary>
 public record ListProjectsQuery(int Page = 1, int PerPage = Constants.DEFAULT_PAGE_SIZE)
@@ -408,7 +408,7 @@ public record ListProjectsQuery(int Page = 1, int PerPage = Constants.DEFAULT_PA
 // List/ListProjectsHandler.cs
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Queries.List;
+namespace AppTemplate.UseCases.Projects.List;
 
 public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser _currentUser)
     : IQueryHandler<ListProjectsQuery, Result<PagedResult<ProjectDto>>>
@@ -434,7 +434,7 @@ The query-service interface lives in UseCases, not Core, because it returns a us
 // Rename/RenameProjectCommand.cs
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 
-namespace AppTemplate.UseCases.Projects.Commands.Rename;
+namespace AppTemplate.UseCases.Projects.Rename;
 
 public record RenameProjectCommand(ProjectId ProjectId, ProjectName Name)
     : ICommand<Result<ProjectDto>>;
@@ -445,7 +445,7 @@ public record RenameProjectCommand(ProjectId ProjectId, ProjectName Name)
 using AppTemplate.Core.Aggregates.ProjectAggregate;
 using AppTemplate.UseCases.Authorization;
 
-namespace AppTemplate.UseCases.Projects.Commands.Rename;
+namespace AppTemplate.UseCases.Projects.Rename;
 
 /// <summary>Only the owner may rename a project.</summary>
 public class RenameProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
@@ -511,7 +511,7 @@ public record ProjectRecord(int Id, string Name, DateTimeOffset CreatedAtUtc)
 
 ```csharp
 using AppTemplate.Core.Aggregates.ProjectAggregate;
-using AppTemplate.UseCases.Projects.Commands.Create;
+using AppTemplate.UseCases.Projects.Create;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Projects;
@@ -631,7 +631,7 @@ public class DeleteEndpoint(IMediator _mediator)
 
 ```csharp
 using AppTemplate.UseCases.Projects;
-using AppTemplate.UseCases.Projects.Queries.List;
+using AppTemplate.UseCases.Projects.List;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Projects;
@@ -1004,7 +1004,7 @@ Then run the app (`dotnet run --project src/AppTemplate.AppHost`), open the `ang
 ## 11. Later: removing the `User` reference
 
 Once your own features exist, most of the `User` slice is no longer needed as an example. Part of it is how people sign in, though:
-- **Keep** the `User` aggregate (the profile; the account is Identity's `ApplicationUser`), registration, sign-in and logout (`Web/Endpoints/Authentication/`, `Web/Services/`, `UseCases/Authentication/`, `UseCases/Users/Commands/Register/`, `UseCases/Users/Handlers/`, `Infrastructure/Identity/`), and `GET /users/me` (`MeEndpoint`, `GetCurrentUserHandler`): the frontend's `CurrentUserService` uses it for the user's name and permissions.
+- **Keep** the `User` aggregate (the profile; the account is Identity's `ApplicationUser`), registration, sign-in and logout (`Web/Endpoints/Authentication/`, `Web/Services/`, `UseCases/Authentication/`, `UseCases/Users/Register/`, `Infrastructure/Identity/`), and `GET /users/me` (`MeEndpoint`, `GetCurrentUserHandler`): the frontend's `CurrentUserService` uses it for the user's name and permissions.
 - **Delete** what's only an example: the update, delete and list endpoints, their use cases and tests, `features/users/`, and the `users:*` permissions you don't need.
 - **Keep** `ICurrentUser`, `Permission` and `Role`: they are the authorization mechanism, not the example.
 - Moving the profile fields you don't need off `User` (such as the phone number) needs a migration.

@@ -1,11 +1,15 @@
+using System.Globalization;
+
 namespace AppTemplate.FunctionalTests.Auth;
 
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class AuthConfirmEmailPost(CustomWebApplicationFactory<Program> factory)
     : IClassFixture<CustomWebApplicationFactory<Program>>
 {
-    [Fact]
-    public async Task ReturnsBadRequestForTheCodeFieldGivenAWrongCode()
+    [Theory]
+    [InlineData("bm90LXRoZS1jb2Rl")] // valid Base64Url, but not this account's code
+    [InlineData("not base64!")] // a mangled link
+    public async Task ReturnsBadRequestForTheCodeFieldGivenAWrongCode(string code)
     {
         var email = $"confirm-{Guid.NewGuid():N}@example.com";
         var session = new TestSession(factory);
@@ -14,7 +18,7 @@ public class AuthConfirmEmailPost(CustomWebApplicationFactory<Program> factory)
 
         var response = await session.Client.PostAsJsonAsync(
             "/auth/confirm-email",
-            new { userId = int.Parse(link["userId"]), code = "bm90LXRoZS1jb2Rl" },
+            new { userId = int.Parse(link["userId"], CultureInfo.InvariantCulture), code },
             TestContext.Current.CancellationToken
         );
 

@@ -1,4 +1,4 @@
-using AppTemplate.Core.Aggregates.UserAggregate.Events;
+﻿using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using Ardalis.GuardClauses;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate;
@@ -14,7 +14,6 @@ public class User(UserName name) : EntityBase<User, UserId>, IAggregateRoot
 
     public PhoneNumber? PhoneNumber { get; private set; }
 
-    /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
     public static User Create(UserName name) => new(name);
@@ -25,8 +24,8 @@ public class User(UserName name) : EntityBase<User, UserId>, IAggregateRoot
         {
             return this;
         }
-        this.RegisterDomainEvent(new UserNameUpdatedEvent(this));
         Name = newName;
+        this.RegisterDomainEvent(new UserNameUpdatedEvent(Id, newName));
         return this;
     }
 

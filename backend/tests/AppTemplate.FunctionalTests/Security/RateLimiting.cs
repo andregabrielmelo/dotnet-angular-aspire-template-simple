@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace AppTemplate.FunctionalTests.Security;
 
 /// <summary>The real host with low limits, so a test can reach them in a few requests.</summary>
@@ -11,11 +13,11 @@ public sealed class LowRateLimitsFactory : CustomWebApplicationFactory<Program>
         base.ConfigureWebHost(builder);
         builder.UseSetting(
             "RateLimiting:AuthenticationPermitLimit",
-            AuthenticationPermitLimit.ToString()
+            AuthenticationPermitLimit.ToString(CultureInfo.InvariantCulture)
         );
         builder.UseSetting(
             "RateLimiting:AuthenticatedPermitLimit",
-            AuthenticatedPermitLimit.ToString()
+            AuthenticatedPermitLimit.ToString(CultureInfo.InvariantCulture)
         );
     }
 }

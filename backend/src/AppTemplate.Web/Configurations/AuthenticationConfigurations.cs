@@ -1,3 +1,4 @@
+using AppTemplate.Core.Interfaces;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.Web.Services;
@@ -14,7 +15,7 @@ public static class AuthenticationConfigurations
     /// </summary>
     public static IServiceCollection AddAuthenticationConfigurations(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger
+        ILoggerAdapter<Program> logger
     )
     {
         services.AddAuthorization();

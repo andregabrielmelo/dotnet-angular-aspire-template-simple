@@ -136,7 +136,10 @@ public class CsrfProtection(CustomWebApplicationFactory<Program> factory)
         await session.FetchAntiforgeryTokenAsync();
 
         var cookie = session.LastSetCookies.Single(header =>
-            header.StartsWith($"{AntiforgeryConfigurations.RequestTokenCookieName}=")
+            header.StartsWith(
+                $"{AntiforgeryConfigurations.RequestTokenCookieName}=",
+                StringComparison.Ordinal
+            )
         );
         cookie.ShouldNotContain("httponly", Case.Insensitive);
         cookie.ShouldContain("samesite=strict", Case.Insensitive);

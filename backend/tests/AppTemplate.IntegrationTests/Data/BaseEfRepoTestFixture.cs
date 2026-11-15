@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.Infrastructure.Logging;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,6 +19,11 @@ namespace AppTemplate.IntegrationTests.Data;
 public sealed class PostgresDatabaseFixture : IAsyncLifetime
 {
     public const string ClientUrl = "https://app.test";
+
+    /// <summary>The bearer tokens' signing key, random per run.</summary>
+    public static readonly string JwtSigningKey = Convert.ToBase64String(
+        System.Security.Cryptography.RandomNumberGenerator.GetBytes(JwtSettings.MinimumKeyBytes)
+    );
 
     public ServiceProvider Services { get; private set; } = null!;
 
@@ -44,14 +51,18 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings());
         builder.Configuration["ConnectionStrings:apptemplate"] = connectionString;
         builder.Services.AddLogging();
-        builder.AddInfrastructureServices(builder.Configuration, NullLogger.Instance);
+        builder.AddInfrastructureServices(
+            builder.Configuration,
+            new LoggerAdapter<BaseEfRepoTestFixture>(NullLoggerFactory.Instance)
+        );
 
         var services = builder.Services;
         services.Replace(ServiceDescriptor.Scoped(_ => Substitute.For<IDomainEventDispatcher>()));
-        // What Web provides: the email sender, account links, and the authentication services
-        // SignInManager is built with (it issues nothing here).
+        // What Web provides: the email sender, account links, the token settings, and the
+        // authentication services SignInManager is built with (it issues nothing here).
         services.AddSingleton<IEmailSender>(emails);
         services.Configure<AccountLinkSettings>(links => links.ClientUrl = ClientUrl);
+        services.Configure<JwtSettings>(jwt => jwt.SigningKey = JwtSigningKey);
         services.AddAuthentication();
         services.AddHttpContextAccessor();
         return Task.FromResult(services.BuildServiceProvider());
@@ -88,7 +99,26 @@ public abstract class BaseEfRepoTestFixture(PostgresDatabaseFixture database)
 
     protected static EmailAddress NewEmail() => new($"user-{Guid.NewGuid():N}@example.com");
 
-    public void Dispose() => _scope.Dispose();
+    /// <summary>
+    /// Confirms the account's email directly, as the development seed does, without a code or
+    /// an email.
+    /// </summary>
+    protected async Task ConfirmEmailAsync(UserId userId)
+    {
+        var userManager = Services.GetRequiredService<UserManager<ApplicationUser>>();
+        var account = await userManager.Users.SingleAsync(
+            candidate => candidate.ProfileId == userId,
+            TestContext.Current.CancellationToken
+        );
+        account.EmailConfirmed = true;
+        (await userManager.UpdateAsync(account)).Succeeded.ShouldBeTrue();
+    }
+
+    public void Dispose()
+    {
+        _scope.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }
 
 /// <summary>Records sent emails, so tests can follow the links in them.</summary>
@@ -98,6 +128,7 @@ public sealed class RecordingEmailSender : IEmailSender
 
     public Task SendAsync(
         string to,
+        string from,
         string subject,
         string body,
         CancellationToken cancellationToken = default

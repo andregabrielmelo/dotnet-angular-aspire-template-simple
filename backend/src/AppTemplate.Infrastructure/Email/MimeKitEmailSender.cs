@@ -1,33 +1,40 @@
 ﻿using AppTemplate.Core.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
 namespace AppTemplate.Infrastructure.Email;
 
-public sealed partial class MimeKitEmailSender(
-    ILogger<MimeKitEmailSender> logger,
+public sealed class MimeKitEmailSender(
+    ILoggerAdapter<MimeKitEmailSender> logger,
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender
 {
+    /// <summary>
+    /// How long one SMTP operation (connect, send, quit) may take. MailKit's default is two
+    /// minutes, which would hold a registration or password reset request that long on a stuck
+    /// server.
+    /// </summary>
+    public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+
     private readonly MailserverConfiguration _mailserver = mailserverOptions.Value;
 
     public async Task SendAsync(
         string to,
+        string from,
         string subject,
         string body,
         CancellationToken cancellationToken = default
     )
     {
         var message = new MimeMessage();
-        message.From.Add(MailboxAddress.Parse(_mailserver.FromAddress));
+        message.From.Add(MailboxAddress.Parse(from));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
         message.Body = new TextPart("plain") { Text = body };
 
-        using var client = new SmtpClient();
+        using var client = new SmtpClient { Timeout = (int)Timeout.TotalMilliseconds };
         await client.ConnectAsync(
             _mailserver.Hostname,
             _mailserver.Port,
@@ -37,10 +44,7 @@ public sealed partial class MimeKitEmailSender(
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(quit: true, cancellationToken);
 
-        // Addresses are personal data - log the subject, not who it went to.
-        LogEmailSent(logger, subject, _mailserver.Hostname);
+        // Addresses are personal data - log the subject, not who it went to or came from.
+        logger.LogInformation("Sent email '{Subject}' via {Host}", subject, _mailserver.Hostname);
     }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Sent email '{Subject}' via {Host}")]
-    private static partial void LogEmailSent(ILogger logger, string subject, string host);
 }

@@ -1,4 +1,4 @@
-using AppTemplate.UseCases.Authentication.Commands.Logout;
+using AppTemplate.UseCases.Authentication.Logout;
 
 namespace AppTemplate.Web.Endpoints.Authentication;
 

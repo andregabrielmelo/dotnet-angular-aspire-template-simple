@@ -22,8 +22,8 @@ Dependencies point inward:
 | Project | Contains | May depend on |
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
-| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events and their handlers, specifications; ports in `Core/Interfaces` (`IEmailSender`, the request context `ICurrentUser`, ...) | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`), the accounts port (`UseCases/Interfaces/IIdentityService`) and the `Role`/`Permission` smart enums | Core, SharedKernel |
+| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; every domain event handler, next to its aggregate (`Core/Aggregates/<Aggregate>/Handlers/`); ports for external resources in `Core/Interfaces` (`IEmailSender`) | SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and their handlers; list query-service interfaces (`IListUsersQueryService`), the accounts port and the request context (`UseCases/Interfaces`: `IIdentityService`, `ICurrentUser`), the `Role`/`Permission` smart enums, and the caching contract (`ICacheable`, `CacheTags`, `CacheProfile`) | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, ASP.NET Core Identity (`ApplicationUser`, `IdentityService`) | Core, UseCases, SharedKernel |
 | `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, Mediator pipeline behaviors (`Web/Behaviors`: logging, and caching `ICacheable` queries), the antiforgery check, composition root | everything above |
 
@@ -52,7 +52,7 @@ Dependencies point inward:
 ## 4. Use cases
 
 - Use [Mediator](https://github.com/martinothamar/Mediator) (source-generated). Never MediatR, and never a second dispatch mechanism.
-- One folder per use case: commands in `UseCases/<Feature>/Commands/<UseCase>/`, queries in `UseCases/<Feature>/Queries/<UseCase>/`; domain event handlers go in `UseCases/<Feature>/Handlers/`.
+- One folder per use case, command or query alike: `UseCases/<Feature>/<UseCase>/` (`Users/Register/`). Domain event handlers live only in Core, next to their aggregate (`Core/Aggregates/<Aggregate>/Handlers/`, such as `UserRegisteredEventHandler`), and use only Core ports; `ConventionTests` enforces it. A reaction that needs a UseCases port (an account email through `IIdentityService`) goes in the use case itself, as `RegisterUserHandler` sends the confirmation email.
 - Guard method arguments and invariants with `Ardalis.GuardClauses` (`Guard.Against.Null`, `NullOrWhiteSpace`, `InvalidInput`, `NotFound`) in SharedKernel, Core and Infrastructure. Value objects keep Vogen's `Validate`, and expected failures stay `Result`s. The command or query record has its own file (`UpdateUserCommand.cs`) next to its handler (`UpdateUserHandler.cs`).
 - Handlers return `Ardalis.Result`. Use `Result.NotFound()`, `Result.Forbidden()`, `Result.Conflict()` or `Result.Invalid(...)` for expected outcomes; their messages reach the caller. `Result.Error()` and `Result.Unavailable()` become a generic 500 or 503, so log the details in the handler. Throw only for unexpected failures.
 - Resource-based authorization ("may update their own profile, or anyone's with `users:write`") lives in the handler, through `ICurrentUser`, and returns `Result.Forbidden()`.
@@ -86,13 +86,14 @@ Dependencies point inward:
 - Three kinds of settings: **required** (validated as present), **optional feature** (empty means off; when on, every setting is validated so a partial configuration fails), and **safe defaults** (defaults live in the options class, never in `appsettings*.json`, which keeps only values we set).
 - A new options type joins the explicit list in its composition root's tests (`OptionsRegistration` in the functional tests for Web). Why: `docs/content/best-practices.md`, Options.
 - Never hardcode secrets, credentials or environment-specific URLs. Local services are wired by Aspire (`WithReference`/`WaitFor` in `AppHost.cs`); secrets are AppHost parameters or user secrets.
+- The AppHost passes an app only what depends on the composition, each value explicitly: `WithReference` for resources, `WithEnvironment` for addresses it knows (another resource's endpoint), `AddParameter` for deployment values and secrets. Never forward a whole configuration section. An app's own defaults, development ones included, live in its own `appsettings.json`/`appsettings.Development.json`.
 - Never inject a scoped service into a singleton.
 - Document any new configuration key, environment variable or AppHost parameter.
 - A configuration file for a third-party service we run lists every option of the pinned version: options in effect are set explicitly, even to their default, and unused ones stay commented out with their default and when to use them. Re-check the file whenever the version is bumped. Why: `docs/content/best-practices.md`, Third-party configuration files.
 
 ## 8. Health checks
 
-- Postgres gates readiness (`/health`, tag `ready`). A new required dependency joins it; an optional one must not gate readiness, and the code that uses it fails open. Never tag a dependency `live`. Policy: `docs/content/best-practices.md`, Health checks.
+- Postgres gates readiness (`/health`, tag `ready`). A new required dependency joins it; an optional one must not gate readiness, and the code that uses it fails open. One deliberate exception: with Redis down, cached reads fall back, but a write that must invalidate cache entries saves and then answers 500, because `RemoveByTagAsync` needs Redis (ADR 017). Never tag a dependency `live`. Policy: `docs/content/best-practices.md`, Health checks.
 
 ## 9. Testing ([ADR 006](docs/content/architecture-decisions/adr-006-testing-strategy.md))
 
@@ -104,6 +105,8 @@ Dependencies point inward:
   - Sign in for real: `factory.CreateSignedInSessionAsync(role)` (a `Role`, `Member` by default) returns the user and a `TestSession` whose `Client` is a cookie jar holding the session, and sends the antiforgery token as the SPA does; `TestSession` also drives login, register, change password and logout. `factory.CreateUserAsync(role)` creates an account. There is no test authentication handler.
   - Assert status codes with `Ardalis.HttpClientTestExtensions` (`GetAndEnsureNotFoundAsync`, ...). Emails go to `factory.EmailSender`, a fake that records them.
 - **Architecture tests** (`AppTemplate.ArchitectureTests`) enforce section 2 and the placement rules in sections 3 and 4. If one fails, fix the code, not the rule. Only change a rule together with the ADR that justifies it.
+- **The Aspire smoke test** (`AppTemplate.AspireTests`) starts the real AppHost and waits for the API to be healthy. Keep it to that one startup path; it needs Docker and a trusted development certificate. When you add a resource with a persistent lifetime or a data volume, keep the test's throwaway override working (`ThrowawayContainers`).
+- **Browser tests** (`AppTemplate.AspireTests/EndToEnd`, Playwright, sharing the smoke test's AppHost) cover critical user journeys through the browser only. Use role, label and text locators (`GetByRole`, `GetByLabel`), assert what the user sees, and keep rules and their combinations in the unit and functional tests.
 - Tests follow Arrange-Act-Assert, one behavior per test. Change tests whenever observable behavior changes.
 
 ## 10. Frontend (`frontend/`)
@@ -113,13 +116,15 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 - HTTP calls live in feature services, not components.
 - Guards are UX, not authorization.
 - The SPA must run under a strict CSP, sent by the production host: no inline scripts, inline event handlers or `eval`. New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Production deployment).
-- The session is an HttpOnly cookie the app never reads ([ADR 015](docs/content/architecture-decisions/adr-015-cookie-sessions-aspnetcore-identity.md)); `AuthService` only knows whether the API returns a profile. Never store a credential in `localStorage`, add an `Authorization` header, or turn off HttpClient's XSRF support: it sends the antiforgery token. After anything that changes who is signed in, fetch a new token (`fetchAntiforgeryToken()`).
+- The session is an HttpOnly cookie the app never reads ([ADR 015](docs/content/architecture-decisions/adr-015-cookie-sessions-aspnetcore-identity.md)); `AuthService` only knows whether the API returns a profile. Never store a credential in `localStorage`, call `POST /auth/token` or add an `Authorization` header (bearer tokens are for non-browser clients, [ADR 018](docs/content/architecture-decisions/adr-018-bearer-tokens-for-non-browser-clients.md)), or turn off HttpClient's XSRF support: it sends the antiforgery token. After anything that changes who is signed in, fetch a new token (`fetchAntiforgeryToken()`).
 
 ## 11. Code style
 
 - C#: `backend/.editorconfig`, CSharpier, central package versions in `backend/Directory.Packages.props`, and LF line endings.
+- **Code analysis fails the build.** `backend/Directory.Build.props` turns on the recommended .NET analyzers (`AnalysisLevel` `latest-recommended`) and makes their warnings errors. `.editorconfig` also makes `throw ex;` (CA2200) and unused usings (IDE0005) errors. Fix the code; don't silence the rule. Suppress only where the rule is wrong for the case: in `.editorconfig` with a comment saying why, or with `[SuppressMessage(..., Justification = "...")]`. Never use a bare `#pragma warning disable`.
+- Log through `ILoggerAdapter<T>` (`Core/Interfaces`), in every layer, with PascalCase placeholders; `T` is the class that logs. Before the host exists (`Program.cs` and the `Add...Configurations` methods), use the hand-built `ILoggerAdapter<Program>` that startup passes in. Use `ILogger<T>` only in Web or Infrastructure, and only for what the adapter lacks, which today is log scopes (`UserContextEnrichmentMiddleware`). Only Infrastructure's `LoggerAdapter<T>` and Web's logging setup use `Microsoft.Extensions.Logging` (`LayerDependencyTests`); SharedKernel's `MediatorDomainEventDispatcher` keeps `ILogger`, since it can't see Core. CA1848 and CA1873 are suggestions for that reason. Compare strings with an explicit `StringComparison` (CA1310); pass `CultureInfo.InvariantCulture` for anything parsed back or stored (CA1305 is a suggestion).
 - After changing a package version, run `dotnet restore` and commit the regenerated `packages.lock.json` files.
-- Inject `ILogger<T>` and use message templates (`"{UserId} created"`), never string interpolation. Log ids and names, never tokens, passwords, personal data, request bodies, commands or DTOs (`{@Command}` or a record's `ToString()` prints every property): nothing redacts logs. See `docs/content/best-practices.md`, Logging.
+- Inject `ILoggerAdapter<T>` and use message templates (`"{UserId} created"`), never string interpolation. Log ids and names, never tokens, passwords, personal data, request bodies, commands or DTOs (`{@Command}` or a record's `ToString()` prints every property): nothing redacts logs. See `docs/content/best-practices.md`, Logging.
 - Comments explain *why*, not *what*. Don't add a dependency when the framework or an existing library already solves the problem.
 
 ## 12. Git workflow
@@ -144,6 +149,8 @@ npm run lint
 npm run build
 npm run test
 ```
+
+Or run all of it, as CI does, with `dotnet scripts/BuildTestFormat.cs` from the repository root (`--backend`, `--frontend`, `--no-docker`); it also checks that the two generated API files are current, and prints a pass/fail summary.
 
 If you changed an endpoint, request or response, also run `scripts/export-openapi.sh` and `npm run api:generate`, and commit `backend/openapi/v1.json` and `frontend/src/app/core/api/api-types.ts`. CI fails when either is stale.
 

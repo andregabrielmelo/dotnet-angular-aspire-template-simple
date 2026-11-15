@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
@@ -43,6 +44,7 @@ public sealed class IdentityService(
         var profile = User.Create(name);
         var account = new ApplicationUser
         {
+            ProfileId = profile.Id,
             Profile = profile,
             // The email is the user name, as Identity's own endpoints do; its unique index
             // stops two concurrent registrations with one address.
@@ -53,7 +55,9 @@ public sealed class IdentityService(
         try
         {
             var created = await _userManager.CreateAsync(account, password);
-            return created.Succeeded ? profile.Id : created.ToApplicationResult();
+            return created.Succeeded
+                ? profile.Id
+                : created.ToApplicationResult(passwordField: "password");
         }
         catch (DbUpdateException exception)
             when (exception.InnerException
@@ -74,7 +78,10 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await FindAsync(userId, cancellationToken);
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         if (account is null)
         {
             return Result.NotFound();
@@ -91,25 +98,6 @@ public sealed class IdentityService(
         return added.ToApplicationResult();
     }
 
-    // Avoid using this function. Created for seeding data and tests
-    // TODO: Think of a better way to seed data and tests and remove this function
-    public async Task<Result> MarkEmailConfirmedAsync(
-        UserId userId,
-        CancellationToken cancellationToken
-    )
-    {
-        var account = await FindAsync(userId, cancellationToken);
-        if (account is null)
-        {
-            return Result.NotFound();
-        }
-
-        // Identity's own confirmation, with a code made here instead of emailed.
-        var token = await _userManager.GenerateEmailConfirmationTokenAsync(account);
-        var confirmed = await _userManager.ConfirmEmailAsync(account, token);
-        return confirmed.ToApplicationResult();
-    }
-
     public async Task<Result<AccountDto>> CheckPasswordAsync(
         EmailAddress email,
         string password,
@@ -119,6 +107,9 @@ public sealed class IdentityService(
         var account = await _userManager.FindByEmailAsync(email.Value);
         if (account is null)
         {
+            // Hash the attempt anyway, so an unknown email takes as long as a wrong password
+            // and the timing doesn't reveal which emails have accounts.
+            HashForTiming(password);
             return Result.Unauthorized();
         }
 
@@ -127,6 +118,13 @@ public sealed class IdentityService(
             password,
             lockoutOnFailure: true
         );
+        if (signIn.IsLockedOut)
+        {
+            // Identity answers a locked-out account without hashing; hash anyway, so a locked-out
+            // account doesn't answer faster than an unknown email.
+            HashForTiming(password);
+        }
+
         if (signIn.Succeeded)
         {
             var roles = await _userManager.GetRolesAsync(account);
@@ -160,20 +158,35 @@ public sealed class IdentityService(
         return Result.Unauthorized();
     }
 
-    public async Task SignInAsync(UserId userId, CancellationToken cancellationToken) =>
+    public async Task SignInAsync(UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         await _signInManager.SignInAsync(
-            await FindRequiredAsync(userId, cancellationToken),
+            Guard.Against.NotFound(userId, account),
             isPersistent: true
         );
+    }
 
-    public async Task RefreshSignInAsync(UserId userId, CancellationToken cancellationToken) =>
-        await _signInManager.RefreshSignInAsync(await FindRequiredAsync(userId, cancellationToken));
+    public async Task RefreshSignInAsync(UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
+        await _signInManager.RefreshSignInAsync(Guard.Against.NotFound(userId, account));
+    }
 
     public Task SignOutAsync() => _signInManager.SignOutAsync();
 
     public async Task<AccountDto?> GetUserAsync(UserId userId, CancellationToken cancellationToken)
     {
-        var account = await FindAsync(userId, cancellationToken);
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         if (account is null)
         {
             return null;
@@ -188,11 +201,16 @@ public sealed class IdentityService(
         );
     }
 
-    public async Task SendEmailConfirmationAsync(
-        UserId userId,
-        CancellationToken cancellationToken
-    ) => await SendEmailConfirmationAsync(await FindAsync(userId, cancellationToken));
+    public async Task SendEmailConfirmationAsync(UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
+        await SendEmailConfirmationAsync(account);
+    }
 
+    // TODO: I think it should only work by passing userId instead of e-mail
     public async Task SendEmailConfirmationAsync(
         EmailAddress email,
         CancellationToken cancellationToken
@@ -204,11 +222,11 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await FindAsync(userId, cancellationToken);
-        if (
-            account is null
-            || Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code)) is not { } token
-        )
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
+        if (account is null || TryDecodeCode(code) is not { } token)
         {
             return IdentityErrors.InvalidCodeResult;
         }
@@ -247,10 +265,7 @@ public sealed class IdentityService(
     )
     {
         var account = await _userManager.FindByEmailAsync(email.Value);
-        if (
-            account is null
-            || Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code)) is not { } token
-        )
+        if (account is null || TryDecodeCode(code) is not { } token)
         {
             return IdentityErrors.InvalidCodeResult;
         }
@@ -258,7 +273,7 @@ public sealed class IdentityService(
         var reset = await _userManager.ResetPasswordAsync(account, token, newPassword);
         if (!reset.Succeeded)
         {
-            return reset.ToApplicationResult();
+            return reset.ToApplicationResult(passwordField: "newPassword");
         }
 
         // Whoever can read the account's email may sign in again at once.
@@ -274,26 +289,48 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await FindAsync(userId, cancellationToken);
+        var account = await _userManager.Users.SingleOrDefaultAsync(
+            candidate => candidate.ProfileId == userId,
+            cancellationToken
+        );
         if (account is null)
         {
             return Result.NotFound();
         }
 
         var changed = await _userManager.ChangePasswordAsync(account, currentPassword, newPassword);
-        return changed.ToApplicationResult();
+        return changed.ToApplicationResult(passwordField: "newPassword");
     }
 
-    private Task<ApplicationUser?> FindAsync(UserId userId, CancellationToken cancellationToken) =>
-        _userManager.Users.SingleOrDefaultAsync(
-            account => account.ProfileId == userId,
-            cancellationToken
-        );
+    // An account and a hash to verify against when the email is unknown (CheckPasswordAsync). The
+    // hash is made once, with the configured hasher, so verifying it costs what a real one does.
+    private static readonly ApplicationUser TimingAccount = new() { ProfileId = UserId.From(1) };
+    private static string? s_timingHash;
 
-    private async Task<ApplicationUser> FindRequiredAsync(
-        UserId userId,
-        CancellationToken cancellationToken
-    ) => Guard.Against.NotFound(userId, await FindAsync(userId, cancellationToken));
+    private void HashForTiming(string password)
+    {
+        s_timingHash ??= _userManager.PasswordHasher.HashPassword(
+            TimingAccount,
+            Guid.NewGuid().ToString()
+        );
+        _userManager.PasswordHasher.VerifyHashedPassword(TimingAccount, s_timingHash, password);
+    }
+
+    /// <summary>
+    /// The Identity token inside an emailed code, or <c>null</c> when the code isn't valid
+    /// Base64Url (a mangled or hand-edited link), which callers answer as an invalid code.
+    /// </summary>
+    private static string? TryDecodeCode(string code)
+    {
+        try
+        {
+            return Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
 
     private async Task SendEmailConfirmationAsync(ApplicationUser? account)
     {
@@ -311,7 +348,7 @@ public sealed class IdentityService(
             $"{_links.Value.ClientUrl.TrimEnd('/')}{_links.Value.ConfirmEmailPath}",
             new Dictionary<string, string?>
             {
-                ["userId"] = account.ProfileId.Value.ToString(),
+                ["userId"] = account.ProfileId.Value.ToString(CultureInfo.InvariantCulture),
                 ["code"] = code,
             }
         );

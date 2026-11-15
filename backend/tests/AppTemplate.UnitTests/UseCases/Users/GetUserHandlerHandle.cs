@@ -1,5 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
-using AppTemplate.UseCases.Users.Queries.Get;
+using AppTemplate.UseCases.Users.Get;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 
@@ -29,6 +29,17 @@ public class GetUserHandlerHandle
         result.IsSuccess.ShouldBeTrue();
         result.Value.Name.ShouldBe(TestUsers.Name);
         result.Value.PhoneNumber!.ToString().ShouldBe("+44 5551234 x7");
+    }
+
+    [Fact]
+    public async Task ReturnsNoPhoneNumberForAUserWithout()
+    {
+        RepositoryReturns(TestUsers.Saved());
+
+        var result = await Get();
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.PhoneNumber.ShouldBeNull();
     }
 
     [Fact]

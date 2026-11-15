@@ -51,14 +51,30 @@ public class AuthResetPasswordPost(CustomWebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task FailsGivenAWrongCode()
+    public async Task ReturnsBadRequestForCodeGivenAMangledOne()
+    {
+        var user = await factory.CreateUserAsync();
+
+        var response = await Reset(user.Email.Value, "not base64!", NewPassword);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
+        ).ShouldContain("\"code\"");
+    }
+
+    [Fact]
+    public async Task ReturnsBadRequestForCodeGivenAWrongOne()
     {
         var user = await factory.CreateUserAsync();
 
         var response = await Reset(user.Email.Value, "bm90LXRoZS1jb2Rl", NewPassword);
 
-        // Identity's errors map to a generic error (IdentityResultExtensions).
-        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        // Identity's InvalidToken maps to IdentityErrors.InvalidCodeResult (IdentityResultExtensions).
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
+        ).ShouldContain("\"code\"");
         (
             await new TestSession(factory).LoginAsync(user.Email.Value, NewPassword)
         ).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

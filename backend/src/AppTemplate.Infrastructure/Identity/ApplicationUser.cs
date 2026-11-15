@@ -11,7 +11,7 @@ namespace AppTemplate.Infrastructure.Identity;
 /// </summary>
 public class ApplicationUser : IdentityUser<int>
 {
-    public UserId ProfileId { get; set; }
+    public required UserId ProfileId { get; set; }
 
     /// <summary>
     /// The profile, set only when creating the account: Identity then saves both in one

@@ -1,7 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Constants;
-using AppTemplate.UseCases.Users.Commands.Register;
+using AppTemplate.UseCases.Users.Register;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
@@ -84,6 +84,7 @@ public sealed class RegisterValidator : Validator<RegisterRequest>
             .NotEmpty()
             .WithMessage("Name is required")
             .MinimumLength(2)
+            .WithMessage("Name must be at least 2 characters")
             .MaximumLength(UserName.MaxLength)
             .WithMessage($"User name must not exceed {UserName.MaxLength} characters");
         RuleFor(x => x.Email).EmailAddress().WithMessage("The email address is invalid.");

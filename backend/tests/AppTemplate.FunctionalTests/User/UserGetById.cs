@@ -18,6 +18,7 @@ public class UserGetById(CustomWebApplicationFactory<Program> factory)
 
         user.Id.ShouldBe(target.Id.Value);
         user.Name.ShouldBe(target.Name.Value);
+        user.PhoneNumber.ShouldBeNull(); // no phone number: null, not an empty one
     }
 
     [Fact]

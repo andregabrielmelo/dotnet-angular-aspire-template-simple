@@ -3,13 +3,14 @@ using Ardalis.GuardClauses;
 
 namespace AppTemplate.Core.ValueObjects;
 
-// https://www.w3.org/Protocols/rfc822/#z8
-public class EmailAddress : ValueObject
+/// <summary>
+/// A value object representing an email address.
+/// </summary>
+/// <remarks>
+/// See more details about <see href="https://www.w3.org/Protocols/rfc822/#z8">email address specification</see>
+/// </remarks>
+public partial class EmailAddress : ValueObject
 {
-    private static readonly Regex EmailRegex = new(
-        @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-        RegexOptions.Compiled
-    );
     public string Value { get; private set; }
 
     public EmailAddress(string value)
@@ -38,4 +39,9 @@ public class EmailAddress : ValueObject
     {
         yield return Value;
     }
+
+    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+    private static partial Regex EmailValidationRegex();
+
+    private static readonly Regex EmailRegex = EmailValidationRegex();
 }

@@ -1,7 +1,7 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Queries.Get;
+using AppTemplate.UseCases.Users.Get;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Users;

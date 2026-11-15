@@ -1,13 +1,15 @@
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Interfaces;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Commands.Update;
+using AppTemplate.UseCases.Users.Update;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 
 public class UpdateUserHandlerHandle
 {
+    private static readonly string[] UserAndListTags = ["users:1", "users:list"];
+
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
@@ -51,12 +53,12 @@ public class UpdateUserHandlerHandle
         Received.InOrder(() =>
         {
             _ = _repository.UpdateAsync(_target, Arg.Any<CancellationToken>());
-            _ = _cache.RemoveByTagAsync(
-                Arg.Is<IEnumerable<string>>(tags =>
-                    tags.SequenceEqual(new[] { "users:1", "users:list" })
-                ),
-                Arg.Any<CancellationToken>()
-            );
+            _ = _cache
+                .RemoveByTagAsync(
+                    Arg.Is<IEnumerable<string>>(tags => tags.SequenceEqual(UserAndListTags)),
+                    Arg.Any<CancellationToken>()
+                )
+                .AsTask();
         });
     }
 
@@ -103,15 +105,107 @@ public class UpdateUserHandlerHandle
     }
 
     [Fact]
-    public async Task FailsWithoutChangesGivenAPhoneNumberWithoutCountryCode()
+    public async Task IsInvalidWithoutChangesGivenAPhoneNumberWithoutCountryCode()
     {
         _currentUser.Id.Returns(UserId.From(1));
 
         var result = await Update(Command with { PhoneNumber = "11 98765 4321" });
 
-        result.Status.ShouldBe(ResultStatus.Error);
+        result.Status.ShouldBe(ResultStatus.Invalid);
+        result.ValidationErrors.Single().Identifier.ShouldBe(nameof(Command.PhoneCountryCode));
         _target.Name.ShouldBe(TestUsers.Name);
         _target.PhoneNumber.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task IsInvalidWithoutChangesGivenACountryCodeWithoutPhoneNumber()
+    {
+        _currentUser.Id.Returns(UserId.From(1));
+
+        var result = await Update(Command with { PhoneCountryCode = "+55" });
+
+        result.Status.ShouldBe(ResultStatus.Invalid);
+        result.ValidationErrors.Single().Identifier.ShouldBe(nameof(Command.PhoneNumber));
+        _target.Name.ShouldBe(TestUsers.Name);
+        _target.PhoneNumber.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task IsInvalidWithoutChangesGivenOnlyAnExtensionAndNoSavedNumber()
+    {
+        _currentUser.Id.Returns(UserId.From(1));
+
+        var result = await Update(Command with { PhoneExtension = "12" });
+
+        result.Status.ShouldBe(ResultStatus.Invalid);
+        result
+            .ValidationErrors.Select(error => error.Identifier)
+            .ShouldBe([nameof(Command.PhoneCountryCode), nameof(Command.PhoneNumber)]);
+        _target.Name.ShouldBe(TestUsers.Name);
+        _target.PhoneNumber.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task KeepsThePhoneNumberGivenNeitherPart()
+    {
+        var saved = SavedPhoneNumber();
+
+        var result = await Update();
+
+        result.IsSuccess.ShouldBeTrue();
+        _target.PhoneNumber.ShouldBe(saved);
+    }
+
+    [Fact]
+    public async Task KeepsThePhoneNumberGivenBlankParts()
+    {
+        var saved = SavedPhoneNumber();
+
+        var result = await Update(Command with { PhoneNumber = "", PhoneCountryCode = " " });
+
+        result.IsSuccess.ShouldBeTrue();
+        _target.PhoneNumber.ShouldBe(saved);
+    }
+
+    [Fact]
+    public async Task ChangesOnlyTheExtensionGivenOnlyAnExtension()
+    {
+        SavedPhoneNumber();
+
+        var result = await Update(Command with { PhoneExtension = "34" });
+
+        var expected = new PhoneNumber("+55", "11 98765 4321", "34");
+        _target.PhoneNumber.ShouldBe(expected);
+        result.Value.PhoneNumber.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task ChangesOnlyTheNumberGivenOnlyANumber()
+    {
+        SavedPhoneNumber();
+
+        await Update(Command with { PhoneNumber = "21 2345 6789" });
+
+        _target.PhoneNumber.ShouldBe(new PhoneNumber("+55", "21 2345 6789", "12"));
+    }
+
+    [Fact]
+    public async Task RemovesTheExtensionGivenAnEmptyOne()
+    {
+        SavedPhoneNumber();
+
+        await Update(Command with { PhoneExtension = "" });
+
+        _target.PhoneNumber.ShouldBe(new PhoneNumber("+55", "11 98765 4321", null));
+    }
+
+    /// <summary>Signs in as the target and gives them +55 11 98765 4321 x12.</summary>
+    private PhoneNumber SavedPhoneNumber()
+    {
+        _currentUser.Id.Returns(UserId.From(1));
+        var saved = new PhoneNumber("+55", "11 98765 4321", "12");
+        _target.UpdatePhoneNumber(saved);
+        return saved;
     }
 
     [Fact]

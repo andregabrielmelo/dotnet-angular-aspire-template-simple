@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace AppTemplate.FunctionalTests.Auth;
 
 [Trait(TestCategories.Name, TestCategories.RequiresDocker)]
@@ -29,7 +31,11 @@ public class AuthResendConfirmationPost(CustomWebApplicationFactory<Program> fac
                 .PostAsync(
                     "/auth/confirm-email",
                     JsonContent.Create(
-                        new { userId = int.Parse(link["userId"]), code = link["code"] }
+                        new
+                        {
+                            userId = int.Parse(link["userId"], CultureInfo.InvariantCulture),
+                            code = link["code"],
+                        }
                     )
                 )
         ).StatusCode.ShouldBe(HttpStatusCode.NoContent);

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace AppTemplate.Infrastructure.Data.Configurations;
 
 /// <summary>
-/// The Identity roles, seeded by the migrations from <see cref="Role.List"/> so they exist in every
+/// The Identity roles, seeded by the migrations from <c>Role.List</c> so they exist in every
 /// environment: the role's <c>Value</c> is the row id. Postgres doesn't advance an identity column
 /// for seeded ids, so roles are only ever added in <see cref="Role"/>, never at runtime. A new role
 /// also needs a fixed concurrency stamp here, so the seeded row never changes between migrations.

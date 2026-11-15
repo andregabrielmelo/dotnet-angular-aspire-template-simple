@@ -49,7 +49,7 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
             .ServiceProvider.GetRequiredService<IIdentityService>()
             .CreateUserAsync(UserName.From("Grace"), email, Password, cancellationToken);
 
-        second.Status.ShouldBe(ResultStatus.Error);
+        second.Status.ShouldBe(ResultStatus.Conflict);
         (await DbContext.UserProfiles.CountAsync(cancellationToken)).ShouldBe(profiles);
     }
 
@@ -66,7 +66,7 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
             cancellationToken
         );
 
-        created.Status.ShouldBe(ResultStatus.Error);
+        created.Status.ShouldBe(ResultStatus.Invalid);
         created.ValidationErrors.ShouldAllBe(error => error.Identifier == "password");
         (await DbContext.UserProfiles.CountAsync(cancellationToken)).ShouldBe(profiles);
     }
@@ -90,12 +90,12 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
 
         results.Count(result => result.IsSuccess).ShouldBe(1);
         // Identity's own check, or the unique index when both passed it at once.
-        results
-            .Single(result => !result.IsSuccess)
-            .Status.ShouldBeOneOf(ResultStatus.Error, ResultStatus.Conflict);
+        results.Single(result => !result.IsSuccess).Status.ShouldBe(ResultStatus.Conflict);
+        // Identity stores the email upper-cased (UserManager.NormalizeEmail).
+        var normalizedEmail = email.Value.ToUpperInvariant();
         (
             await DbContext.Users.CountAsync(
-                account => account.NormalizedEmail == email.Value.ToUpperInvariant(),
+                account => account.NormalizedEmail == normalizedEmail,
                 cancellationToken
             )
         ).ShouldBe(1);
@@ -172,33 +172,6 @@ public class IdentityServiceCreateUser(PostgresDatabaseFixture database)
         );
 
         added.Status.ShouldBe(ResultStatus.NotFound);
-    }
-
-    [Fact]
-    public async Task MarkEmailConfirmedConfirmsWithoutSendingAnything()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var email = NewEmail();
-        var id = (
-            await Identity.CreateUserAsync(UserName.From("Ada"), email, Password, cancellationToken)
-        ).Value;
-
-        var confirmed = await Identity.MarkEmailConfirmedAsync(id, cancellationToken);
-
-        confirmed.IsSuccess.ShouldBeTrue();
-        (await Identity.GetUserAsync(id, cancellationToken))!.EmailConfirmed.ShouldBeTrue();
-        Emails.Sent.ShouldNotContain(sent => sent.To == email.Value);
-    }
-
-    [Fact]
-    public async Task MarkEmailConfirmedIsNotFoundForAnUnknownUser()
-    {
-        var confirmed = await Identity.MarkEmailConfirmedAsync(
-            UserId.From(int.MaxValue),
-            TestContext.Current.CancellationToken
-        );
-
-        confirmed.Status.ShouldBe(ResultStatus.NotFound);
     }
 
     [Fact]

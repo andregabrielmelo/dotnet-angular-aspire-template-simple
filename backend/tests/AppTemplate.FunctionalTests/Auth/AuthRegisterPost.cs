@@ -1,3 +1,4 @@
+using System.Globalization;
 using AppTemplate.FunctionalTests.User;
 
 namespace AppTemplate.FunctionalTests.Auth;
@@ -36,7 +37,13 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
         (
             await session.Client.PostAsync(
                 "/auth/confirm-email",
-                JsonContent.Create(new { userId = int.Parse(link["userId"]), code = link["code"] })
+                JsonContent.Create(
+                    new
+                    {
+                        userId = int.Parse(link["userId"], CultureInfo.InvariantCulture),
+                        code = link["code"],
+                    }
+                )
             )
         ).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
@@ -46,15 +53,15 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task FailsGivenATakenEmailInAnyCase()
+    public async Task ReturnsConflictGivenATakenEmailInAnyCase()
     {
         var email = NewEmail();
         await new TestSession(factory).RegisterAsync(email);
 
         var response = await new TestSession(factory).RegisterAsync(email.ToUpperInvariant());
 
-        // Identity's errors map to a generic error (IdentityResultExtensions).
-        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        // Identity's DuplicateEmail maps to UserErrors.EmailNotUnique (IdentityResultExtensions).
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
     }
 
     [Theory]
@@ -65,5 +72,16 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
         var response = await new TestSession(factory).RegisterAsync(email, password);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ReturnsBadRequestWithTheLengthMessageGivenAOneCharacterName()
+    {
+        var response = await new TestSession(factory).RegisterAsync(NewEmail(), name: "A");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
+        ).ShouldContain("Name must be at least 2 characters");
     }
 }

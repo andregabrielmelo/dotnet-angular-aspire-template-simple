@@ -2,17 +2,18 @@ using System.Text.Json;
 using AppTemplate.Web.Extensions;
 using Ardalis.Result;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace AppTemplate.FunctionalTests;
 
 /// <summary>
-/// <see cref="ResultExtensions.ToProblem"/> on its own, for every result status, including ones
+/// <see cref="AppTemplate.Web.Extensions.ResultExtensions.ToProblem"/> on its own, for every result status, including ones
 /// no current endpoint produces. Writes each response into a bare HttpContext; no Docker.
 /// </summary>
 public class ResultExtensionsToProblem
 {
     private static async Task<(int Status, JsonElement Body)> ExecuteAsync(
-        Microsoft.AspNetCore.Http.IResult httpResult
+        ProblemHttpResult httpResult
     )
     {
         var services = new ServiceCollection()

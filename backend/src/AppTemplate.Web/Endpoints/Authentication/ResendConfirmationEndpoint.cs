@@ -1,5 +1,5 @@
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authentication.Commands.ResendConfirmation;
+using AppTemplate.UseCases.Authentication.ResendConfirmation;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 

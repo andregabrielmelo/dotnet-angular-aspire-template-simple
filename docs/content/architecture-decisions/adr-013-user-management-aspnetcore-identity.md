@@ -24,7 +24,7 @@ ASP.NET Core Identity provides all of them, maintained and tested. The [FastEndp
   - **The account** is `ApplicationUser : IdentityUser<int>` in Infrastructure: email, password hash, lockout, security stamp and roles.
   - **The link:** the account's `ProfileId` is a foreign key to the profile, unique and cascading, so deleting a user through the repository deletes the account and Identity's rows with it.
   - **Why the account points at the profile:** EF Core can't relate the Vogen `UserId` to Identity's `int` key the other way round.
-  - **Creation:** `IdentityService.CreateUserAsync` gives the new account its profile through the account's `Profile` navigation, so Identity validates first and then saves both in one `SaveChanges`: a refused account leaves no profile behind. Roles are added separately (`AddToRolesAsync`), and seed data and tests confirm an email without sending one (`MarkEmailConfirmedAsync`).
+  - **Creation:** `IdentityService.CreateUserAsync` gives the new account its profile through the account's `Profile` navigation, so Identity validates first and then saves both in one `SaveChanges`: a refused account leaves no profile behind. Roles are added separately (`AddToRolesAsync`). Seed data and tests create confirmed accounts directly with Identity's `UserManager`, so the port has no way to confirm an email without its emailed code.
   - This is jasontaylordev/CleanArchitecture's `ApplicationUser` plus `IIdentityService`, keeping the domain aggregate as ardalis/CleanArchitecture does.
 - **One port.** UseCases reach Identity only through `IIdentityService` (`UseCases/Interfaces`): create an account, add it to roles, check a password, read an account, send and use confirmation and reset codes, and change a password. No Identity type appears in its signatures.
   - `IdentityService` implements it over `UserManager` and `SignInManager`.
@@ -36,7 +36,7 @@ ASP.NET Core Identity provides all of them, maintained and tested. The [FastEndp
   - A wrong password, an unknown email and a locked-out account get the same 401, and an unknown email still costs a hash.
   - Only the right password on an unconfirmed email gets 403. Identity checks confirmation before the password, so `IdentityService` checks the password itself in that case, and counts a wrong one toward lockout.
 - **Email confirmation is required** (`SignIn.RequireConfirmedEmail`).
-  - Registration returns 201 without tokens. `UserRegisteredDomainEvent`'s handler (`SendConfirmationOnUserRegistered`, UseCases) emails a confirmation link, which doubles as the welcome email.
+  - Registration returns 201 without tokens. The use case (`RegisterUserHandler`) emails a confirmation link, which doubles as the welcome email, then publishes `UserRegisteredDomainEvent`.
   - `POST /auth/confirm-email` takes its `userId` and `code`; `POST /auth/resend-confirmation` sends another, always answering 202.
 - **Password reset:** `POST /auth/forgot-password` emails a reset link to a confirmed account, always answering 202. `POST /auth/reset-password` sets the new password and lifts a lockout. Reset and confirmation links both use Identity's default token provider, so they expire after a day.
 - **Links:**

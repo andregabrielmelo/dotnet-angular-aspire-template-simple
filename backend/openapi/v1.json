@@ -64,7 +64,12 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
       }
     },
     "/users/{id}": {
@@ -129,20 +134,26 @@
           "403": {
             "description": "Requires the users:read permission"
           }
-        }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
       },
       "put": {
         "tags": [
           "Users"
         ],
         "summary": "Update a user",
-        "description": "Updates a user's name and, optionally, phone number (which needs a country code). Users may update their own profile; updating anyone else's requires the users:write permission.",
+        "description": "Updates a user's name and, optionally, phone number. Phone fields left out keep their saved value; the ones sent replace it. A user without a phone number must send both the country code and the number. Send an empty extension to remove it. Users may update their own profile; updating anyone else's requires the users:write permission.",
         "operationId": "AppTemplateWebEndpointsUsersUpdateEndpoint",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
+            "description": "Bound from the route - FastEndpoints lets route values override the body.",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -214,7 +225,12 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
       }
     },
     "/users": {
@@ -293,7 +309,12 @@
           "403": {
             "description": "Requires the users:read permission"
           }
-        }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
       }
     },
     "/users/me": {
@@ -343,7 +364,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
       }
     },
     "/auth/antiforgery-token": {
@@ -406,7 +432,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
       }
     },
     "/auth/confirm-email": {
@@ -595,7 +626,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
       }
     },
     "/auth/register": {
@@ -751,6 +787,81 @@
           }
         }
       }
+    },
+    "/auth/token": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get a bearer token",
+        "description": "Checks the credentials as signing in does and returns a short-lived JWT, for clients that can't hold the session cookie. Send it as `Authorization: Bearer <token>`; nothing revokes it before it expires.",
+        "operationId": "AppTemplateWebEndpointsAuthenticationTokenEndpoint",
+        "requestBody": {
+          "x-name": "TokenRequest",
+          "description": "",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "The token and when it expires",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong email or password, or too many failed attempts",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The password is right, but the email isn't confirmed yet",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts from this address",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -885,6 +996,7 @@
           },
           "permissions": {
             "type": "array",
+            "description": "What the caller may do - lets clients show or hide actions. The API still enforces every permission itself.",
             "items": {
               "type": "string"
             }
@@ -925,16 +1037,19 @@
           },
           "phoneNumber": {
             "type": "string",
+            "description": "The local number. Leave it out to keep the saved one.",
             "nullable": true,
             "example": "555 0100"
           },
           "phoneCountryCode": {
             "type": "string",
+            "description": "E.164 country calling code, e.g. \"+55\". Leave it out to keep the saved one.",
             "nullable": true,
             "example": "+1"
           },
           "phoneExtension": {
             "type": "string",
+            "description": "Digits only. Leave it out to keep the saved one, or send it empty to remove it.",
             "nullable": true,
             "example": null
           }
@@ -1128,6 +1243,66 @@
             "example": "correct horse battery staple"
           }
         }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "description": "A bearer token: send it as Authorization: Bearer {AccessToken}.",
+        "additionalProperties": false,
+        "required": [
+          "accessToken",
+          "tokenType",
+          "expiresAt"
+        ],
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "The signed JWT."
+          },
+          "tokenType": {
+            "type": "string",
+            "description": "Always Bearer."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the token stops being accepted; sign in again for a new one.",
+            "format": "date-time"
+          }
+        }
+      },
+      "TokenRequest": {
+        "type": "object",
+        "example": {
+          "email": "ada@example.com",
+          "password": "correct horse battery staple"
+        },
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^[^@]+@[^@]+$",
+            "example": "ada@example.com"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0,
+            "nullable": false,
+            "example": "correct horse battery staple"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "JWTBearerAuth": {
+        "type": "http",
+        "description": "Enter a JWT token to authorize the requests...",
+        "scheme": "Bearer",
+        "bearerFormat": "JWT"
       }
     }
   }

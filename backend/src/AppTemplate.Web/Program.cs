@@ -1,13 +1,18 @@
-﻿using AppTemplate.ServiceDefaults;
+﻿using AppTemplate.Infrastructure.Logging;
+using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
+using Serilog;
 using Serilog.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var serilogLogger = builder.AddLoggerConfigs(); // Serilog to the console
-builder.AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
+builder
+    .AddLoggerConfigs() // Serilog to the console
+    .AddServiceDefaults(); // OpenTelemetry (logs, traces, metrics) and health checks
 
-var startupLogger = new SerilogLoggerFactory(serilogLogger).CreateLogger<Program>();
+// The host's loggers don't exist until it is built, so startup logs through the console logger.
+using var startupLoggerFactory = new SerilogLoggerFactory(Log.Logger);
+var startupLogger = new LoggerAdapter<Program>(startupLoggerFactory);
 
 startupLogger.LogInformation("Starting web host");
 
@@ -30,9 +35,8 @@ builder
             // Generated clients (the Angular types) get non-optional fields for non-nullable ones.
             s.MarkNonNullablePropsAsRequired();
         };
-        // No bearer scheme: the reference pages are same-origin, so the browser sends the session
-        // cookie set by POST /auth/login.
-        o.EnableJWTBearerAuth = false;
+        // The document declares the bearer scheme (POST /auth/token, ADR 018); the reference pages
+        // themselves are same-origin, so the browser also sends the session cookie.
     });
 
 // TODO: Add response compression if needed. Prefer server-based response compression technologies, probably better.
@@ -56,7 +60,7 @@ await app.StartDatabase(); // decides for itself: Development, or Database:Apply
 
 app.MapDefaultEndpoints(); // Aspire health checks and metrics
 
-app.Run();
+await app.RunAsync();
 
 // Make the implicit Program.cs class public, so integration tests can reference the correct assembly for host building
 public partial class Program { }

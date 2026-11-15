@@ -1,6 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
-using AppTemplate.UseCases.Users.Commands.Register;
+using AppTemplate.UseCases.Users.Register;
 using AppTemplate.Web.Behaviors;
 
 namespace AppTemplate.Web.Configurations;
@@ -9,7 +10,7 @@ public static class MediatorConfigurations
 {
     public static IServiceCollection AddMediatorSourceGenerator(
         this IServiceCollection services,
-        Microsoft.Extensions.Logging.ILogger logger
+        ILoggerAdapter<Program> logger
     )
     {
         logger.LogInformation("Registering Mediator SourceGen and Behaviors");

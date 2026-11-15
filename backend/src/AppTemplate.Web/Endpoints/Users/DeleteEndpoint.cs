@@ -1,6 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Users.Commands.Delete;
+using AppTemplate.UseCases.Users.Delete;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Endpoints.Users;
@@ -57,6 +57,6 @@ public sealed class DeleteUserValidator : Validator<DeleteUserRequest>
 {
     public DeleteUserValidator()
     {
-        RuleFor(x => x.UserId).NotEmpty().WithMessage("Id is required");
+        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Id must be greater than zero");
     }
 }

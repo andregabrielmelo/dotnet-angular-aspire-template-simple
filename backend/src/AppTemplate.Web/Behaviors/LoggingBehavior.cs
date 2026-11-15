@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AppTemplate.Core.Interfaces;
 using Ardalis.GuardClauses;
 
 namespace AppTemplate.Web.Behaviors;
@@ -10,7 +11,7 @@ namespace AppTemplate.Web.Behaviors;
 /// reflection over their properties): nothing redacts them.
 /// </summary>
 public class LoggingBehavior<TRequest, TResponse>(
-    ILogger<LoggingBehavior<TRequest, TResponse>> logger
+    ILoggerAdapter<LoggingBehavior<TRequest, TResponse>> logger
 ) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IMessage
 {
@@ -22,10 +23,7 @@ public class LoggingBehavior<TRequest, TResponse>(
     {
         Guard.Against.Null(request);
 
-        if (logger.IsEnabled(LogLevel.Information))
-        {
-            logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
-        }
+        logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
 
         var sw = Stopwatch.StartNew();
 
@@ -33,14 +31,11 @@ public class LoggingBehavior<TRequest, TResponse>(
 
         sw.Stop();
 
-        if (logger.IsEnabled(LogLevel.Information))
-        {
-            logger.LogInformation(
-                "Handled {RequestName} in {ElapsedMilliseconds} ms",
-                typeof(TRequest).Name,
-                sw.ElapsedMilliseconds
-            );
-        }
+        logger.LogInformation(
+            "Handled {RequestName} in {ElapsedMilliseconds} ms",
+            typeof(TRequest).Name,
+            sw.ElapsedMilliseconds
+        );
 
         return response;
     }

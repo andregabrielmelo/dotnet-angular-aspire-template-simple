@@ -95,7 +95,10 @@ public abstract class ValueObject : IComparable, IComparable<ValueObject>
         if (object1 is IComparable comparable1 && object2 is IComparable comparable2)
             return comparable1.CompareTo(comparable2);
 
-        return object1.Equals(object2) ? 0 : -1;
+        // Neither is IComparable: order by their text, so a < b and b < a are never both true.
+        return object1.Equals(object2)
+            ? 0
+            : string.CompareOrdinal(object1.ToString(), object2.ToString());
     }
 
     public int CompareTo(ValueObject? other)
@@ -119,6 +122,21 @@ public abstract class ValueObject : IComparable, IComparable<ValueObject>
         return !(a == b);
     }
 
+    // Ordering follows CompareTo: by type name first, then component by component.
+    public static bool operator <(ValueObject left, ValueObject right) => Compare(left, right) < 0;
+
+    public static bool operator <=(ValueObject left, ValueObject right) =>
+        Compare(left, right) <= 0;
+
+    public static bool operator >(ValueObject left, ValueObject right) => Compare(left, right) > 0;
+
+    public static bool operator >=(ValueObject left, ValueObject right) =>
+        Compare(left, right) >= 0;
+
+    // null sorts first, as Comparer<T>.Default does.
+    private static int Compare(ValueObject? left, ValueObject? right) =>
+        left is null ? (right is null ? 0 : -1) : left.CompareTo(right);
+
     internal static Type GetUnproxiedType(object obj)
     {
         Guard.Against.Null(obj);
@@ -129,7 +147,10 @@ public abstract class ValueObject : IComparable, IComparable<ValueObject>
         var type = obj.GetType();
         var typeString = type.ToString();
 
-        if (typeString.Contains(EFCoreProxyPrefix) || typeString.EndsWith(NHibernateProxyPostfix))
+        if (
+            typeString.Contains(EFCoreProxyPrefix)
+            || typeString.EndsWith(NHibernateProxyPostfix, StringComparison.Ordinal)
+        )
             return type.BaseType!;
 
         return type;

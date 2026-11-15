@@ -1,10 +1,12 @@
+using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure.Caching;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.Infrastructure.Logging;
 using AppTemplate.UseCases.Constants;
 using AppTemplate.UseCases.Interfaces;
-using AppTemplate.UseCases.Users.Queries.List;
+using AppTemplate.UseCases.Users.List;
 using Ardalis.GuardClauses;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +17,6 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
@@ -25,10 +26,15 @@ public static class InfrastructureServiceExtensions
 {
     public const string RedisConnectionName = "cache";
 
-    public static IServiceCollection AddInfrastructureServices(
+    /// <summary>
+    /// Registers the Infrastructure services. <paramref name="logger"/> is the caller's startup
+    /// logger (Web's <c>ILoggerAdapter&lt;Program&gt;</c>): generic in its category, because
+    /// Infrastructure can't name Web's types.
+    /// </summary>
+    public static IServiceCollection AddInfrastructureServices<TCategory>(
         this IHostApplicationBuilder builder,
         IConfigurationManager config,
-        ILogger logger
+        ILoggerAdapter<TCategory> logger
     )
     {
         // Set by the AppHost (WithReference) in development, and by the environment elsewhere.
@@ -36,6 +42,10 @@ public static class InfrastructureServiceExtensions
             config.GetConnectionString("apptemplate"),
             "ConnectionStrings:apptemplate"
         );
+        // Every layer logs through ILoggerAdapter<T> (Core), which this adapter forwards to
+        // Microsoft.Extensions.Logging's providers.
+        builder.Services.AddSingleton(typeof(ILoggerAdapter<>), typeof(LoggerAdapter<>));
+
         builder.Services.AddScoped<ISaveChangesInterceptor, EventDispatchInterceptor>();
         builder.Services.AddScoped<IDomainEventDispatcher, MediatorDomainEventDispatcher>();
 
@@ -152,9 +162,13 @@ public static class InfrastructureServiceExtensions
             };
         });
 
+        // Bearer tokens for non-browser clients, next to the cookie (ADR 018).
+        builder.Services.AddTokenAuthentication();
+
         builder
             .Services.AddScoped<IEmailSender<ApplicationUser>, AccountEmailSender>()
-            .AddTransient<IIdentityService, IdentityService>();
+            .AddTransient<IIdentityService, IdentityService>()
+            .AddTransient<ITokenClaimsService, IdentityTokenClaimService>();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

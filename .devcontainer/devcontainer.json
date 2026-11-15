@@ -1,0 +1,39 @@
+// A ready-to-run environment for this template: the .NET SDK, Node and a Docker engine (for
+// Aspire's containers and the tests), with the development certificate trusted. Open the
+// repository in VS Code and pick "Reopen in Container", or create a Codespace.
+// Format: https://containers.dev/implementors/json_reference/
+{
+  "name": "AppTemplate",
+  // .NET 10 SDK on Ubuntu; global.json pins the feature band (10.0.114 or later).
+  "image": "mcr.microsoft.com/devcontainers/dotnet:2-10.0-noble",
+  "features": {
+    // The Node version CI uses (frontend-build.yml).
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    // Aspire starts Postgres, Redis and Mailpit as containers; the tests use Testcontainers.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    // playwright.ps1, for the browser tests' Chromium (backend/tests/AppTemplate.AspireTests).
+    "ghcr.io/devcontainers/features/powershell:1": {}
+  },
+  // Lets Node (the Angular dev server's proxy) and .NET find the development certificate that
+  // post-create.sh trusts, next to the system ones (as CI does).
+  "remoteEnv": {
+    "SSL_CERT_DIR": "${containerEnv:HOME}/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "forwardPorts": [17243],
+  "portsAttributes": {
+    "17243": { "label": "Aspire dashboard", "protocol": "https" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "csharpier.csharpier-vscode",
+        "angular.ng-template",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "editorconfig.editorconfig"
+      ]
+    }
+  }
+}

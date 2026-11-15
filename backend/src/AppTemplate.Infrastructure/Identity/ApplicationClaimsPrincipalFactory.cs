@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using AppTemplate.UseCases.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -25,7 +26,12 @@ public sealed class ApplicationClaimsPrincipalFactory(
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
     {
         var identity = await base.GenerateClaimsAsync(user);
-        identity.AddClaim(new Claim(AppClaimTypes.UserId, user.ProfileId.Value.ToString()));
+        identity.AddClaim(
+            new Claim(
+                AppClaimTypes.UserId,
+                user.ProfileId.Value.ToString(CultureInfo.InvariantCulture)
+            )
+        );
 
         var roles = await UserManager.GetRolesAsync(user);
         foreach (var permission in Role.PermissionsFor(roles))

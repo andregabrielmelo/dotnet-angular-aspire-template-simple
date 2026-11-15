@@ -14,7 +14,7 @@ public class AuthLoginPost(CustomWebApplicationFactory<Program> factory)
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var setCookie = session.LastSetCookies.Single(header =>
-            header.StartsWith($"{TestSession.SessionCookieName}=")
+            header.StartsWith($"{TestSession.SessionCookieName}=", StringComparison.Ordinal)
         );
         setCookie.ShouldContain("httponly", Case.Insensitive);
         setCookie.ShouldContain("secure", Case.Insensitive);

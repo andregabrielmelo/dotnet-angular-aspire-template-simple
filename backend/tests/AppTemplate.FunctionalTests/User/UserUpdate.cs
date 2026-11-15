@@ -41,13 +41,61 @@ public class UserUpdate(CustomWebApplicationFactory<Program> factory)
         response.User.PhoneNumber.ShouldBe("+55 11 98765 4321");
     }
 
+    [Fact]
+    public async Task KeepsThePhoneNumberGivenNoPhoneFields()
+    {
+        var (me, session) = await factory.CreateSignedInSessionAsync();
+        await SetPhoneNumberAsync(session, me.Id.Value);
+
+        var response = await session.Client.PutAndDeserializeAsync<UpdateUserResponse>(
+            $"/users/{me.Id.Value}",
+            Body(new { name = "Renamed Myself" })
+        );
+
+        response.User.PhoneNumber.ShouldBe("+55 11 98765 4321 x12");
+        var (_, admin) = await factory.CreateSignedInSessionAsync(Role.Admin);
+        (
+            await admin.Client.GetAndDeserializeAsync<UserRecord>($"/users/{me.Id.Value}")
+        ).PhoneNumber.ShouldBe("+55 11 98765 4321 x12");
+    }
+
+    [Fact]
+    public async Task UpdatesOnlyTheExtensionGivenOnlyAnExtension()
+    {
+        var (me, session) = await factory.CreateSignedInSessionAsync();
+        await SetPhoneNumberAsync(session, me.Id.Value);
+
+        var response = await session.Client.PutAndDeserializeAsync<UpdateUserResponse>(
+            $"/users/{me.Id.Value}",
+            Body(new { name = "Ada Lovelace", phoneExtension = "34" })
+        );
+
+        response.User.PhoneNumber.ShouldBe("+55 11 98765 4321 x34");
+    }
+
+    private static Task<UpdateUserResponse> SetPhoneNumberAsync(TestSession session, int id) =>
+        session.Client.PutAndDeserializeAsync<UpdateUserResponse>(
+            $"/users/{id}",
+            Body(
+                new
+                {
+                    name = "Ada Lovelace",
+                    phoneNumber = "11 98765 4321",
+                    phoneCountryCode = "+55",
+                    phoneExtension = "12",
+                }
+            )
+        );
+
     [Theory]
-    [InlineData("11 98765 4321", null, null)] // a phone number needs a country code
+    [InlineData("11 98765 4321", null, null)] // no saved phone number, so it needs a country code
     [InlineData("11 98765 4321", "55", null)] // country code without '+'
     [InlineData("call me", "+55", null)] // not a phone number
     [InlineData("11 98765 4321", "+55", "ext12")] // extension isn't digits
+    [InlineData(null, "+55", null)] // no saved phone number, so it needs a number
+    [InlineData(null, null, "12")] // no saved phone number for the extension
     public async Task ReturnsBadRequestGivenInvalidPhoneParts(
-        string phoneNumber,
+        string? phoneNumber,
         string? phoneCountryCode,
         string? phoneExtension
     )
@@ -66,6 +114,23 @@ public class UserUpdate(CustomWebApplicationFactory<Program> factory)
                 }
             )
         );
+    }
+
+    [Fact]
+    public async Task ReturnsBadRequestWithTheLengthMessageGivenAOneCharacterName()
+    {
+        var (me, session) = await factory.CreateSignedInSessionAsync();
+
+        var response = await session.Client.PutAsync(
+            $"/users/{me.Id.Value}",
+            Body(new { name = "A" }),
+            TestContext.Current.CancellationToken
+        );
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)
+        ).ShouldContain("Name must be at least 2 characters");
     }
 
     [Fact]

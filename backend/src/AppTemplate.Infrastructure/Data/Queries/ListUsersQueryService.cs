@@ -1,28 +1,23 @@
-﻿using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases;
+﻿using AppTemplate.UseCases;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Queries.List;
+using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
-public class ListUsersQueryService : IListUsersQueryService
+/// <summary>
+/// A service for listing users.
+/// </summary>
+/// <param name="db">The application database context. You can use EF, Dapper, SqlClient, etc. for queries</param>
+public class ListUsersQueryService(ApplicationDatabaseContext db) : IListUsersQueryService
 {
-    // You can use EF, Dapper, SqlClient, etc. for queries
-    private readonly ApplicationDatabaseContext _db;
-
-    public ListUsersQueryService(ApplicationDatabaseContext db)
-    {
-        _db = db;
-    }
-
     public async Task<PagedResult<UserDto>> ListAsync(
         int page,
         int perPage,
         CancellationToken cancellationToken
     )
     {
-        var items = await _db
+        var items = await db
             // EF Core materializes User from this SQL, so it must return every mapped column
             // (snake_case names, see UseSnakeCaseNamingConvention) - not just the projected ones.
             .UserProfiles.FromSqlRaw(
@@ -31,11 +26,11 @@ public class ListUsersQueryService : IListUsersQueryService
             .OrderBy(c => c.Id)
             .Skip((page - 1) * perPage)
             .Take(perPage)
-            .Select(c => new UserDto(c.Id, c.Name, c.PhoneNumber ?? PhoneNumber.Unknown))
+            .Select(c => new UserDto(c.Id, c.Name, c.PhoneNumber))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        int totalCount = await _db.UserProfiles.CountAsync(cancellationToken);
+        int totalCount = await db.UserProfiles.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling(totalCount / (double)perPage);
         var result = new PagedResult<UserDto>(items, page, perPage, totalCount, totalPages);
 

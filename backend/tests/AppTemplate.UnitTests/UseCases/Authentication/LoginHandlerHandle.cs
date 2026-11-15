@@ -1,5 +1,5 @@
 using AppTemplate.UseCases.Authentication;
-using AppTemplate.UseCases.Authentication.Commands.Login;
+using AppTemplate.UseCases.Authentication.Login;
 using AppTemplate.UseCases.Interfaces;
 
 namespace AppTemplate.UnitTests.UseCases.Authentication;

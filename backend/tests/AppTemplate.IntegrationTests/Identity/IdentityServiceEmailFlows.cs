@@ -1,3 +1,4 @@
+using System.Globalization;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.IntegrationTests.Data;
 using AppTemplate.UseCases.Interfaces;
@@ -39,9 +40,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
         created.IsSuccess.ShouldBeTrue();
         if (emailConfirmed)
         {
-            (
-                await Identity.MarkEmailConfirmedAsync(created.Value, Cancellation)
-            ).IsSuccess.ShouldBeTrue();
+            await ConfirmEmailAsync(created.Value);
         }
 
         return (created.Value, email);
@@ -62,7 +61,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
         var query = LastLinkQuery(email);
 
         link.AbsolutePath.ShouldBe("/auth/confirm-email");
-        query["userId"].ShouldBe(id.Value.ToString());
+        query["userId"].ShouldBe(id.Value.ToString(CultureInfo.InvariantCulture));
         (
             await Identity.ConfirmEmailAsync(id, query["code"], Cancellation)
         ).IsSuccess.ShouldBeTrue();
@@ -141,7 +140,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
         );
         var changed = await Identity.ChangePasswordAsync(id, Password, NewPassword, Cancellation);
 
-        wrong.Status.ShouldBe(ResultStatus.Error);
+        wrong.Status.ShouldBe(ResultStatus.Invalid);
         changed.IsSuccess.ShouldBeTrue();
         (await StampAsync(id)).ShouldNotBe(stampBefore);
         (

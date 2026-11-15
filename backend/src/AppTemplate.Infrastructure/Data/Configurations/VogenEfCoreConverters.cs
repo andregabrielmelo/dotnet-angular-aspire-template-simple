@@ -5,4 +5,4 @@ namespace AppTemplate.Infrastructure.Data.Configurations;
 
 [EfCoreConverter<UserId>]
 [EfCoreConverter<UserName>]
-internal partial class VogenEfCoreConverters;
+internal sealed partial class VogenEfCoreConverters;

@@ -55,7 +55,7 @@ Clean Architecture should make change easier. It shouldn't make a simple databas
 | **Repository + specification** | The write path loads an aggregate, changes it through domain methods and saves it (`UserByIdSpecification`), or several handlers reuse the same lookup | It's a one-off read. Project straight to a DTO in a query service (`IListUsersQueryService`) instead |
 | **Query service** | It's a read model, a projection, a join, pagination or hand-written SQL | The handler needs the aggregate's behavior, so use the repository |
 | **Domain event** | Another part of the system reacts to something that happened in the domain, and the aggregate shouldn't know who that is | It's only "save a record". The `User` slice raises `UserRegisteredDomainEvent`, whose handler sends the confirmation email |
-| **Mediator pipeline behavior** (`UseCases/Behaviors`) | It's a cross-cutting concern for every use case (`LoggingBehavior`), or for every command carrying a marker interface | It's logic for one feature. Put that in its handler |
+| **Mediator pipeline behavior** (`Web/Behaviors`) | It's a cross-cutting concern for every use case (`LoggingBehavior`), or for every message carrying a marker interface (`CachingBehavior` and `ICacheable`) | It's logic for one feature. Put that in its handler |
 
 Every use case still goes through Mediator. That one seam stays uniform on purpose, so endpoints, jobs and tests all dispatch the same way.
 
@@ -72,7 +72,7 @@ A template should *support* a capability without *requiring* every application t
 - URL-versioned endpoints
 - Keycloak (OpenID Connect) with a backend for frontend and third-party sign-in
 - log redaction and a global request timeout
-- business metrics and end-to-end browser tests
+- business metrics, and a larger browser test suite (this variant has one example, ADR 006)
 
 A capability added to a project later should stay **opt-in**: registered through one `Add<Capability>()` extension, with the app building and its tests passing without it, and no feature referencing its types unless that feature uses it.
 
@@ -85,12 +85,12 @@ What happens, and in what order, when a use case changes data and something else
 - Inside `Database.BeginTransactionAsync()`, nothing is visible to anyone else until `CommitAsync`. A rollback undoes every `SaveChanges` since the transaction began.
 
 **Domain events are in-process and best-effort.**
-- An entity registers one with `RegisterDomainEvent` (`User.MarkRegistered()` registers `UserRegisteredDomainEvent`). `EventDispatchInterceptor` publishes it through Mediator **right after `SaveChanges` succeeds**, in the same request. A use case can also dispatch right after saving (`RegisterUserHandler` does, because the event carries the id the insert assigned); it's just as best-effort.
-- **A failing handler doesn't fail the request.** The change is already saved, so the error is logged and the request carries on. A 500 for a committed write would invite the client to repeat it. (`DomainEventDispatchTests`)
-- **Inside an explicit transaction, handlers run before the commit,** so they also run when it later rolls back. (`DomainEventDispatchTests`)
+- An entity registers one with `RegisterDomainEvent` (`User.UpdateName` registers `UserNameUpdatedEvent`). `EventDispatchInterceptor` publishes it through Mediator **right after `SaveChanges` succeeds**, in the same request. A use case can also dispatch right after saving (`RegisterUserHandler` does, because the event carries the id the insert assigned); it's just as best-effort.
+- **A failing handler doesn't fail the request.** The change is already saved, so the error is logged and the request carries on. A 500 for a committed write would invite the client to repeat it.
+- **Inside an explicit transaction, handlers run before the commit,** so they also run when it later rolls back.
 - **Nothing retries them,** and a crash right after the commit loses them.
 
-So a domain event handler that sends an email works, but the email can be lost, and it adds its latency to the request. That's acceptable for a confirmation email, which the user can ask for again (`POST /auth/resend-confirmation`). When it isn't, or for calls to other systems that must happen, use a transactional outbox: the full template's ADR 016 and its `Infrastructure/Outbox/` are the reference.
+So a domain event handler that sends an email works, but the email can be lost, and it adds its latency to the request. The confirmation email is sent by the registration use case itself (it needs `IIdentityService`, which Core's handlers can't see), with the same trade-off: acceptable, since the user can ask for another (`POST /auth/resend-confirmation`). When it isn't, or for calls to other systems that must happen, use a transactional outbox: the full template's ADR 016 and its `Infrastructure/Outbox/` are the reference.
 
 # The Frontend
 

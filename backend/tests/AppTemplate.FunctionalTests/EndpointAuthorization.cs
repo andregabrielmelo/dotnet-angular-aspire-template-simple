@@ -18,6 +18,8 @@ public class EndpointAuthorization(CustomWebApplicationFactory<Program> factory)
         "GET /auth/antiforgery-token",
         "POST /auth/login",
         "POST /auth/register",
+        // A bearer token for clients without the cookie: credentials, like signing in.
+        "POST /auth/token",
         // Account emails' links, and asking for them: whoever uses them isn't signed in.
         "POST /auth/confirm-email",
         "POST /auth/forgot-password",

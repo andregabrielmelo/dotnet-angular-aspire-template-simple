@@ -1,5 +1,5 @@
-﻿using AppTemplate.Infrastructure.Data;
-using AppTemplate.UseCases.Interfaces;
+using AppTemplate.Core.Interfaces;
+using AppTemplate.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace AppTemplate.Web.Configurations;
@@ -31,7 +31,7 @@ public static class DatabaseConfigurations
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<Program>>();
+        var logger = services.GetRequiredService<ILoggerAdapter<Program>>();
         var context = services.GetRequiredService<ApplicationDatabaseContext>();
 
         try
@@ -42,7 +42,7 @@ public static class DatabaseConfigurations
                 logger.LogInformation("Applying database migrations...");
                 foreach (var migration in pendingMigrations)
                 {
-                    logger.LogInformation("Pending migration: {migration}", migration);
+                    logger.LogInformation("Pending migration: {Migration}", migration);
                 }
 
                 await context.Database.MigrateAsync();
@@ -50,9 +50,10 @@ public static class DatabaseConfigurations
         }
         catch (Exception ex)
         {
+            // Logged here because nothing else logs it: the host hasn't started yet.
             logger.LogError(
                 ex,
-                "An error occurred migrating the DB. {exceptionMessage}",
+                "An error occurred migrating the DB. {ExceptionMessage}",
                 ex.Message
             );
             throw; // Re-throw to make startup fail if migrations fail
@@ -63,21 +64,17 @@ public static class DatabaseConfigurations
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<Program>>();
+        var logger = services.GetRequiredService<ILoggerAdapter<Program>>();
 
         try
         {
             logger.LogInformation("Seeding database...");
-            var context = services.GetRequiredService<ApplicationDatabaseContext>();
-            await SeedData.InitializeAsync(
-                context,
-                services.GetRequiredService<IIdentityService>()
-            );
+            await SeedData.InitializeAsync(services);
             logger.LogInformation("Database seeded successfully");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "An error occurred seeding the DB. {exceptionMessage}", ex.Message);
+            logger.LogError(ex, "An error occurred seeding the DB. {ExceptionMessage}", ex.Message);
             // Don't re-throw for seeding errors - it's not critical
         }
     }
