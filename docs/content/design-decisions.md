@@ -43,7 +43,7 @@ The ASP.NET Core entry point. [FastEndpoints](https://fast-endpoints.com/) + the
 
 ## SharedKernel
 
-Small cross-cutting pieces shared by every layer above Core (base entity/aggregate types, domain event dispatch, the Mediator logging pipeline behavior). Kept in-repo rather than as a separate NuGet package since this template is meant to be a single, self-contained starting point - split it out if you end up sharing it across multiple solutions.
+Small cross-cutting pieces shared by every layer above Core (base entity, aggregate and value object types, the repository interfaces, domain event dispatch and the persistence exceptions use cases react to). The Mediator pipeline behaviors (`LoggingBehavior`, `CachingBehavior`) live in `Web/Behaviors`. Kept in-repo rather than as a separate NuGet package since this template is meant to be a single, self-contained starting point - split it out if you end up sharing it across multiple solutions.
 
 # When To Abstract
 
