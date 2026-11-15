@@ -101,6 +101,7 @@ public sealed class UpdateUserValidator : Validator<UpdateUserRequest>
             .NotEmpty()
             .WithMessage("Name is required")
             .MinimumLength(2)
+            .WithMessage("Name must be at least 2 characters")
             .MaximumLength(UserName.MaxLength)
             .WithMessage($"User name must not exceed {UserName.MaxLength} characters");
         // Id comes from the route (route values override the body), so there is no separate

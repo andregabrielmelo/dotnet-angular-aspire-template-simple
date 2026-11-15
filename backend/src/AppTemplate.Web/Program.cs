@@ -60,7 +60,7 @@ await app.StartDatabase(); // decides for itself: Development, or Database:Apply
 
 app.MapDefaultEndpoints(); // Aspire health checks and metrics
 
-app.Run();
+await app.RunAsync();
 
 // Make the implicit Program.cs class public, so integration tests can reference the correct assembly for host building
 public partial class Program { }
