@@ -107,7 +107,7 @@ public class Project(UserId ownerId, ProjectName name)
 }
 ```
 
-`Project.cs` needs `using AppTemplate.Core.Aggregates.UserAggregate;` for `UserId`. The owner is stored as the user's id (what `ICurrentUser.Id` returns), without a foreign key to `users`. The handler can then authorize without loading the user. Add a real foreign key (`HasOne<User>().WithMany().HasForeignKey(...)`, as `RefreshTokenConfiguration` does) when the relationship matters to queries or a deleted user's projects must go too.
+`Project.cs` needs `using AppTemplate.Core.Aggregates.UserAggregate;` for `UserId`. The owner is stored as the user's id (what `ICurrentUser.Id` returns), without a foreign key to `users`. The handler can then authorize without loading the user. Add a real foreign key (`HasOne<User>().WithMany().HasForeignKey(...)`; `ApplicationUserConfiguration` does the same for the account's `ProfileId`) when the relationship matters to queries or a deleted user's projects must go too.
 
 **A specification** for the read-only lookup:
 
@@ -168,12 +168,11 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 **Register the Vogen converters** once, centrally, in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. `HasVogenConversion()` doesn't compile without them:
 
 ```csharp
-[EfCoreConverter<RefreshTokenId>]
 [EfCoreConverter<UserId>]
 [EfCoreConverter<UserName>]
 [EfCoreConverter<ProjectId>]
 [EfCoreConverter<ProjectName>]
-internal partial class VogenEfCoreConverters;
+internal sealed partial class VogenEfCoreConverters;
 ```
 
 **Add the set** to `Infrastructure/Data/ApplicationDatabaseContext.cs`. `ApplyConfigurationsFromAssembly` picks up `ProjectConfiguration` by itself:

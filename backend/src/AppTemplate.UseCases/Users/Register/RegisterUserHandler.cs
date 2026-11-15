@@ -50,7 +50,6 @@ public class RegisterUserHandler(
             return inRole;
         }
 
-        // TODO: Maybe this should be done in a domain event handler, but the handler would need to know about the identity, which is an infrastructure concern
         await _identity.SendEmailConfirmationAsync(created.Value, cancellationToken);
 
         await _mediator.Publish(
