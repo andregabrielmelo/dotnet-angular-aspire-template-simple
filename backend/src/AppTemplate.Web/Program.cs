@@ -39,14 +39,8 @@ builder
         // themselves are same-origin, so the browser also sends the session cookie.
     });
 
-// TODO: Add response compression if needed. Prefer server-based response compression technologies, probably better.
-// https://learn.microsoft.com/en-us/aspnet/core/performance/response-compression?view=aspnetcore-10.0
-//builder.Services.AddResponseCompression(options =>
-//{
-//    options.EnableForHttps = true;
-//    options.Providers.Add<BrotliCompressionProvider>();
-//    options.Providers.Add<GzipCompressionProvider>();
-//});
+// No response compression: the reverse proxy or CDN compresses, and compressing HTTPS responses
+// that mix secrets with client input invites BREACH (docs/content/best-practices.md).
 
 var app = builder.Build();
 

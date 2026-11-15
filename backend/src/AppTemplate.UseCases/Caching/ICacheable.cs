@@ -17,8 +17,13 @@ public interface ICacheable
     /// <summary>Unique per result: built from everything the result depends on.</summary>
     string CacheKey { get; }
 
-    // TODO: Are these CacheTags really needed? They are only used for invalidation, and the cache is already keyed by CacheKey. If a write changes the result, it should remove the CacheKey, not a tag. But if a write changes multiple results, it can remove them all by tag. So maybe they are useful after all.
     /// <summary>What writes invalidate, such as <see cref="Caching.CacheTags.User"/>.</summary>
+    /// <remarks>
+    /// Writes remove tags rather than keys because one write can change many cached results: a
+    /// registration changes every page of the user list (<see cref="Caching.CacheTags.UserList"/>),
+    /// whose keys include the page and size, and an update changes both the user's own reads and
+    /// those pages. A tag reaches all of them without the write knowing their keys.
+    /// </remarks>
     IReadOnlyCollection<string> CacheTags { get; }
 
     /// <summary>How long the result lives; override it only to pick another profile.</summary>
