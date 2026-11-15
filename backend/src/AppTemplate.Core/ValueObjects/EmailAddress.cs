@@ -40,7 +40,7 @@ public partial class EmailAddress : ValueObject
         yield return Value;
     }
 
-    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled)]
+    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
     private static partial Regex EmailValidationRegex();
 
     private static readonly Regex EmailRegex = EmailValidationRegex();

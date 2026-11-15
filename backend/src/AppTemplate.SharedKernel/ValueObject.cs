@@ -95,7 +95,10 @@ public abstract class ValueObject : IComparable, IComparable<ValueObject>
         if (object1 is IComparable comparable1 && object2 is IComparable comparable2)
             return comparable1.CompareTo(comparable2);
 
-        return object1.Equals(object2) ? 0 : -1;
+        // Neither is IComparable: order by their text, so a < b and b < a are never both true.
+        return object1.Equals(object2)
+            ? 0
+            : string.CompareOrdinal(object1.ToString(), object2.ToString());
     }
 
     public int CompareTo(ValueObject? other)
