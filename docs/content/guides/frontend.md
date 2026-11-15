@@ -29,12 +29,12 @@ Every failure is an `HttpErrorResponse`. Its `status` tells you what happened, a
 
 | Status | When | Body |
 |---|---|---|
-| 400 | Request validation (FastEndpoints), or a use case's `Invalid` | `errors`: camelCase field name to messages, `{ "errors": { "name": ["Name is required"] } }` |
+| 400 | Request validation (FastEndpoints), or a use case's `Invalid`, such as a wrong current password (`currentPassword`), a password Identity refuses, or a wrong, expired or mangled emailed code (`code`) | `errors`: camelCase field name to messages, `{ "errors": { "name": ["Name is required"] } }` |
 | 400 | A signed-in unsafe request without a valid antiforgery token | Problem details with `title` "Missing or invalid antiforgery token". Shouldn't happen when you use `HttpClient` as above. |
 | 401 | Not signed in, the session expired, or wrong credentials at sign-in | Empty, or problem details from the auth endpoints |
 | 403 | A missing permission, or a use case's `Forbidden` | Empty, or problem details with a `detail` |
 | 404 | The resource doesn't exist | Problem details; `detail` holds the use case's message, if any |
-| 409 | A conflict, such as a taken email | Problem details with the use case's `detail` |
+| 409 | A conflict, such as registering an email that already has an account | Problem details with the use case's `detail` |
 | 429 | Rate limited | Problem details; the `Retry-After` header says when to retry |
 | 500, 503 | Anything unexpected | A generic message; the details are only in the API's logs |
 

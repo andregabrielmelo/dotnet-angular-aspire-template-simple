@@ -53,15 +53,15 @@ public class AuthRegisterPost(CustomWebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task FailsGivenATakenEmailInAnyCase()
+    public async Task ReturnsConflictGivenATakenEmailInAnyCase()
     {
         var email = NewEmail();
         await new TestSession(factory).RegisterAsync(email);
 
         var response = await new TestSession(factory).RegisterAsync(email.ToUpperInvariant());
 
-        // Identity's errors map to a generic error (IdentityResultExtensions).
-        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        // Identity's DuplicateEmail maps to UserErrors.EmailNotUnique (IdentityResultExtensions).
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
     }
 
     [Theory]

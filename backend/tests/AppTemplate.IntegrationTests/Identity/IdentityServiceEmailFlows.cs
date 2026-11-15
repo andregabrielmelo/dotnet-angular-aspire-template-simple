@@ -140,7 +140,7 @@ public class IdentityServiceEmailFlows(PostgresDatabaseFixture database)
         );
         var changed = await Identity.ChangePasswordAsync(id, Password, NewPassword, Cancellation);
 
-        wrong.Status.ShouldBe(ResultStatus.Error);
+        wrong.Status.ShouldBe(ResultStatus.Invalid);
         changed.IsSuccess.ShouldBeTrue();
         (await StampAsync(id)).ShouldNotBe(stampBefore);
         (
