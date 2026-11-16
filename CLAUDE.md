@@ -154,7 +154,7 @@ Outside the `Development` environment the AppHost doesn't start Mailpit: it expe
 
 ### Frontend (`frontend/src/app/`)
 
-Standalone Angular components, organized as `core/`, `shared/`, and `features/<feature>/` (`auth`, `home`, `profile`, `users`):
+Standalone Angular components, organized as `core/` (the session: `core/auth/`; the API contract: `core/api/`) and `features/<feature>/` (`auth`, `home`, `profile`, `users`); `shared/` is created when two features need the same component, pipe or utility:
 - `AuthService` (`core/auth/auth-service.ts`) holds no token: the browser keeps the HttpOnly session cookie and sends it with every same-origin request, in every tab. Whether the user is signed in is whether `CurrentUserService` has loaded a profile (`GET api/users/me`; `ensureSession()`). `login()` posts, then fetches a new antiforgery token (`fetchAntiforgeryToken()`, also run at startup by `provideAppInitializer` in `app.config.ts`); `logout()` posts `api/auth/logout` and forgets the user even if the request fails. `withXsrfConfiguration` makes HttpClient send the `XSRF-TOKEN` cookie as `X-XSRF-TOKEN` on unsafe same-origin requests.
 - `core/auth/auth-interceptor.ts` adds nothing: on a 401 from the API while signed in (the session expired or was ended elsewhere) it forgets the user and sends them to `/auth/login?returnUrl=...`. It leaves `api/auth/*` alone.
 - `authGuard` protects routes (sending the user to `/auth/login?returnUrl=...`), and `permissionGuard` hides pages the user has no permission for.

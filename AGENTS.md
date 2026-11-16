@@ -112,7 +112,7 @@ Dependencies point inward:
 ## 10. Frontend (`frontend/`)
 
 See [`.github/instructions/frontend.instructions.md`](.github/instructions/frontend.instructions.md). In short:
-- Standalone components in `core/`, `shared/` and `features/<feature>/`.
+- Standalone components in `core/` and `features/<feature>/`. Create `shared/` only when two features need the same component, pipe or utility.
 - HTTP calls live in feature services, not components.
 - Guards are UX, not authorization.
 - The SPA must run under a strict CSP, sent by the production host: no inline scripts, inline event handlers or `eval`. New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Production deployment).

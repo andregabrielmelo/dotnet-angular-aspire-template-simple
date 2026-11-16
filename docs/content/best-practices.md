@@ -22,7 +22,7 @@ Explicit guidelines for projects built from this template, so every project that
 ## Angular
 
 - How the app reaches the API and shows its errors: [The frontend: configuration and API errors]({{< relref "guides/frontend" >}}).
-- Feature-folder structure (`core/`, `shared/`, `features/<feature>/`) is already the convention here - keep new code inside it rather than growing `components/`/`services/`-by-type folders. See the [official style guide](https://angular.dev/style-guide).
+- Feature-folder structure (`core/`, `features/<feature>/`, and `shared/` once two features share something) is already the convention here - keep new code inside it rather than growing `components/`/`services/`-by-type folders. See the [official style guide](https://angular.dev/style-guide).
 - Hyphenate file names, one concept per file, co-locate a component's `.ts`/`.html`/`.css`/`.spec.ts`.
 - Prefer `inject()` at field-initializer time over constructor-parameter injection for new code - it reads better and infers types more reliably.
 - For state: local component state first; a signal exposed (read-only, via `computed()`) from a service when a few components need to share it; a route-scoped feature store only once that's not enough; NgRx SignalStore only once a feature genuinely needs a full store. Don't start with a global store.
