@@ -5,7 +5,7 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { LoginPage } from './login-page';
 import { AccountService } from '../account.service';
-import { AuthService } from '../auth-service';
+import { AuthService } from '../../../core/auth/auth-service';
 
 describe('LoginPage', () => {
   function setup(signedIn = false, returnUrl?: string) {

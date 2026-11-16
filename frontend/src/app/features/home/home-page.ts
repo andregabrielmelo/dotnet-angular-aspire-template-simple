@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../auth/auth-service';
+import { AuthService } from '../../core/auth/auth-service';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { Permission } from '../../core/auth/permissions';
 

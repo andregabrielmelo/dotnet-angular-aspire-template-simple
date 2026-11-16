@@ -2,8 +2,8 @@ import { Injectable, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, switchMap, tap } from 'rxjs';
-import { API_BASE } from '../../core/api/api-paths';
-import { CurrentUser, CurrentUserService } from '../../core/auth/current-user.service';
+import { API_BASE } from '../api/api-paths';
+import { CurrentUser, CurrentUserService } from './current-user.service';
 
 export const AUTH_PATH = `${API_BASE}/auth`;
 

@@ -6,7 +6,7 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ProfilePage } from './profile-page';
 import { CurrentUserService, CurrentUser } from '../../core/auth/current-user.service';
-import { AuthService } from '../auth/auth-service';
+import { AuthService } from '../../core/auth/auth-service';
 import { UsersService } from '../users/users.service';
 
 describe('ProfilePage', () => {

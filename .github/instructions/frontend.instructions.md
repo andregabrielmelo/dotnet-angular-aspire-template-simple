@@ -8,7 +8,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 
 ## Structure
 
-- `core/`: app-wide singletons. Today this is the session (`core/auth/`): `CurrentUserService`, `authGuard`, `permissionGuard` and `authInterceptor` (on a 401 while signed in, forgets the user and sends them to sign in). The session itself is `AuthService` (`features/auth/`).
+- `core/`: app-wide singletons. Today this is the session (`core/auth/`): `AuthService`, `CurrentUserService`, `authGuard`, `permissionGuard` and `authInterceptor` (on a 401 while signed in, forgets the user and sends them to sign in).
 - `shared/`: UI and utilities that more than one feature genuinely reuses.
 - `features/<feature>/`: everything a feature owns, meaning its pages, its `<feature>.service.ts` (HTTP), its `<feature>.model.ts` (API types) and its routes. Model new features on `features/users/`.
 - File names are hyphenated, with one concept per file. A component's `.ts`, `.html`, `.css` and `.spec.ts` sit side by side.
