@@ -3,7 +3,7 @@ using AppTemplate.UseCases.Authentication.Logout;
 namespace AppTemplate.Web.Endpoints.Authentication;
 
 /// <summary>Signs out: Identity deletes the session cookie (ADR 015).</summary>
-public class LogoutEndpoint(IMediator _mediator) : EndpointWithoutRequest<NoContent>
+public class LogoutEndpoint(IMediator mediator) : EndpointWithoutRequest<NoContent>
 {
     public override void Configure()
     {
@@ -24,7 +24,7 @@ public class LogoutEndpoint(IMediator _mediator) : EndpointWithoutRequest<NoCont
 
     public override async Task<NoContent> ExecuteAsync(CancellationToken cancellationToken)
     {
-        await _mediator.Send(new LogoutCommand(), cancellationToken);
+        await mediator.Send(new LogoutCommand(), cancellationToken);
         return TypedResults.NoContent();
     }
 }

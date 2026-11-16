@@ -17,7 +17,7 @@ public sealed class ResetPasswordRequest
 /// Sets a new password with the code from a reset link. Every existing session ends at its next
 /// refresh (the account's security stamp changes); sign in again with the new password.
 /// </summary>
-public class ResetPasswordEndpoint(IMediator _mediator)
+public class ResetPasswordEndpoint(IMediator mediator)
     : Endpoint<ResetPasswordRequest, Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
@@ -61,7 +61,7 @@ public class ResetPasswordEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new ResetPasswordCommand(
                 new EmailAddress(request.Email),
                 request.Code,

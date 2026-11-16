@@ -6,7 +6,7 @@ namespace AppTemplate.UseCases.Authentication.ResendConfirmation;
 /// Sends another confirmation link. Always succeeds, whether or not the email has an account,
 /// so the answer reveals nothing.
 /// </summary>
-public class ResendConfirmationHandler(IIdentityService _identity)
+public class ResendConfirmationHandler(IIdentityService identity)
     : ICommandHandler<ResendConfirmationCommand, Result>
 {
     public async ValueTask<Result> Handle(
@@ -14,7 +14,7 @@ public class ResendConfirmationHandler(IIdentityService _identity)
         CancellationToken cancellationToken
     )
     {
-        await _identity.SendEmailConfirmationAsync(command.Email, cancellationToken);
+        await identity.SendEmailConfirmationAsync(command.Email, cancellationToken);
         return Result.Success();
     }
 }

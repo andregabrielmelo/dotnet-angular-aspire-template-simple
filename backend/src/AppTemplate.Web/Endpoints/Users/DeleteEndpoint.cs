@@ -10,7 +10,7 @@ public sealed class DeleteUserRequest
     public int UserId { get; init; }
 }
 
-public class DeleteEndpoint(IMediator _mediator)
+public class DeleteEndpoint(IMediator mediator)
     : Endpoint<DeleteUserRequest, Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
@@ -47,7 +47,7 @@ public class DeleteEndpoint(IMediator _mediator)
     )
     {
         var command = new DeleteUserCommand(UserId.From(request.UserId));
-        var result = await _mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, cancellationToken);
 
         return result.ToNoContentResult();
     }

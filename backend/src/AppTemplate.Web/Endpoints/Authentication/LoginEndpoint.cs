@@ -16,7 +16,7 @@ public sealed class LoginRequest
 /// Signs in: Identity checks the credentials (with lockout) and sets its session cookie, which the
 /// browser then sends with every request (ADR 015).
 /// </summary>
-public class LoginEndpoint(IMediator _mediator)
+public class LoginEndpoint(IMediator mediator)
     : Endpoint<LoginRequest, Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
@@ -63,7 +63,7 @@ public class LoginEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new LoginCommand(new EmailAddress(request.Email), request.Password),
             cancellationToken
         );

@@ -11,7 +11,7 @@ namespace AppTemplate.Infrastructure.Identity;
 /// <see cref="IdentityService"/>; they carry single-use codes, so never log them.
 /// </summary>
 public sealed class AccountEmailSender(
-    IEmailSender _emailSender,
+    IEmailSender emailSender,
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender<ApplicationUser>
 {
@@ -22,7 +22,7 @@ public sealed class AccountEmailSender(
         string email,
         string confirmationLink
     ) =>
-        _emailSender.SendAsync(
+        emailSender.SendAsync(
             email,
             _mailserver.FromAddress,
             "Confirm your email",
@@ -31,7 +31,7 @@ public sealed class AccountEmailSender(
         );
 
     public Task SendPasswordResetLinkAsync(ApplicationUser user, string email, string resetLink) =>
-        _emailSender.SendAsync(
+        emailSender.SendAsync(
             email,
             _mailserver.FromAddress,
             "Reset your password",
@@ -41,7 +41,7 @@ public sealed class AccountEmailSender(
 
     // Identity's code-only reset flow (MapIdentityApi). This API sends links instead.
     public Task SendPasswordResetCodeAsync(ApplicationUser user, string email, string resetCode) =>
-        _emailSender.SendAsync(
+        emailSender.SendAsync(
             email,
             _mailserver.FromAddress,
             "Reset your password",

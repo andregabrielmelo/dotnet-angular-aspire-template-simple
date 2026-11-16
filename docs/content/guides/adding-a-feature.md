@@ -296,7 +296,7 @@ using AppTemplate.UseCases.Authorization;
 namespace AppTemplate.UseCases.Projects.Create;
 
 /// <summary>The caller becomes the project's owner.</summary>
-public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
+public class CreateProjectHandler(IRepository<Project> repository, ICurrentUser currentUser)
     : ICommandHandler<CreateProjectCommand, Result<ProjectDto>>
 {
     public async ValueTask<Result<ProjectDto>> Handle(
@@ -304,10 +304,10 @@ public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser
         CancellationToken cancellationToken
     )
     {
-        if (_currentUser.Id is not { } owner)
+        if (currentUser.Id is not { } owner)
             return Result<ProjectDto>.Unauthorized();
 
-        var project = await _repository.AddAsync(
+        var project = await repository.AddAsync(
             Project.Create(owner, command.Name),
             cancellationToken
         );
@@ -343,7 +343,7 @@ namespace AppTemplate.UseCases.Projects.Get;
 /// <see cref="Permission.ProjectsRead"/> may read every project. It needs the loaded
 /// project, so it's decided here rather than by an endpoint policy.
 /// </summary>
-public class GetProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
+public class GetProjectHandler(IRepository<Project> repository, ICurrentUser currentUser)
     : IQueryHandler<GetProjectQuery, Result<ProjectDto>>
 {
     public async ValueTask<Result<ProjectDto>> Handle(
@@ -351,7 +351,7 @@ public class GetProjectHandler(IRepository<Project> _repository, ICurrentUser _c
         CancellationToken cancellationToken
     )
     {
-        var project = await _repository.FirstOrDefaultAsync(
+        var project = await repository.FirstOrDefaultAsync(
             new ProjectByIdSpecification(query.ProjectId),
             cancellationToken
         );
@@ -359,8 +359,8 @@ public class GetProjectHandler(IRepository<Project> _repository, ICurrentUser _c
             return Result<ProjectDto>.NotFound();
 
         if (
-            !project.IsOwnedBy(_currentUser.Id)
-            && !_currentUser.HasPermission(Permission.ProjectsRead)
+            !project.IsOwnedBy(currentUser.Id)
+            && !currentUser.HasPermission(Permission.ProjectsRead)
         )
             return Result<ProjectDto>.Forbidden();
 
@@ -409,7 +409,7 @@ using AppTemplate.UseCases.Authorization;
 
 namespace AppTemplate.UseCases.Projects.List;
 
-public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser _currentUser)
+public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser currentUser)
     : IQueryHandler<ListProjectsQuery, Result<PagedResult<ProjectDto>>>
 {
     public async ValueTask<Result<PagedResult<ProjectDto>>> Handle(
@@ -417,7 +417,7 @@ public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser 
         CancellationToken cancellationToken
     )
     {
-        if (_currentUser.Id is not { } owner)
+        if (currentUser.Id is not { } owner)
             return Result<PagedResult<ProjectDto>>.Unauthorized();
 
         return await _query.ListAsync(owner, query.Page, query.PerPage, cancellationToken);
@@ -447,7 +447,7 @@ using AppTemplate.UseCases.Authorization;
 namespace AppTemplate.UseCases.Projects.Rename;
 
 /// <summary>Only the owner may rename a project.</summary>
-public class RenameProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
+public class RenameProjectHandler(IRepository<Project> repository, ICurrentUser currentUser)
     : ICommandHandler<RenameProjectCommand, Result<ProjectDto>>
 {
     public async ValueTask<Result<ProjectDto>> Handle(
@@ -455,15 +455,15 @@ public class RenameProjectHandler(IRepository<Project> _repository, ICurrentUser
         CancellationToken cancellationToken
     )
     {
-        var project = await _repository.GetByIdAsync(command.ProjectId, cancellationToken);
+        var project = await repository.GetByIdAsync(command.ProjectId, cancellationToken);
         if (project is null)
             return Result<ProjectDto>.NotFound();
 
-        if (!project.IsOwnedBy(_currentUser.Id))
+        if (!project.IsOwnedBy(currentUser.Id))
             return Result<ProjectDto>.Forbidden();
 
         project.Rename(command.Name);
-        await _repository.UpdateAsync(project, cancellationToken);
+        await repository.UpdateAsync(project, cancellationToken);
 
         return ProjectDto.FromEntity(project);
     }
@@ -520,7 +520,7 @@ public sealed class CreateProjectRequest
     public required string Name { get; set; }
 }
 
-public class CreateEndpoint(IMediator _mediator)
+public class CreateEndpoint(IMediator mediator)
     : Endpoint<CreateProjectRequest, Results<Created<ProjectRecord>, ProblemHttpResult>>
 {
     public override void Configure()
@@ -557,7 +557,7 @@ public class CreateEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new CreateProjectCommand(ProjectName.From(request.Name)),
             cancellationToken
         );
@@ -599,7 +599,7 @@ public sealed class GetProjectByIdRequest
 }
 // Configure(): Get("/projects/{id}");
 // ExecuteAsync():
-var result = await _mediator.Send(
+var result = await mediator.Send(
     new GetProjectQuery(ProjectId.From(request.Id)),
     cancellationToken
 );
@@ -620,7 +620,7 @@ public sealed class RenameProjectRequest
 
 ```csharp
 // DeleteEndpoint.cs: no response body
-public class DeleteEndpoint(IMediator _mediator)
+public class DeleteEndpoint(IMediator mediator)
     : Endpoint<DeleteProjectRequest, Results<NoContent, ProblemHttpResult>>
 // Configure(): Delete("/projects/{id}");
 // ExecuteAsync(): return result.ToNoContentResult();
@@ -665,7 +665,7 @@ public record ProjectListResponse : UseCases.PagedResult<ProjectRecord>
         );
 }
 
-public class ListEndpoint(IMediator _mediator)
+public class ListEndpoint(IMediator mediator)
     : Endpoint<ListProjectsRequest, Results<Ok<ProjectListResponse>, ProblemHttpResult>>
 {
     public override void Configure()
@@ -679,7 +679,7 @@ public class ListEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new ListProjectsQuery(request.Page, request.PerPage),
             cancellationToken
         );

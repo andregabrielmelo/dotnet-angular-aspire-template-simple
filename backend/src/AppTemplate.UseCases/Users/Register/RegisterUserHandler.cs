@@ -18,18 +18,15 @@ namespace AppTemplate.UseCases.Users.Register;
 /// announced. Last, it drops the cached user list (<see cref="CacheTags.UserList"/>), which the new
 /// user now belongs to.
 /// </summary>
-public class RegisterUserHandler(
-    IIdentityService _identity,
-    IMediator _mediator,
-    HybridCache _cache
-) : ICommandHandler<RegisterUserCommand, Result<UserId>>
+public class RegisterUserHandler(IIdentityService identity, IMediator mediator, HybridCache cache)
+    : ICommandHandler<RegisterUserCommand, Result<UserId>>
 {
     public async ValueTask<Result<UserId>> Handle(
         RegisterUserCommand command,
         CancellationToken cancellationToken
     )
     {
-        var created = await _identity.CreateUserAsync(
+        var created = await identity.CreateUserAsync(
             command.Name,
             command.Email,
             command.Password,
@@ -40,7 +37,7 @@ public class RegisterUserHandler(
             return created;
         }
 
-        var inRole = await _identity.AddToRolesAsync(
+        var inRole = await identity.AddToRolesAsync(
             created.Value,
             [Role.Member],
             cancellationToken
@@ -50,14 +47,14 @@ public class RegisterUserHandler(
             return inRole;
         }
 
-        await _identity.SendEmailConfirmationAsync(created.Value, cancellationToken);
+        await identity.SendEmailConfirmationAsync(created.Value, cancellationToken);
 
-        await _mediator.Publish(
+        await mediator.Publish(
             new UserRegisteredDomainEvent(created.Value, command.Name, command.Email),
             cancellationToken
         );
 
-        await _cache.RemoveByTagAsync(CacheTags.UserList, cancellationToken);
+        await cache.RemoveByTagAsync(CacheTags.UserList, cancellationToken);
 
         return created;
     }
