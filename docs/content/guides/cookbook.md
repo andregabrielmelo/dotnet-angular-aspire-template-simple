@@ -77,12 +77,14 @@ public sealed record UserRegisteredDomainEvent(UserId UserId, UserName Name, Ema
 public class UserRegisteredEventHandler(ILoggerAdapter<UserRegisteredEventHandler> logger)
     : INotificationHandler<UserRegisteredDomainEvent>
 {
+    private readonly ILoggerAdapter<UserRegisteredEventHandler> _logger = logger;
+
     public ValueTask Handle(
         UserRegisteredDomainEvent notification,
         CancellationToken cancellationToken
     )
     {
-        logger.LogInformation("User {UserId} registered", notification.UserId);
+        _logger.LogInformation("User {UserId} registered", notification.UserId);
         return ValueTask.CompletedTask;
     }
 }

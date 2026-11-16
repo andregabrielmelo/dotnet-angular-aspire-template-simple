@@ -56,7 +56,7 @@ UseCases/<Feature>/<UseCase>/   // one folder per use case, command or query ali
 Core/Aggregates/<Aggregate>/Handlers/   // domain event handlers, Core only (ConventionTests)
 ```
 
-- **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types.
+- **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types, and use their primary-constructor parameters directly. Services and adapters (Infrastructure implementations, behaviors, middleware, domain event handlers) copy each dependency into a `private readonly` field (`private readonly ApplicationDatabaseContext _db = db;`) and use the field (`ConventionTests`).
 - **List query services** (`Infrastructure/Data/Queries/`) read with `FromSqlRaw`: every mapped column in snake_case, `WHERE` with `{n}` parameters only, and `OrderBy`/`Skip`/`Take`/`Select`/`CountAsync` in LINQ on top. See `ListUsersQueryService` and step 3 of [Adding a feature](../../docs/content/guides/adding-a-feature.md#3-infrastructure-the-database).
 - **Unit tests:** put them in `tests/AppTemplate.UnitTests/UseCases/<Feature>/<UseCase>HandlerHandle.cs` (class `<UseCase>HandlerHandle`, one method per behavior).
 

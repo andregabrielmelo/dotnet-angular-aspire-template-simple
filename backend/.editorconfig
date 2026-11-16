@@ -221,7 +221,8 @@ dotnet_naming_rule.non_field_members_should_be_pascal_case.symbols = non_field_m
 dotnet_naming_rule.non_field_members_should_be_pascal_case.style = pascal_case
 
 # Parameters, primary-constructor ones included, are camelCase without an underscore
-# (`IMediator mediator`); fields keep theirs (`_mailserver`). IDE1006, below, makes it fail the build.
+# (`IMediator mediator`); fields keep theirs (`_mailserver`, and the `private readonly` fields services
+# copy their dependencies into, ConventionTests). IDE1006, below, makes it fail the build.
 dotnet_naming_rule.parameters_should_be_camel_case.severity = error
 dotnet_naming_rule.parameters_should_be_camel_case.symbols = parameters
 dotnet_naming_rule.parameters_should_be_camel_case.style = camel_case

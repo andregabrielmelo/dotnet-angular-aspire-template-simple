@@ -202,8 +202,10 @@ using AppTemplate.UseCases.Projects.List;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
-public class ListProjectsQueryService(ApplicationDatabaseContext _db) : IListProjectsQueryService
+public class ListProjectsQueryService(ApplicationDatabaseContext db) : IListProjectsQueryService
 {
+    private readonly ApplicationDatabaseContext _db = db;
+
     public async Task<PagedResult<ProjectDto>> ListAsync(
         UserId ownerId,
         int page,
@@ -409,18 +411,20 @@ using AppTemplate.UseCases.Authorization;
 
 namespace AppTemplate.UseCases.Projects.List;
 
-public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser currentUser)
+public class ListProjectsHandler(IListProjectsQueryService query, ICurrentUser currentUser)
     : IQueryHandler<ListProjectsQuery, Result<PagedResult<ProjectDto>>>
 {
+    private readonly IListProjectsQueryService _query = query;
+
     public async ValueTask<Result<PagedResult<ProjectDto>>> Handle(
-        ListProjectsQuery query,
+        ListProjectsQuery request,
         CancellationToken cancellationToken
     )
     {
         if (currentUser.Id is not { } owner)
             return Result<PagedResult<ProjectDto>>.Unauthorized();
 
-        return await _query.ListAsync(owner, query.Page, query.PerPage, cancellationToken);
+        return await _query.ListAsync(owner, request.Page, request.PerPage, cancellationToken);
     }
 }
 ```
