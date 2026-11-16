@@ -132,7 +132,7 @@ public static class InfrastructureServiceExtensions
                 options.SignIn.RequireConfirmedEmail = true;
 
                 // Length only, no composition rules (NIST SP 800-63B).
-                options.Password.RequiredLength = PasswordConstants.MIN_LENGTH;
+                options.Password.RequiredLength = PasswordConstants.MinLength;
                 options.Password.RequireDigit = false;
                 options.Password.RequireLowercase = false;
                 options.Password.RequireUppercase = false;

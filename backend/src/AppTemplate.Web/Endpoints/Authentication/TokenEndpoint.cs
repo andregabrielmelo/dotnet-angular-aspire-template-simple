@@ -102,9 +102,9 @@ public sealed class TokenValidator : Validator<TokenRequest>
         RuleFor(x => x.Password)
             .NotEmpty()
             .WithMessage("The password is required.")
-            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .MaximumLength(PasswordConstants.MaxLength)
             .WithMessage(
-                $"The password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+                $"The password must be at most {PasswordConstants.MaxLength} characters long."
             );
     }
 }

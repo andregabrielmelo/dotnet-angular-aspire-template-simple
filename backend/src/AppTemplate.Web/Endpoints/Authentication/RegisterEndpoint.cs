@@ -91,13 +91,13 @@ public sealed class RegisterValidator : Validator<RegisterRequest>
         RuleFor(x => x.Password)
             .NotEmpty()
             .WithMessage("The password is required.")
-            .MinimumLength(PasswordConstants.MIN_LENGTH)
+            .MinimumLength(PasswordConstants.MinLength)
             .WithMessage(
-                $"The password must be at least {PasswordConstants.MIN_LENGTH} characters long."
+                $"The password must be at least {PasswordConstants.MinLength} characters long."
             )
-            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .MaximumLength(PasswordConstants.MaxLength)
             .WithMessage(
-                $"The password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+                $"The password must be at most {PasswordConstants.MaxLength} characters long."
             );
     }
 }

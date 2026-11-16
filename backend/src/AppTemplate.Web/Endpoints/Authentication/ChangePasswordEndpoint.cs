@@ -74,24 +74,24 @@ public sealed class ChangePasswordValidator : Validator<ChangePasswordRequest>
         RuleFor(x => x.CurrentPassword)
             .NotEmpty()
             .WithMessage("The current password is required.")
-            .MinimumLength(PasswordConstants.MIN_LENGTH)
+            .MinimumLength(PasswordConstants.MinLength)
             .WithMessage(
-                $"The current password must be at least {PasswordConstants.MIN_LENGTH} characters long."
+                $"The current password must be at least {PasswordConstants.MinLength} characters long."
             )
-            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .MaximumLength(PasswordConstants.MaxLength)
             .WithMessage(
-                $"The current password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+                $"The current password must be at most {PasswordConstants.MaxLength} characters long."
             );
         RuleFor(x => x.NewPassword)
             .NotEmpty()
             .WithMessage("The new password is required.")
-            .MinimumLength(PasswordConstants.MIN_LENGTH)
+            .MinimumLength(PasswordConstants.MinLength)
             .WithMessage(
-                $"The new password must be at least {PasswordConstants.MIN_LENGTH} characters long."
+                $"The new password must be at least {PasswordConstants.MinLength} characters long."
             )
-            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .MaximumLength(PasswordConstants.MaxLength)
             .WithMessage(
-                $"The new password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+                $"The new password must be at most {PasswordConstants.MaxLength} characters long."
             );
         ;
     }

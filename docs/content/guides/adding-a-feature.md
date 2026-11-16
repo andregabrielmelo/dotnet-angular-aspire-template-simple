@@ -399,7 +399,7 @@ public interface IListProjectsQueryService
 namespace AppTemplate.UseCases.Projects.List;
 
 /// <summary>The caller's own projects, a page at a time.</summary>
-public record ListProjectsQuery(int Page = 1, int PerPage = Constants.DEFAULT_PAGE_SIZE)
+public record ListProjectsQuery(int Page = 1, int PerPage = PaginationConstants.DefaultPageSize)
     : IQuery<Result<PagedResult<ProjectDto>>>;
 ```
 
@@ -641,7 +641,7 @@ public sealed class ListProjectsRequest
     public int Page { get; init; } = 1;
 
     [BindFrom("per_page")]
-    public int PerPage { get; init; } = Constants.DEFAULT_PAGE_SIZE;
+    public int PerPage { get; init; } = PaginationConstants.DefaultPageSize;
 }
 
 public record ProjectListResponse : UseCases.PagedResult<ProjectRecord>
@@ -695,8 +695,8 @@ public sealed class ListProjectsValidator : Validator<ListProjectsRequest>
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1).WithMessage("page must be >= 1");
 
         RuleFor(x => x.PerPage)
-            .InclusiveBetween(1, Constants.MAX_PAGE_SIZE)
-            .WithMessage($"per_page must be between 1 and {Constants.MAX_PAGE_SIZE}");
+            .InclusiveBetween(1, PaginationConstants.MaxPageSize)
+            .WithMessage($"per_page must be between 1 and {PaginationConstants.MaxPageSize}");
     }
 }
 ```

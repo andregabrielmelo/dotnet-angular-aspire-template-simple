@@ -7,8 +7,8 @@ namespace AppTemplate.UseCases.Constants;
 /// </summary>
 public static class PasswordConstants
 {
-    public const int MIN_LENGTH = 8;
+    public const int MinLength = 8;
 
     // Hashing cost grows with length; nobody needs more.
-    public const int MAX_LENGTH = 128;
+    public const int MaxLength = 128;
 }
