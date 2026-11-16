@@ -7,7 +7,7 @@
     "version": "v1"
   },
   "paths": {
-    "/users/{userId}": {
+    "/users/{id}": {
       "delete": {
         "tags": [
           "Users"
@@ -17,7 +17,7 @@
         "operationId": "AppTemplateWebEndpointsUsersDeleteEndpoint",
         "parameters": [
           {
-            "name": "userId",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -70,9 +70,7 @@
             "JWTBearerAuth": []
           }
         ]
-      }
-    },
-    "/users/{id}": {
+      },
       "get": {
         "tags": [
           "Users"
