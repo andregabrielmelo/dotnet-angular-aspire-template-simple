@@ -18,13 +18,13 @@ public sealed class ListUsersRequest
 public record UserListResponse : UseCases.PagedResult<UserRecord>
 {
     public UserListResponse(
-        IReadOnlyList<UserRecord> Items,
-        int Page,
-        int PerPage,
-        int TotalCount,
-        int TotalPages
+        IReadOnlyList<UserRecord> items,
+        int page,
+        int perPage,
+        int totalCount,
+        int totalPages
     )
-        : base(Items, Page, PerPage, TotalCount, TotalPages) { }
+        : base(items, page, perPage, totalCount, totalPages) { }
 }
 
 public class ListEndpoint(IMediator mediator)
