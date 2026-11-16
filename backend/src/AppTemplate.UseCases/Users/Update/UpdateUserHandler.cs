@@ -16,9 +16,9 @@ namespace AppTemplate.UseCases.Users.Update;
 /// reads of this user (<see cref="CacheTags.User"/>) and the user list (<see cref="CacheTags.UserList"/>).
 /// </summary>
 public class UpdateUserHandler(
-    IRepository<User> _repository,
-    ICurrentUser _currentUser,
-    HybridCache _cache
+    IRepository<User> repository,
+    ICurrentUser currentUser,
+    HybridCache cache
 ) : ICommandHandler<UpdateUserCommand, Result<UserDto>>
 {
     public async ValueTask<Result<UserDto>> Handle(
@@ -26,12 +26,12 @@ public class UpdateUserHandler(
         CancellationToken cancellationToken
     )
     {
-        var user = await _repository.GetByIdAsync(command.UserId, cancellationToken);
+        var user = await repository.GetByIdAsync(command.UserId, cancellationToken);
         if (user == null)
             return Result<UserDto>.NotFound();
 
-        var isOwnProfile = _currentUser.Id == user.Id;
-        if (!isOwnProfile && !_currentUser.HasPermission(Permission.UsersWrite))
+        var isOwnProfile = currentUser.Id == user.Id;
+        if (!isOwnProfile && !currentUser.HasPermission(Permission.UsersWrite))
             return Result<UserDto>.Forbidden();
 
         var phoneNumber = MergePhoneNumber(user.PhoneNumber, command, out var missingParts);
@@ -46,8 +46,8 @@ public class UpdateUserHandler(
             user.UpdatePhoneNumber(phoneNumber);
         }
 
-        await _repository.UpdateAsync(user, cancellationToken);
-        await _cache.RemoveByTagAsync(
+        await repository.UpdateAsync(user, cancellationToken);
+        await cache.RemoveByTagAsync(
             [CacheTags.User(user.Id), CacheTags.UserList],
             cancellationToken
         );

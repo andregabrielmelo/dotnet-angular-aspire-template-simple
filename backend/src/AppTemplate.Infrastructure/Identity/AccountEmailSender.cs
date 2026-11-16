@@ -11,10 +11,12 @@ namespace AppTemplate.Infrastructure.Identity;
 /// <see cref="IdentityService"/>; they carry single-use codes, so never log them.
 /// </summary>
 public sealed class AccountEmailSender(
-    IEmailSender _emailSender,
+    IEmailSender emailSender,
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender<ApplicationUser>
 {
+    private readonly IEmailSender _emailSender = emailSender;
+
     private readonly MailserverConfiguration _mailserver = mailserverOptions.Value;
 
     public Task SendConfirmationLinkAsync(

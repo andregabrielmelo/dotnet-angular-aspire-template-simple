@@ -6,7 +6,7 @@ namespace AppTemplate.UseCases.Authentication.ForgotPassword;
 /// Emails a password reset link to a confirmed account. Always succeeds, whether or not the email
 /// has an account, so the answer reveals nothing.
 /// </summary>
-public class ForgotPasswordHandler(IIdentityService _identity)
+public class ForgotPasswordHandler(IIdentityService identity)
     : ICommandHandler<ForgotPasswordCommand, Result>
 {
     public async ValueTask<Result> Handle(
@@ -14,7 +14,7 @@ public class ForgotPasswordHandler(IIdentityService _identity)
         CancellationToken cancellationToken
     )
     {
-        await _identity.SendPasswordResetAsync(command.Email, cancellationToken);
+        await identity.SendPasswordResetAsync(command.Email, cancellationToken);
         return Result.Success();
     }
 }

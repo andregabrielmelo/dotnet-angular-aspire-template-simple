@@ -6,7 +6,7 @@ namespace AppTemplate.UseCases.Authentication.ChangePassword;
 /// Changes the password. The account's security stamp changes with it, so Identity ends every
 /// other session at its next stamp check; this one gets a new cookie.
 /// </summary>
-public class ChangePasswordHandler(IIdentityService _identity)
+public class ChangePasswordHandler(IIdentityService identity)
     : ICommandHandler<ChangePasswordCommand, Result>
 {
     public async ValueTask<Result> Handle(
@@ -14,7 +14,7 @@ public class ChangePasswordHandler(IIdentityService _identity)
         CancellationToken cancellationToken
     )
     {
-        var changed = await _identity.ChangePasswordAsync(
+        var changed = await identity.ChangePasswordAsync(
             command.UserId,
             command.CurrentPassword,
             command.NewPassword,
@@ -25,7 +25,7 @@ public class ChangePasswordHandler(IIdentityService _identity)
             return changed;
         }
 
-        await _identity.RefreshSignInAsync(command.UserId, cancellationToken);
+        await identity.RefreshSignInAsync(command.UserId, cancellationToken);
         return Result.Success();
     }
 }

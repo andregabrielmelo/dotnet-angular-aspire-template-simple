@@ -13,6 +13,8 @@ namespace AppTemplate.Web.Middleware;
 /// </summary>
 public sealed class UserContextEnrichmentMiddleware(RequestDelegate next)
 {
+    private readonly RequestDelegate _next = next;
+
     /// <summary>The trace tag (OpenTelemetry's <c>user.id</c> attribute).</summary>
     public const string UserIdTag = "user.id";
 
@@ -27,7 +29,7 @@ public sealed class UserContextEnrichmentMiddleware(RequestDelegate next)
     {
         if (currentUser.Id is not { } userId)
         {
-            await next(context);
+            await _next(context);
             return;
         }
 
@@ -36,7 +38,7 @@ public sealed class UserContextEnrichmentMiddleware(RequestDelegate next)
             logger.BeginScope(new Dictionary<string, object?> { [UserIdProperty] = userId.Value })
         )
         {
-            await next(context);
+            await _next(context);
         }
     }
 }

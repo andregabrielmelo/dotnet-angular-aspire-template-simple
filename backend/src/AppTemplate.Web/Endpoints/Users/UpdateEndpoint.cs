@@ -25,7 +25,7 @@ public sealed class UpdateUserRequest
 
 public sealed record UpdateUserResponse(UserRecord User);
 
-public class UpdateEndpoint(IMediator _mediator)
+public class UpdateEndpoint(IMediator mediator)
     : Endpoint<
         UpdateUserRequest,
         Results<Ok<UpdateUserResponse>, ProblemHttpResult>,
@@ -87,7 +87,7 @@ public class UpdateEndpoint(IMediator _mediator)
             request.PhoneCountryCode,
             request.PhoneExtension
         );
-        var result = await _mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, cancellationToken);
 
         return result.ToOkResult<UserDto, UpdateUserResponse>(Map.FromEntity);
     }

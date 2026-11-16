@@ -36,7 +36,7 @@ public class QueryCacheKeys
     public void GivesAnOmittedPageAndSizeTheSameKeyAsTheirDefaults()
     {
         new ListUsersQuery(null, null).CacheKey.ShouldBe(
-            new ListUsersQuery(1, PaginationConstants.DEFAULT_PAGE_SIZE).CacheKey
+            new ListUsersQuery(1, PaginationConstants.DefaultPageSize).CacheKey
         );
     }
 }

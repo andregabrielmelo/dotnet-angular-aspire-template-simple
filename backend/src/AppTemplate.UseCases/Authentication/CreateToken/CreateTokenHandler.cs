@@ -7,7 +7,7 @@ namespace AppTemplate.UseCases.Authentication.CreateToken;
 /// answer for an unknown email, a wrong password and a locked-out account, <c>Forbidden</c> for an
 /// unconfirmed email), then issues a token instead of setting the cookie.
 /// </summary>
-public class CreateTokenHandler(IIdentityService _identity, ITokenClaimsService _tokens)
+public class CreateTokenHandler(IIdentityService identity, ITokenClaimsService tokens)
     : ICommandHandler<CreateTokenCommand, Result<AccessToken>>
 {
     public async ValueTask<Result<AccessToken>> Handle(
@@ -15,7 +15,7 @@ public class CreateTokenHandler(IIdentityService _identity, ITokenClaimsService 
         CancellationToken cancellationToken
     )
     {
-        var account = await _identity.CheckPasswordAsync(
+        var account = await identity.CheckPasswordAsync(
             command.Email,
             command.Password,
             cancellationToken
@@ -30,6 +30,6 @@ public class CreateTokenHandler(IIdentityService _identity, ITokenClaimsService 
             return Result.Unauthorized();
         }
 
-        return await _tokens.GetTokenAsync(account.Value.Id, cancellationToken);
+        return await tokens.GetTokenAsync(account.Value.Id, cancellationToken);
     }
 }

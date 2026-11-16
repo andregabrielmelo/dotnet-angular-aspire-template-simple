@@ -21,6 +21,10 @@ public class CachingBehavior<TMessage, TResponse>(
 ) : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IMessage
 {
+    private readonly HybridCache _cache = cache;
+    private readonly IOptions<CachingSettings> _settings = settings;
+    private readonly ILoggerAdapter<CachingBehavior<TMessage, TResponse>> _logger = logger;
+
     public async ValueTask<TResponse> Handle(
         TMessage message,
         MessageHandlerDelegate<TMessage, TResponse> next,
@@ -34,9 +38,9 @@ public class CachingBehavior<TMessage, TResponse>(
 
         try
         {
-            return await cache.GetOrCreateAsync(
+            return await _cache.GetOrCreateAsync(
                 cacheable.CacheKey,
-                (message, next, logger, cacheable.CacheKey),
+                (message, next, logger: _logger, cacheable.CacheKey),
                 static async (state, token) =>
                 {
                     // The factory only runs on a miss.
@@ -46,7 +50,7 @@ public class CachingBehavior<TMessage, TResponse>(
                         ? throw new NotCachedException(response)
                         : response;
                 },
-                settings.Value.EntryOptionsFor(cacheable.CacheProfile),
+                _settings.Value.EntryOptionsFor(cacheable.CacheProfile),
                 cacheable.CacheTags,
                 cancellationToken: cancellationToken
             );

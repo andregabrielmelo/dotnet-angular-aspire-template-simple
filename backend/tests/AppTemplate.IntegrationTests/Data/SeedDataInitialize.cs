@@ -35,10 +35,10 @@ public class SeedDataInitialize(PostgresDatabaseFixture database) : BaseEfRepoTe
         ).IsSuccess.ShouldBeTrue();
 
         (await userManager.GetUsersInRoleAsync(Role.Member.Name)).Count.ShouldBe(
-            SeedData.NUMBER_OF_SEED_USERS
+            SeedData.NumberOfSeedUsers
         );
         (await DbContext.UserProfiles.CountAsync(cancellationToken)).ShouldBe(
-            SeedData.NUMBER_OF_SEED_USERS + 1
+            SeedData.NumberOfSeedUsers + 1
         );
     }
 }

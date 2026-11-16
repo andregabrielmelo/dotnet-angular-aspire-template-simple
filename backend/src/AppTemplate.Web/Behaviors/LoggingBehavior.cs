@@ -15,6 +15,8 @@ public class LoggingBehavior<TRequest, TResponse>(
 ) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IMessage
 {
+    private readonly ILoggerAdapter<LoggingBehavior<TRequest, TResponse>> _logger = logger;
+
     public async ValueTask<TResponse> Handle(
         TRequest request,
         MessageHandlerDelegate<TRequest, TResponse> next,
@@ -23,7 +25,7 @@ public class LoggingBehavior<TRequest, TResponse>(
     {
         Guard.Against.Null(request);
 
-        logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
+        _logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
 
         var sw = Stopwatch.StartNew();
 
@@ -31,7 +33,7 @@ public class LoggingBehavior<TRequest, TResponse>(
 
         sw.Stop();
 
-        logger.LogInformation(
+        _logger.LogInformation(
             "Handled {RequestName} in {ElapsedMilliseconds} ms",
             typeof(TRequest).Name,
             sw.ElapsedMilliseconds

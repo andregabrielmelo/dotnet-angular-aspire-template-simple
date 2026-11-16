@@ -7,11 +7,13 @@ namespace AppTemplate.Web.Services;
 /// <summary><see cref="ICurrentUser"/> read from the current request's session cookie claims.</summary>
 public sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : ICurrentUser
 {
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+
     private IReadOnlySet<string>? _permissions;
 
     public UserId? Id =>
         int.TryParse(
-            httpContextAccessor.HttpContext?.User.FindFirst(AppClaimTypes.UserId)?.Value,
+            _httpContextAccessor.HttpContext?.User.FindFirst(AppClaimTypes.UserId)?.Value,
             out var value
         ) && UserId.TryFrom(value, out var id)
             ? id
@@ -19,7 +21,7 @@ public sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : ICur
 
     public IReadOnlySet<string> Permissions =>
         _permissions ??=
-            httpContextAccessor
+            _httpContextAccessor
                 .HttpContext?.User.FindAll(AppClaimTypes.Permission)
                 .Select(claim => claim.Value)
                 .ToHashSet(StringComparer.Ordinal)

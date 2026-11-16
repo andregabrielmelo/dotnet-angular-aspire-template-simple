@@ -18,7 +18,7 @@ public sealed class RegisterRequest
 /// Creates an account and emails its confirmation link. It signs in (<see cref="LoginEndpoint"/>)
 /// once the email is confirmed, so registration returns no tokens.
 /// </summary>
-public class RegisterEndpoint(IMediator _mediator)
+public class RegisterEndpoint(IMediator mediator)
     : Endpoint<RegisterRequest, Results<Created, ProblemHttpResult>>
 {
     public override void Configure()
@@ -64,7 +64,7 @@ public class RegisterEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new RegisterUserCommand(
                 UserName.From(request.Name),
                 new EmailAddress(request.Email),
@@ -91,13 +91,13 @@ public sealed class RegisterValidator : Validator<RegisterRequest>
         RuleFor(x => x.Password)
             .NotEmpty()
             .WithMessage("The password is required.")
-            .MinimumLength(PasswordConstants.MIN_LENGTH)
+            .MinimumLength(PasswordConstants.MinLength)
             .WithMessage(
-                $"The password must be at least {PasswordConstants.MIN_LENGTH} characters long."
+                $"The password must be at least {PasswordConstants.MinLength} characters long."
             )
-            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .MaximumLength(PasswordConstants.MaxLength)
             .WithMessage(
-                $"The password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+                $"The password must be at most {PasswordConstants.MaxLength} characters long."
             );
     }
 }

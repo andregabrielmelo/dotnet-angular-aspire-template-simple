@@ -29,7 +29,7 @@ public sealed class TokenResponse
 /// Issues a bearer token for clients that can't use the session cookie: scripts, mobile and
 /// desktop apps, other services (ADR 018). Browsers keep using <c>POST /auth/login</c>.
 /// </summary>
-public class TokenEndpoint(IMediator _mediator)
+public class TokenEndpoint(IMediator mediator)
     : Endpoint<TokenRequest, Results<Ok<TokenResponse>, ProblemHttpResult>>
 {
     public override void Configure()
@@ -77,7 +77,7 @@ public class TokenEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new CreateTokenCommand(new EmailAddress(request.Email), request.Password),
             cancellationToken
         );
@@ -102,9 +102,9 @@ public sealed class TokenValidator : Validator<TokenRequest>
         RuleFor(x => x.Password)
             .NotEmpty()
             .WithMessage("The password is required.")
-            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .MaximumLength(PasswordConstants.MaxLength)
             .WithMessage(
-                $"The password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+                $"The password must be at most {PasswordConstants.MaxLength} characters long."
             );
     }
 }

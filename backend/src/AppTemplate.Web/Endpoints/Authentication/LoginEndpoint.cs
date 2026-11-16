@@ -16,7 +16,7 @@ public sealed class LoginRequest
 /// Signs in: Identity checks the credentials (with lockout) and sets its session cookie, which the
 /// browser then sends with every request (ADR 015).
 /// </summary>
-public class LoginEndpoint(IMediator _mediator)
+public class LoginEndpoint(IMediator mediator)
     : Endpoint<LoginRequest, Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
@@ -63,7 +63,7 @@ public class LoginEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new LoginCommand(new EmailAddress(request.Email), request.Password),
             cancellationToken
         );
@@ -79,13 +79,13 @@ public sealed class LoginValidator : Validator<LoginRequest>
         RuleFor(x => x.Password)
             .NotEmpty()
             .WithMessage("The password is required.")
-            .MinimumLength(PasswordConstants.MIN_LENGTH)
+            .MinimumLength(PasswordConstants.MinLength)
             .WithMessage(
-                $"The password must be at least {PasswordConstants.MIN_LENGTH} characters long."
+                $"The password must be at least {PasswordConstants.MinLength} characters long."
             )
-            .MaximumLength(PasswordConstants.MAX_LENGTH)
+            .MaximumLength(PasswordConstants.MaxLength)
             .WithMessage(
-                $"The current password must be at most {PasswordConstants.MAX_LENGTH} characters long."
+                $"The current password must be at most {PasswordConstants.MaxLength} characters long."
             );
     }
 }
