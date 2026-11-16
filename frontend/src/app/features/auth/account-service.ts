@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiSchema } from '../../core/api/api-schema';
-import { AUTH_PATH } from './auth-service';
+import { AUTH_PATH } from '../../core/auth/auth-service';
 
 type ConfirmEmailRequest = ApiSchema<'ConfirmEmailRequest'>;
 type ResendConfirmationRequest = ApiSchema<'ResendConfirmationRequest'>;

@@ -725,7 +725,7 @@ cd frontend && npm run api:generate
 
 Everything here lives in `frontend/src/app/features/projects/`. It mirrors `features/users/`.
 
-**Types**, `projects.model.ts`. Aliases of the generated schemas, so a renamed field fails the build:
+**Types**, `projects-model.ts`. Aliases of the generated schemas, so a renamed field fails the build:
 
 ```ts
 import { ApiSchema } from '../../core/api/api-schema';
@@ -737,13 +737,13 @@ export type CreateProjectRequest = ApiSchema<'CreateProjectRequest'>;
 export type RenameProjectRequest = ApiSchema<'RenameProjectRequest'>;
 ```
 
-**HTTP calls**, `projects.service.ts`. Components never inject `HttpClient`, and ESLint enforces it:
+**HTTP calls**, `projects-service.ts`. Components never inject `HttpClient`, and ESLint enforces it:
 
 ```ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateProjectRequest, Project, ProjectPage, RenameProjectRequest } from './projects.model';
+import { CreateProjectRequest, Project, ProjectPage, RenameProjectRequest } from './projects-model';
 import { API_BASE } from '../../core/api/api-paths';
 
 const BASE = `${API_BASE}/projects`;
@@ -773,15 +773,31 @@ export class ProjectsService {
 
 The browser sends the session cookie for you, and HttpClient adds the antiforgery token to requests other than GET.
 
-**The page**, `projects-page.ts`. It uses signals for state and a reactive form, and reads validation messages from the problem details `errors` object:
+**The page**, `projects-page.ts`. It keeps the page number in the URL (`?page=2`, bound as an input by `withComponentInputBinding`), loads the list with `rxResource`, uses a reactive form, and reads validation messages from the problem details `errors` object:
 
 ```ts
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  numberAttribute,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { Project } from './projects.model';
-import { ProjectsService } from './projects.service';
+import { Project } from './projects-model';
+import { ProjectsService } from './projects-service';
+
+const PAGE_SIZE = 10;
+
+/** `?page=` as a page number: a positive integer, or 1 when it's missing or anything else. */
+function toPage(value: unknown): number {
+  const page = numberAttribute(value, 1);
+  return Number.isInteger(page) && page >= 1 ? page : 1;
+}
 
 /** The signed-in user's own projects: list, create and delete. */
 @Component({
@@ -790,23 +806,23 @@ import { ProjectsService } from './projects.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './projects-page.html',
 })
-export class ProjectsPage implements OnInit {
+export class ProjectsPage {
   private readonly projectsService = inject(ProjectsService);
   private readonly formBuilder = inject(FormBuilder);
 
-  protected readonly projects = signal<Project[]>([]);
+  readonly page = input(1, { transform: toPage });
+
+  /** The current page, loaded again whenever the page changes or `reload()` is called. */
+  protected readonly projects = rxResource({
+    params: () => ({ page: this.page() }),
+    stream: ({ params }) => this.projectsService.list(params.page, PAGE_SIZE),
+  });
+
   protected readonly errorMessage = signal<string | null>(null);
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
   });
-
-  ngOnInit(): void {
-    this.projectsService.list(1, 50).subscribe({
-      next: (page) => this.projects.set(page.items),
-      error: () => this.errorMessage.set('Could not load your projects.'),
-    });
-  }
 
   create(): void {
     if (this.form.invalid) {
@@ -816,8 +832,8 @@ export class ProjectsPage implements OnInit {
 
     this.errorMessage.set(null);
     this.projectsService.create({ name: this.form.getRawValue().name.trim() }).subscribe({
-      next: (project) => {
-        this.projects.update((projects) => [...projects, project]);
+      next: () => {
+        this.projects.reload();
         this.form.reset();
       },
       error: (error: HttpErrorResponse) =>
@@ -833,7 +849,7 @@ export class ProjectsPage implements OnInit {
   delete(project: Project): void {
     this.errorMessage.set(null);
     this.projectsService.delete(project.id).subscribe({
-      next: () => this.projects.update((projects) => projects.filter((p) => p.id !== project.id)),
+      next: () => this.projects.reload(),
       error: () => this.errorMessage.set(`Could not delete ${project.name}.`),
     });
   }
@@ -844,7 +860,8 @@ export class ProjectsPage implements OnInit {
 - a form with a labelled input
 - an error tied to the input with `aria-describedby`
 - `role="alert"` on the error message
-- an `@for` list with an `@empty` row
+- an `@for` list over `projects.value().items` (inside `@if (projects.hasValue())`) with an `@empty` row, and "Could not load your projects." when `projects.error()` is set
+- Previous/Next links (`[routerLink]="[]"` with `[queryParams]="{ page: page() + 1 }"`) and "Page x of y" when there is more than one page, as in `features/users/users-page.html`
 
 Use no inline scripts or event-handler attributes: the content security policy blocks them.
 
@@ -982,7 +999,7 @@ public class ProjectGetById(CustomWebApplicationFactory<Program> factory)
   - a missing id (404)
   - for lists: paging, and that callers see only their own rows
 
-**Frontend specs** live next to their files: `projects.service.spec.ts` checks URLs, methods and bodies with `HttpTestingController`; `projects-page.spec.ts` checks the rendered list, creating a project, and showing a 400's field message. Mirror `users.service.spec.ts` and `users-page.spec.ts`.
+**Frontend specs** live next to their files: `projects-service.spec.ts` checks URLs, methods and bodies with `HttpTestingController`; `projects-page.spec.ts` checks the rendered list, the page from the URL (`fixture.componentRef.setInput('page', 2)`), creating a project, and showing a 400's field message. The list loads through `rxResource`, so run `TestBed.tick()` before expecting its request and `await fixture.whenStable()` after flushing it. Mirror `users-service.spec.ts` and `users-page.spec.ts`.
 
 Some tests need no changes:
 - The **architecture tests** check that the new endpoints live in a feature namespace under `AppTemplate.Web`, that the handlers live in UseCases, and that the names end in `Command` or `Query`.

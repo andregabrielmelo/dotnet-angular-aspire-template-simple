@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AuthService } from '../auth-service';
+import { AuthService } from '../../../core/auth/auth-service';
 import { describeAuthError, safeReturnUrl } from '../auth-messages';
 import { ResendConfirmation } from '../resend-confirmation/resend-confirmation';
 

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { AccountService } from '../account.service';
+import { AccountService } from '../account-service';
 
 /** Asks for a password reset link. The answer is the same whether or not the email has an account. */
 @Component({

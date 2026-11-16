@@ -9,7 +9,7 @@ import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@ang
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth-interceptor';
-import { AuthService } from './features/auth/auth-service';
+import { AuthService } from './core/auth/auth-service';
 
 export const appConfig: ApplicationConfig = {
   providers: [

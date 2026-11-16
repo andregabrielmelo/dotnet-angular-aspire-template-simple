@@ -4,8 +4,8 @@ import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { RegisterPage } from './register-page';
-import { AccountService } from '../account.service';
-import { AuthService } from '../auth-service';
+import { AccountService } from '../account-service';
+import { AuthService } from '../../../core/auth/auth-service';
 
 describe('RegisterPage', () => {
   function setup(signedIn = false) {

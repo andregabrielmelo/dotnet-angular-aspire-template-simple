@@ -4,26 +4,52 @@
     <a routerLink="/home" class="text-sm text-blue-600 underline">Back</a>
   </div>
 
-  @if (errorMessage(); as message) {
+  @if (users.error()) {
+    <p class="mb-4 text-sm text-red-600" role="alert">Could not load users.</p>
+  }
+  @if (deleteError(); as message) {
     <p class="mb-4 text-sm text-red-600" role="alert">{{ message }}</p>
   }
 
-  <ul class="divide-y divide-gray-200 rounded-md border border-gray-200">
-    @for (user of users(); track user.id) {
-      <li class="flex items-center justify-between px-4 py-2 text-sm">
-        <span>#{{ user.id }} · {{ user.name }}</span>
-        @if (canDelete()) {
-          <button
-            type="button"
-            (click)="deleteUser(user)"
-            class="rounded-md border border-red-300 px-3 py-1 text-red-700"
-          >
-            Delete
-          </button>
+  @if (users.hasValue()) {
+    @let result = users.value();
+    <ul class="divide-y divide-gray-200 rounded-md border border-gray-200">
+      @for (user of result.items; track user.id) {
+        <li class="flex items-center justify-between px-4 py-2 text-sm">
+          <span>#{{ user.id }} · {{ user.name }}</span>
+          @if (canDelete()) {
+            <button
+              type="button"
+              (click)="deleteUser(user)"
+              class="rounded-md border border-red-300 px-3 py-1 text-red-700"
+            >
+              Delete
+            </button>
+          }
+        </li>
+      } @empty {
+        <li class="px-4 py-2 text-sm text-gray-600">No users.</li>
+      }
+    </ul>
+
+    @if (result.totalPages > 1) {
+      <nav aria-label="Pages" class="mt-4 flex items-center justify-between text-sm">
+        @if (page() > 1) {
+          <a [routerLink]="[]" [queryParams]="{ page: page() - 1 }" class="text-blue-600 underline">
+            Previous
+          </a>
+        } @else {
+          <span class="text-gray-400">Previous</span>
         }
-      </li>
-    } @empty {
-      <li class="px-4 py-2 text-sm text-gray-600">No users.</li>
+        <span>Page {{ page() }} of {{ result.totalPages }}</span>
+        @if (page() < result.totalPages) {
+          <a [routerLink]="[]" [queryParams]="{ page: page() + 1 }" class="text-blue-600 underline">
+            Next
+          </a>
+        } @else {
+          <span class="text-gray-400">Next</span>
+        }
+      </nav>
     }
-  </ul>
+  }
 </div>

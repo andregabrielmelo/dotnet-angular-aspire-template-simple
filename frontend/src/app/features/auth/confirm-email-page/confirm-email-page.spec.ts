@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ConfirmEmailPage } from './confirm-email-page';
-import { AccountService } from '../account.service';
+import { AccountService } from '../account-service';
 
 describe('ConfirmEmailPage', () => {
   function setup(query: { userId?: string; code?: string }, confirmEmail = vi.fn()) {

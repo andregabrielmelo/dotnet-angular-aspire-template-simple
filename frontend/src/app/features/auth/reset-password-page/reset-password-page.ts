@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angu
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { AccountService } from '../account.service';
+import { AccountService } from '../account-service';
 
 type Status = 'idle' | 'saving' | 'done' | 'invalid-link';
 

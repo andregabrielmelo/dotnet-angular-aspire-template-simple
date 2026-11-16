@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { ForgotPasswordPage } from './forgot-password-page';
-import { AccountService } from '../account.service';
+import { AccountService } from '../account-service';
 
 describe('ForgotPasswordPage', () => {
   function setup() {

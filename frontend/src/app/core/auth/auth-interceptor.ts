@@ -3,7 +3,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { API_BASE } from '../api/api-paths';
-import { AUTH_PATH, AuthService } from '../../features/auth/auth-service';
+import { AUTH_PATH, AuthService } from './auth-service';
 
 function relativePath(url: string): string {
   return url.startsWith('/') ? url.slice(1) : url;

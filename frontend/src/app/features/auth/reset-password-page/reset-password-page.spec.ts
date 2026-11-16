@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ResetPasswordPage } from './reset-password-page';
-import { AccountService } from '../account.service';
+import { AccountService } from '../account-service';
 
 describe('ResetPasswordPage', () => {
   function setup(resetPassword: ReturnType<typeof vi.fn>) {
