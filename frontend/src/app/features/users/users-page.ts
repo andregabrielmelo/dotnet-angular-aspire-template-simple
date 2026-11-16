@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { CurrentUserService } from '../../core/auth/current-user-service';
@@ -19,7 +26,9 @@ export class UsersPage implements OnInit {
 
   protected readonly users = signal<UserRow[]>([]);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly canDelete = () => this.currentUser.hasPermission(Permission.UsersDelete);
+  protected readonly canDelete = computed(() =>
+    this.currentUser.hasPermission(Permission.UsersDelete),
+  );
 
   ngOnInit(): void {
     this.load();
