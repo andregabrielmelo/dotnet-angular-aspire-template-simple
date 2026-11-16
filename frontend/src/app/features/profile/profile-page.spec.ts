@@ -5,9 +5,9 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ProfilePage } from './profile-page';
-import { CurrentUserService, CurrentUser } from '../../core/auth/current-user.service';
+import { CurrentUserService, CurrentUser } from '../../core/auth/current-user-service';
 import { AuthService } from '../../core/auth/auth-service';
-import { UsersService } from '../users/users.service';
+import { UsersService } from '../users/users-service';
 
 describe('ProfilePage', () => {
   const profile: CurrentUser = { id: 7, name: 'Ada', email: 'ada@example.com', permissions: [] };

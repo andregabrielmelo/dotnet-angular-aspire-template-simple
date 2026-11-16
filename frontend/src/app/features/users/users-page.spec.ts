@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { UsersPage } from './users-page';
-import { CurrentUserService } from '../../core/auth/current-user.service';
+import { CurrentUserService } from '../../core/auth/current-user-service';
 import { Permission } from '../../core/auth/permissions';
 
 describe('UsersPage', () => {

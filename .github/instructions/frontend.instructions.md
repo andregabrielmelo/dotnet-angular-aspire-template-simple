@@ -10,7 +10,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 
 - `core/`: app-wide singletons. Today this is the session (`core/auth/`): `AuthService`, `CurrentUserService`, `authGuard`, `permissionGuard` and `authInterceptor` (on a 401 while signed in, forgets the user and sends them to sign in).
 - `shared/`: UI and utilities that more than one feature genuinely reuses.
-- `features/<feature>/`: everything a feature owns, meaning its pages, its `<feature>.service.ts` (HTTP), its `<feature>.model.ts` (API types) and its routes. Model new features on `features/users/`.
+- `features/<feature>/`: everything a feature owns, meaning its pages, its `<feature>-service.ts` (HTTP), its `<feature>-model.ts` (API types) and its routes. Model new features on `features/users/`.
 - File names are hyphenated, with one concept per file. A component's `.ts`, `.html`, `.css` and `.spec.ts` sit side by side.
 
 ## HTTP and authentication
@@ -18,7 +18,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 - Components never inject `HttpClient` (ESLint enforces this outside `*service.ts`). API calls live in the feature's service, which returns `Observable`s and uses relative `api/...` URLs. The dev server proxies them to the API (`proxy.conf.mjs`), so there is no base URL and no CORS.
 - API request and response types come from the OpenAPI document. Alias them in the feature's model file (`export type UserRow = ApiSchema<'UserRecord'>`) instead of writing interfaces by hand, and never edit `core/api/api-types.ts`; regenerate it with `npm run api:generate`.
 - `AuthService` owns the session, which is an HttpOnly cookie the app can't read: the browser sends it with every same-origin request. Signed in means `CurrentUserService` loaded a profile (`ensureSession()`). Never store a credential (in `localStorage` or anywhere), and never add an `Authorization` header. HttpClient sends the antiforgery token (`XSRF-TOKEN` cookie as `X-XSRF-TOKEN`, `withXsrfConfiguration` in `app.config.ts`); keep it on, and call `fetchAntiforgeryToken()` after anything that changes who is signed in, as `login()` does.
-- Account flows that don't change the session (confirm email, resend, forgot and reset password) live in `features/auth/account.service.ts`; their pages read the emailed link's query parameters as component inputs (`withComponentInputBinding`). A 429 means the API's rate limit: tell the user to wait, don't retry.
+- Account flows that don't change the session (confirm email, resend, forgot and reset password) live in `features/auth/account-service.ts`; their pages read the emailed link's query parameters as component inputs (`withComponentInputBinding`). A 429 means the API's rate limit: tell the user to wait, don't retry.
 - `authGuard` and `permissionGuard` only shape the UI. The API enforces every permission itself, so never rely on a guard for security.
 - Never put secrets or environment-specific URLs in frontend code.
 

@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { CurrentUserService } from '../../core/auth/current-user.service';
+import { CurrentUserService } from '../../core/auth/current-user-service';
 import { AuthService } from '../../core/auth/auth-service';
-import { UsersService } from '../users/users.service';
+import { UsersService } from '../users/users-service';
 
 type Status = 'idle' | 'saving' | 'saved';
 

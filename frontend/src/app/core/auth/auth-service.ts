@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, switchMap, tap } from 'rxjs';
 import { API_BASE } from '../api/api-paths';
-import { CurrentUser, CurrentUserService } from './current-user.service';
+import { CurrentUser, CurrentUserService } from './current-user-service';
 
 export const AUTH_PATH = `${API_BASE}/auth`;
 

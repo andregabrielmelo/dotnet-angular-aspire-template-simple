@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { CurrentUserService } from '../../core/auth/current-user.service';
+import { CurrentUserService } from '../../core/auth/current-user-service';
 import { Permission } from '../../core/auth/permissions';
-import { UserRow } from './users.model';
-import { UsersService } from './users.service';
+import { UserRow } from './users-model';
+import { UsersService } from './users-service';
 
 /** User administration. Reaching it requires users:read; deleting requires users:delete. */
 @Component({

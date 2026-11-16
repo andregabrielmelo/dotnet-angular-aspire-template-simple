@@ -3,7 +3,7 @@ import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@a
 import { Observable, firstValueFrom, of } from 'rxjs';
 import { vi } from 'vitest';
 import { permissionGuard } from './permission-guard';
-import { CurrentUserService } from './current-user.service';
+import { CurrentUserService } from './current-user-service';
 import { Permission } from './permissions';
 
 describe('permissionGuard', () => {

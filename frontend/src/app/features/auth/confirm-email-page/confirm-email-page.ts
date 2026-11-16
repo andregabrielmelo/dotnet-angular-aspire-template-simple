@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AccountService } from '../account.service';
+import { AccountService } from '../account-service';
 
 type Status = 'confirming' | 'confirmed' | 'failed';
 

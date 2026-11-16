@@ -721,7 +721,7 @@ cd frontend && npm run api:generate
 
 Everything here lives in `frontend/src/app/features/projects/`. It mirrors `features/users/`.
 
-**Types**, `projects.model.ts`. Aliases of the generated schemas, so a renamed field fails the build:
+**Types**, `projects-model.ts`. Aliases of the generated schemas, so a renamed field fails the build:
 
 ```ts
 import { ApiSchema } from '../../core/api/api-schema';
@@ -733,13 +733,13 @@ export type CreateProjectRequest = ApiSchema<'CreateProjectRequest'>;
 export type RenameProjectRequest = ApiSchema<'RenameProjectRequest'>;
 ```
 
-**HTTP calls**, `projects.service.ts`. Components never inject `HttpClient`, and ESLint enforces it:
+**HTTP calls**, `projects-service.ts`. Components never inject `HttpClient`, and ESLint enforces it:
 
 ```ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateProjectRequest, Project, ProjectPage, RenameProjectRequest } from './projects.model';
+import { CreateProjectRequest, Project, ProjectPage, RenameProjectRequest } from './projects-model';
 import { API_BASE } from '../../core/api/api-paths';
 
 const BASE = `${API_BASE}/projects`;
@@ -776,8 +776,8 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { Project } from './projects.model';
-import { ProjectsService } from './projects.service';
+import { Project } from './projects-model';
+import { ProjectsService } from './projects-service';
 
 /** The signed-in user's own projects: list, create and delete. */
 @Component({
@@ -978,7 +978,7 @@ public class ProjectGetById(CustomWebApplicationFactory<Program> factory)
   - a missing id (404)
   - for lists: paging, and that callers see only their own rows
 
-**Frontend specs** live next to their files: `projects.service.spec.ts` checks URLs, methods and bodies with `HttpTestingController`; `projects-page.spec.ts` checks the rendered list, creating a project, and showing a 400's field message. Mirror `users.service.spec.ts` and `users-page.spec.ts`.
+**Frontend specs** live next to their files: `projects-service.spec.ts` checks URLs, methods and bodies with `HttpTestingController`; `projects-page.spec.ts` checks the rendered list, creating a project, and showing a 400's field message. Mirror `users-service.spec.ts` and `users-page.spec.ts`.
 
 Some tests need no changes:
 - The **architecture tests** check that the new endpoints live in a feature namespace under `AppTemplate.Web`, that the handlers live in UseCases, and that the names end in `Command` or `Query`.

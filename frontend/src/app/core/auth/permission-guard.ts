@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
-import { CurrentUserService } from './current-user.service';
+import { CurrentUserService } from './current-user-service';
 import { Permission } from './permissions';
 
 /** Allows the route only for users holding `permission`; others are sent to /home. */

@@ -59,7 +59,7 @@ Emails that carry an Identity code (confirmation, password reset, and anything l
 2. **Code and link:** in `Infrastructure/Identity/IdentityService.cs`, generate the code with `UserManager` (`Generate...TokenAsync`), Base64Url-encode it (`Encode`), and build the link with `Link(path, query...)`, which starts from `AccountLinks:ClientUrl`. Put the path in `AccountLinkSettings`, next to `ConfirmEmailPath` and `ResetPasswordPath`.
 3. **The email:** send it through `AccountEmailSender` (Identity's `IEmailSender<ApplicationUser>`), adding a method for a new kind of email.
 4. **The endpoints:** a use case and an anonymous endpoint that takes the code back, with the `authentication` rate limit policy ([Limit one endpoint](#limit-one-endpoint)). The endpoint that sends answers the same whether or not the address has an account (202), and the one that takes the code answers a wrong or expired one with a 400 on `code` (`InvalidCodeResult`).
-5. **The page:** a route in `frontend/src/app/features/auth/auth.routes.ts` at the link's path, reading its query parameters as inputs, and a call in `account.service.ts`.
+5. **The page:** a route in `frontend/src/app/features/auth/auth.routes.ts` at the link's path, reading its query parameters as inputs, and a call in `account-service.ts`.
 6. **Tests:** `IdentityServiceEmailFlows` (integration, with the fixture's recording sender) and a functional test per endpoint that follows the link (`factory.EmailSender.LastLinkQueryTo(email)`). Add the anonymous route to `EndpointAuthorization`.
 
 Never log the link, the code or the address. The codes are protected with Data Protection keys kept in Postgres, so a link works on every instance and after a restart.

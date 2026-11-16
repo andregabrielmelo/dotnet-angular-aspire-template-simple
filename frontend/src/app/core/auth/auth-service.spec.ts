@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { ANTIFORGERY_TOKEN_PATH, AuthService } from './auth-service';
-import { CurrentUser, CurrentUserService } from './current-user.service';
+import { CurrentUser, CurrentUserService } from './current-user-service';
 
 const ada: CurrentUser = { id: 1, name: 'Ada', email: 'ada@example.com', permissions: [] };
 

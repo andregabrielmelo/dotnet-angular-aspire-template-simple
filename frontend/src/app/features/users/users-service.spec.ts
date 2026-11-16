@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { UsersService } from './users.service';
-import { UserPage } from './users.model';
+import { UsersService } from './users-service';
+import { UserPage } from './users-model';
 
 describe('UsersService', () => {
   function setup() {

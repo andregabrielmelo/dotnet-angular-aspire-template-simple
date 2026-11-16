@@ -45,7 +45,7 @@ module.exports = defineConfig([
         {
           selector: "CallExpression[callee.name='inject'] > Identifier[name='HttpClient']",
           message:
-            'Inject HttpClient only in a feature service (*.service.ts) and call that service instead.',
+            'Inject HttpClient only in a feature service (*-service.ts) and call that service instead.',
         },
       ],
     },
