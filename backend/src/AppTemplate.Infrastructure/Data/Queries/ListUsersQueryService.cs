@@ -11,13 +11,15 @@ namespace AppTemplate.Infrastructure.Data.Queries;
 /// <param name="db">The application database context. You can use EF, Dapper, SqlClient, etc. for queries</param>
 public class ListUsersQueryService(ApplicationDatabaseContext db) : IListUsersQueryService
 {
+    private readonly ApplicationDatabaseContext _db = db;
+
     public async Task<PagedResult<UserDto>> ListAsync(
         int page,
         int perPage,
         CancellationToken cancellationToken
     )
     {
-        var items = await db
+        var items = await _db
             // EF Core materializes User from this SQL, so it must return every mapped column
             // (snake_case names, see UseSnakeCaseNamingConvention) - not just the projected ones.
             .UserProfiles.FromSqlRaw(
@@ -30,7 +32,7 @@ public class ListUsersQueryService(ApplicationDatabaseContext db) : IListUsersQu
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        int totalCount = await db.UserProfiles.CountAsync(cancellationToken);
+        int totalCount = await _db.UserProfiles.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling(totalCount / (double)perPage);
         var result = new PagedResult<UserDto>(items, page, perPage, totalCount, totalPages);
 

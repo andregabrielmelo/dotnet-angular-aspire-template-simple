@@ -31,6 +31,12 @@ public sealed class IdentityService(
     IOptions<AccountLinkSettings> links
 ) : IIdentityService
 {
+    private readonly ApplicationDatabaseContext _db = db;
+    private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
+    private readonly IEmailSender<ApplicationUser> _accountEmails = accountEmails;
+    private readonly IOptions<AccountLinkSettings> _links = links;
+
     public async Task<Result<UserId>> CreateUserAsync(
         UserName name,
         EmailAddress email,
@@ -54,7 +60,7 @@ public sealed class IdentityService(
 
         try
         {
-            var created = await userManager.CreateAsync(account, password);
+            var created = await _userManager.CreateAsync(account, password);
             return created.Succeeded
                 ? profile.Id
                 : created.ToApplicationResult(passwordField: "password");
@@ -66,8 +72,8 @@ public sealed class IdentityService(
         {
             // Another registration with this email won the race. Nothing was saved; stop
             // tracking both, so a later save in this scope doesn't try them again.
-            db.Entry(account).State = EntityState.Detached;
-            db.Entry(profile).State = EntityState.Detached;
+            _db.Entry(account).State = EntityState.Detached;
+            _db.Entry(profile).State = EntityState.Detached;
             return UserErrors.EmailNotUnique;
         }
     }
@@ -78,7 +84,7 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await userManager.Users.SingleOrDefaultAsync(
+        var account = await _userManager.Users.SingleOrDefaultAsync(
             candidate => candidate.ProfileId == userId,
             cancellationToken
         );
@@ -87,14 +93,14 @@ public sealed class IdentityService(
             return Result.NotFound();
         }
 
-        var current = await userManager.GetRolesAsync(account);
+        var current = await _userManager.GetRolesAsync(account);
         var missing = roles.Select(role => role.Name).Distinct().Except(current).ToList();
         if (missing.Count == 0)
         {
             return Result.Success();
         }
 
-        var added = await userManager.AddToRolesAsync(account, missing);
+        var added = await _userManager.AddToRolesAsync(account, missing);
         return added.ToApplicationResult();
     }
 
@@ -104,7 +110,7 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await userManager.FindByEmailAsync(email.Value);
+        var account = await _userManager.FindByEmailAsync(email.Value);
         if (account is null)
         {
             // Hash the attempt anyway, so an unknown email takes as long as a wrong password
@@ -113,7 +119,7 @@ public sealed class IdentityService(
             return Result.Unauthorized();
         }
 
-        var signIn = await signInManager.CheckPasswordSignInAsync(
+        var signIn = await _signInManager.CheckPasswordSignInAsync(
             account,
             password,
             lockoutOnFailure: true
@@ -127,7 +133,7 @@ public sealed class IdentityService(
 
         if (signIn.Succeeded)
         {
-            var roles = await userManager.GetRolesAsync(account);
+            var roles = await _userManager.GetRolesAsync(account);
             return new AccountDto(
                 account.ProfileId,
                 new EmailAddress(account.Email!),
@@ -140,14 +146,14 @@ public sealed class IdentityService(
         {
             // Identity says "not allowed" (unconfirmed) before it checks the password. Say so
             // only to someone who knows the password, and count a wrong one toward lockout.
-            if (await userManager.IsLockedOutAsync(account))
+            if (await _userManager.IsLockedOutAsync(account))
             {
                 return Result.Unauthorized();
             }
 
-            if (!await userManager.CheckPasswordAsync(account, password))
+            if (!await _userManager.CheckPasswordAsync(account, password))
             {
-                await userManager.AccessFailedAsync(account);
+                await _userManager.AccessFailedAsync(account);
                 return Result.Unauthorized();
             }
 
@@ -160,11 +166,11 @@ public sealed class IdentityService(
 
     public async Task SignInAsync(UserId userId, CancellationToken cancellationToken)
     {
-        var account = await userManager.Users.SingleOrDefaultAsync(
+        var account = await _userManager.Users.SingleOrDefaultAsync(
             candidate => candidate.ProfileId == userId,
             cancellationToken
         );
-        await signInManager.SignInAsync(
+        await _signInManager.SignInAsync(
             Guard.Against.NotFound(userId, account),
             isPersistent: true
         );
@@ -172,18 +178,18 @@ public sealed class IdentityService(
 
     public async Task RefreshSignInAsync(UserId userId, CancellationToken cancellationToken)
     {
-        var account = await userManager.Users.SingleOrDefaultAsync(
+        var account = await _userManager.Users.SingleOrDefaultAsync(
             candidate => candidate.ProfileId == userId,
             cancellationToken
         );
-        await signInManager.RefreshSignInAsync(Guard.Against.NotFound(userId, account));
+        await _signInManager.RefreshSignInAsync(Guard.Against.NotFound(userId, account));
     }
 
-    public Task SignOutAsync() => signInManager.SignOutAsync();
+    public Task SignOutAsync() => _signInManager.SignOutAsync();
 
     public async Task<AccountDto?> GetUserAsync(UserId userId, CancellationToken cancellationToken)
     {
-        var account = await userManager.Users.SingleOrDefaultAsync(
+        var account = await _userManager.Users.SingleOrDefaultAsync(
             candidate => candidate.ProfileId == userId,
             cancellationToken
         );
@@ -192,7 +198,7 @@ public sealed class IdentityService(
             return null;
         }
 
-        var roles = await userManager.GetRolesAsync(account);
+        var roles = await _userManager.GetRolesAsync(account);
         return new AccountDto(
             account.ProfileId,
             new EmailAddress(account.Email!),
@@ -203,7 +209,7 @@ public sealed class IdentityService(
 
     public async Task SendEmailConfirmationAsync(UserId userId, CancellationToken cancellationToken)
     {
-        var account = await userManager.Users.SingleOrDefaultAsync(
+        var account = await _userManager.Users.SingleOrDefaultAsync(
             candidate => candidate.ProfileId == userId,
             cancellationToken
         );
@@ -214,7 +220,7 @@ public sealed class IdentityService(
     public async Task SendEmailConfirmationAsync(
         EmailAddress email,
         CancellationToken cancellationToken
-    ) => await SendEmailConfirmationAsync(await userManager.FindByEmailAsync(email.Value));
+    ) => await SendEmailConfirmationAsync(await _userManager.FindByEmailAsync(email.Value));
 
     public async Task<Result> ConfirmEmailAsync(
         UserId userId,
@@ -222,7 +228,7 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await userManager.Users.SingleOrDefaultAsync(
+        var account = await _userManager.Users.SingleOrDefaultAsync(
             candidate => candidate.ProfileId == userId,
             cancellationToken
         );
@@ -231,7 +237,7 @@ public sealed class IdentityService(
             return IdentityErrors.InvalidCodeResult;
         }
 
-        var confirmed = await userManager.ConfirmEmailAsync(account, token);
+        var confirmed = await _userManager.ConfirmEmailAsync(account, token);
         return confirmed.Succeeded ? Result.Success() : IdentityErrors.InvalidCodeResult;
     }
 
@@ -240,21 +246,21 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await userManager.FindByEmailAsync(email.Value);
+        var account = await _userManager.FindByEmailAsync(email.Value);
         if (account is null || !account.EmailConfirmed)
         {
             return;
         }
 
-        var passwordResetToken = await userManager.GeneratePasswordResetTokenAsync(account);
+        var passwordResetToken = await _userManager.GeneratePasswordResetTokenAsync(account);
         var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(passwordResetToken));
 
         var link = QueryHelpers.AddQueryString(
-            $"{links.Value.ClientUrl.TrimEnd('/')}{links.Value.ResetPasswordPath}",
+            $"{_links.Value.ClientUrl.TrimEnd('/')}{_links.Value.ResetPasswordPath}",
             new Dictionary<string, string?> { ["email"] = account.Email, ["code"] = code }
         );
 
-        await accountEmails.SendPasswordResetLinkAsync(account, account.Email!, link);
+        await _accountEmails.SendPasswordResetLinkAsync(account, account.Email!, link);
     }
 
     public async Task<Result> ResetPasswordAsync(
@@ -264,21 +270,21 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await userManager.FindByEmailAsync(email.Value);
+        var account = await _userManager.FindByEmailAsync(email.Value);
         if (account is null || TryDecodeCode(code) is not { } token)
         {
             return IdentityErrors.InvalidCodeResult;
         }
 
-        var reset = await userManager.ResetPasswordAsync(account, token, newPassword);
+        var reset = await _userManager.ResetPasswordAsync(account, token, newPassword);
         if (!reset.Succeeded)
         {
             return reset.ToApplicationResult(passwordField: "newPassword");
         }
 
         // Whoever can read the account's email may sign in again at once.
-        await userManager.ResetAccessFailedCountAsync(account);
-        await userManager.SetLockoutEndDateAsync(account, null);
+        await _userManager.ResetAccessFailedCountAsync(account);
+        await _userManager.SetLockoutEndDateAsync(account, null);
         return Result.Success();
     }
 
@@ -289,7 +295,7 @@ public sealed class IdentityService(
         CancellationToken cancellationToken
     )
     {
-        var account = await userManager.Users.SingleOrDefaultAsync(
+        var account = await _userManager.Users.SingleOrDefaultAsync(
             candidate => candidate.ProfileId == userId,
             cancellationToken
         );
@@ -298,7 +304,7 @@ public sealed class IdentityService(
             return Result.NotFound();
         }
 
-        var changed = await userManager.ChangePasswordAsync(account, currentPassword, newPassword);
+        var changed = await _userManager.ChangePasswordAsync(account, currentPassword, newPassword);
         return changed.ToApplicationResult(passwordField: "newPassword");
     }
 
@@ -309,11 +315,11 @@ public sealed class IdentityService(
 
     private void HashForTiming(string password)
     {
-        s_timingHash ??= userManager.PasswordHasher.HashPassword(
+        s_timingHash ??= _userManager.PasswordHasher.HashPassword(
             TimingAccount,
             Guid.NewGuid().ToString()
         );
-        userManager.PasswordHasher.VerifyHashedPassword(TimingAccount, s_timingHash, password);
+        _userManager.PasswordHasher.VerifyHashedPassword(TimingAccount, s_timingHash, password);
     }
 
     /// <summary>
@@ -339,11 +345,13 @@ public sealed class IdentityService(
             return;
         }
 
-        var emailConfirmationToken = await userManager.GenerateEmailConfirmationTokenAsync(account);
+        var emailConfirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(
+            account
+        );
         var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailConfirmationToken));
 
         var link = QueryHelpers.AddQueryString(
-            $"{links.Value.ClientUrl.TrimEnd('/')}{links.Value.ConfirmEmailPath}",
+            $"{_links.Value.ClientUrl.TrimEnd('/')}{_links.Value.ConfirmEmailPath}",
             new Dictionary<string, string?>
             {
                 ["userId"] = account.ProfileId.Value.ToString(CultureInfo.InvariantCulture),
@@ -351,6 +359,6 @@ public sealed class IdentityService(
             }
         );
 
-        await accountEmails.SendConfirmationLinkAsync(account, account.Email!, link);
+        await _accountEmails.SendConfirmationLinkAsync(account, account.Email!, link);
     }
 }

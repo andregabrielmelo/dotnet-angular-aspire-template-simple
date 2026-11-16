@@ -15,6 +15,8 @@ public sealed class AccountEmailSender(
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender<ApplicationUser>
 {
+    private readonly IEmailSender _emailSender = emailSender;
+
     private readonly MailserverConfiguration _mailserver = mailserverOptions.Value;
 
     public Task SendConfirmationLinkAsync(
@@ -22,7 +24,7 @@ public sealed class AccountEmailSender(
         string email,
         string confirmationLink
     ) =>
-        emailSender.SendAsync(
+        _emailSender.SendAsync(
             email,
             _mailserver.FromAddress,
             "Confirm your email",
@@ -31,7 +33,7 @@ public sealed class AccountEmailSender(
         );
 
     public Task SendPasswordResetLinkAsync(ApplicationUser user, string email, string resetLink) =>
-        emailSender.SendAsync(
+        _emailSender.SendAsync(
             email,
             _mailserver.FromAddress,
             "Reset your password",
@@ -41,7 +43,7 @@ public sealed class AccountEmailSender(
 
     // Identity's code-only reset flow (MapIdentityApi). This API sends links instead.
     public Task SendPasswordResetCodeAsync(ApplicationUser user, string email, string resetCode) =>
-        emailSender.SendAsync(
+        _emailSender.SendAsync(
             email,
             _mailserver.FromAddress,
             "Reset your password",
