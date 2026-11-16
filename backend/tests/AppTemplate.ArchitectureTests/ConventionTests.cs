@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using FastEndpoints;
 using NetArchTest.Rules;
@@ -7,9 +9,10 @@ namespace AppTemplate.ArchitectureTests;
 
 /// <summary>
 /// Where things go: endpoints in Web's feature namespaces, command and query handlers in UseCases
-/// (ADR 003), domain event handlers in Core.
+/// (ADR 003), domain event handlers in Core; and services keep their injected dependencies in
+/// readonly fields.
 /// </summary>
-public class ConventionTests
+public partial class ConventionTests
 {
     [Fact]
     public void Endpoints_LiveInWebFeatureNamespaces()
@@ -109,6 +112,45 @@ public class ConventionTests
                 + $"UseCases/<Feature>/<UseCase>/: {string.Join(", ", badlyNamed)}"
         );
     }
+
+    [Fact]
+    public void Services_KeepConstructorDependenciesInReadonlyFields()
+    {
+        // A primary-constructor parameter used outside initialization is captured into a hidden,
+        // mutable field the compiler names <parameter>P. Services and adapters copy what they keep
+        // into `private readonly T _x = x;` instead. Command and query handlers and endpoints, thin
+        // classes that use a dependency in one method, may use the parameter directly.
+        var captured = Layers
+            .All.SelectMany(assembly => assembly.GetTypes())
+            .Where(type =>
+                type.IsClass
+                && !IsCompilerGenerated(type)
+                && !IsCommandOrQueryHandler(type)
+                && !typeof(BaseEndpoint).IsAssignableFrom(type)
+            )
+            .SelectMany(type =>
+                type.GetFields(
+                        BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly
+                    )
+                    .Select(field => CapturedParameter().Match(field.Name))
+                    .Where(match => match.Success)
+                    .Select(match => $"{type.FullName} ({match.Groups["parameter"].Value})")
+            )
+            .ToList();
+
+        Assert.True(
+            captured.Count == 0,
+            "Keep injected dependencies in readonly fields (`private readonly T _x = x;`) and use "
+                + $"the field, not the primary-constructor parameter: {string.Join(", ", captured)}"
+        );
+    }
+
+    private static bool IsCompilerGenerated(Type type) =>
+        type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false)
+        || type.Name.Contains('<', StringComparison.Ordinal);
+
+    [GeneratedRegex("^<(?<parameter>[^>]+)>P$")]
+    private static partial Regex CapturedParameter();
 
     private static IEnumerable<Type> BaseTypes(Type type)
     {
