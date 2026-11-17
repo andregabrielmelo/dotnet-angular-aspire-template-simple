@@ -12,14 +12,6 @@ public sealed class MimeKitEmailSender(
 ) : IEmailSender
 {
     private readonly ILoggerAdapter<MimeKitEmailSender> _logger = logger;
-
-    /// <summary>
-    /// How long one SMTP operation (connect, send, quit) may take. MailKit's default is two
-    /// minutes, which would hold a registration or password reset request that long on a stuck
-    /// server.
-    /// </summary>
-    public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
-
     private readonly MailserverConfiguration _mailserver = mailserverOptions.Value;
 
     public async Task SendAsync(
@@ -36,7 +28,7 @@ public sealed class MimeKitEmailSender(
         message.Subject = subject;
         message.Body = new TextPart("plain") { Text = body };
 
-        using var client = new SmtpClient { Timeout = (int)Timeout.TotalMilliseconds };
+        using var client = new SmtpClient();
         await client.ConnectAsync(
             _mailserver.Hostname,
             _mailserver.Port,
