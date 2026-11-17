@@ -4,26 +4,6 @@
  */
 
 export interface paths {
-  '/users/{userId}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /**
-     * Delete a user
-     * @description Deletes a user with the specified id.
-     */
-    delete: operations['AppTemplateWebEndpointsUsersDeleteEndpoint'];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/users/{id}': {
     parameters: {
       query?: never;
@@ -42,7 +22,11 @@ export interface paths {
      */
     put: operations['AppTemplateWebEndpointsUsersUpdateEndpoint'];
     post?: never;
-    delete?: never;
+    /**
+     * Delete a user
+     * @description Deletes a user with the specified id.
+     */
+    delete: operations['AppTemplateWebEndpointsUsersDeleteEndpoint'];
     options?: never;
     head?: never;
     patch?: never;
@@ -499,61 +483,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  AppTemplateWebEndpointsUsersDeleteEndpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @example 1 */
-        userId: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Invalid request data */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Requires the users:delete permission */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description User not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
   AppTemplateWebEndpointsUsersGetByIdEndpoint: {
     parameters: {
       query?: never;
@@ -670,6 +599,61 @@ export interface operations {
         content?: never;
       };
       /** @description Not your profile, and no users:write permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description User not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AppTemplateWebEndpointsUsersDeleteEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @example 1 */
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Requires the users:delete permission */
       403: {
         headers: {
           [name: string]: unknown;

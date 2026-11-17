@@ -24,13 +24,19 @@ namespace AppTemplate.Infrastructure.Identity;
 /// endpoints do.
 /// </summary>
 public sealed class IdentityService(
-    ApplicationDatabaseContext _db,
-    UserManager<ApplicationUser> _userManager,
-    SignInManager<ApplicationUser> _signInManager,
-    IEmailSender<ApplicationUser> _accountEmails,
-    IOptions<AccountLinkSettings> _links
+    ApplicationDatabaseContext db,
+    UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
+    IEmailSender<ApplicationUser> accountEmails,
+    IOptions<AccountLinkSettings> links
 ) : IIdentityService
 {
+    private readonly ApplicationDatabaseContext _db = db;
+    private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
+    private readonly IEmailSender<ApplicationUser> _accountEmails = accountEmails;
+    private readonly IOptions<AccountLinkSettings> _links = links;
+
     public async Task<Result<UserId>> CreateUserAsync(
         UserName name,
         EmailAddress email,

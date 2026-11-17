@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { UpdateUserRequest, UpdateUserResponse, UserPage } from './users.model';
+import { UpdateUserRequest, UpdateUserResponse, UserPage } from './users-model';
 import { API_BASE } from '../../core/api/api-paths';
 
 const BASE = `${API_BASE}/users`;

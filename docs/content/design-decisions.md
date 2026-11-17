@@ -43,7 +43,7 @@ The ASP.NET Core entry point. [FastEndpoints](https://fast-endpoints.com/) + the
 
 ## SharedKernel
 
-Small cross-cutting pieces shared by every layer above Core (base entity/aggregate types, domain event dispatch, the Mediator logging pipeline behavior). Kept in-repo rather than as a separate NuGet package since this template is meant to be a single, self-contained starting point - split it out if you end up sharing it across multiple solutions.
+Small cross-cutting pieces shared by every layer above Core (base entity, aggregate and value object types, the repository interfaces, domain event dispatch and the persistence exceptions use cases react to). The Mediator pipeline behaviors (`LoggingBehavior`, `CachingBehavior`) live in `Web/Behaviors`. Kept in-repo rather than as a separate NuGet package since this template is meant to be a single, self-contained starting point - split it out if you end up sharing it across multiple solutions.
 
 # When To Abstract
 
@@ -51,10 +51,10 @@ Clean Architecture should make change easier. It shouldn't make a simple databas
 
 | Building block | Add it when | Don't add it when |
 |---|---|---|
-| **Interface** | It sits on a layer boundary: UseCases or Core defines it and Infrastructure implements it (`ICurrentUser`, `IEmailSender`), or a real second implementation exists | It only wraps EF Core or another framework API and adds nothing to it, or it exists only so a class can be mocked |
+| **Interface** | It sits on a layer boundary: UseCases or Core defines it and an outer layer implements it (`ICurrentUser`, implemented in Web; `IEmailSender`, in Infrastructure), or a real second implementation exists | It only wraps EF Core or another framework API and adds nothing to it, or it exists only so a class can be mocked |
 | **Repository + specification** | The write path loads an aggregate, changes it through domain methods and saves it (`UserByIdSpecification`), or several handlers reuse the same lookup | It's a one-off read. Project straight to a DTO in a query service (`IListUsersQueryService`) instead |
 | **Query service** | It's a read model, a projection, a join, pagination or hand-written SQL | The handler needs the aggregate's behavior, so use the repository |
-| **Domain event** | Another part of the system reacts to something that happened in the domain, and the aggregate shouldn't know who that is | It's only "save a record". The `User` slice raises `UserRegisteredDomainEvent`, whose handler sends the confirmation email |
+| **Domain event** | Another part of the system reacts to something that happened in the domain, and the aggregate shouldn't know who that is | It's only "save a record". The `User` slice raises `UserRegisteredDomainEvent`, whose handler logs the registration; the confirmation email is sent by the registration use case, which needs `IIdentityService` |
 | **Mediator pipeline behavior** (`Web/Behaviors`) | It's a cross-cutting concern for every use case (`LoggingBehavior`), or for every message carrying a marker interface (`CachingBehavior` and `ICacheable`) | It's logic for one feature. Put that in its handler |
 
 Every use case still goes through Mediator. That one seam stays uniform on purpose, so endpoints, jobs and tests all dispatch the same way.

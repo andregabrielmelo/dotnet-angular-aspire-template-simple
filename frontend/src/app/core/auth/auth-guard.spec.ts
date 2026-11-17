@@ -3,7 +3,7 @@ import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@a
 import { Observable, firstValueFrom, of } from 'rxjs';
 import { vi } from 'vitest';
 import { authGuard } from './auth-guard';
-import { AuthService } from '../../features/auth/auth-service';
+import { AuthService } from './auth-service';
 
 describe('authGuard', () => {
   const route = {} as ActivatedRouteSnapshot;

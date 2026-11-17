@@ -15,7 +15,7 @@ namespace AppTemplate.Infrastructure.Data;
 /// </summary>
 public static class SeedData
 {
-    public const int NUMBER_OF_SEED_USERS = 25;
+    public const int NumberOfSeedUsers = 25;
 
     /// <summary>An account with the Admin role, for trying the users pages locally.</summary>
     public const string AdminEmail = "admin@example.com";
@@ -37,7 +37,7 @@ public static class SeedData
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         await CreateAsync(userManager, "Admin", AdminEmail, AdminPassword, Role.Admin);
 
-        for (int i = 1; i <= NUMBER_OF_SEED_USERS; i++)
+        for (int i = 1; i <= NumberOfSeedUsers; i++)
         {
             await CreateAsync(
                 userManager,

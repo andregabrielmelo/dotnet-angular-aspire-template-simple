@@ -26,22 +26,28 @@ public sealed class IdentityTokenClaimService(
     TimeProvider time
 ) : ITokenClaimsService
 {
+    private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly IUserClaimsPrincipalFactory<ApplicationUser> _claimsFactory = claimsFactory;
+    private readonly IOptions<IdentityOptions> _identityOptions = identityOptions;
+    private readonly IOptions<JwtSettings> _jwtSettings = jwtSettings;
+    private readonly TimeProvider _time = time;
+
     private static readonly JsonWebTokenHandler TokenHandler = new();
 
     public async Task<AccessToken> GetTokenAsync(UserId userId, CancellationToken cancellationToken)
     {
         var account = Guard.Against.NotFound(
             userId,
-            await userManager.Users.SingleOrDefaultAsync(
+            await _userManager.Users.SingleOrDefaultAsync(
                 account => account.ProfileId == userId,
                 cancellationToken
             )
         );
-        var principal = await claimsFactory.CreateAsync(account);
-        var stampClaimType = identityOptions.Value.ClaimsIdentity.SecurityStampClaimType;
+        var principal = await _claimsFactory.CreateAsync(account);
+        var stampClaimType = _identityOptions.Value.ClaimsIdentity.SecurityStampClaimType;
 
-        var settings = jwtSettings.Value;
-        var now = time.GetUtcNow();
+        var settings = _jwtSettings.Value;
+        var now = _time.GetUtcNow();
         var expiresAt = now + settings.TokenLifetime;
         var token = TokenHandler.CreateToken(
             new SecurityTokenDescriptor

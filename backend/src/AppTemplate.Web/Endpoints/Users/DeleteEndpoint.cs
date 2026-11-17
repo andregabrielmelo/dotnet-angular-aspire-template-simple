@@ -7,22 +7,22 @@ namespace AppTemplate.Web.Endpoints.Users;
 
 public sealed class DeleteUserRequest
 {
-    public int UserId { get; init; }
+    public int Id { get; init; }
 }
 
-public class DeleteEndpoint(IMediator _mediator)
+public class DeleteEndpoint(IMediator mediator)
     : Endpoint<DeleteUserRequest, Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
     {
-        Delete("/users/{UserId}");
+        Delete("/users/{id}");
         Permissions(Permission.UsersDelete);
 
         Summary(s =>
         {
             s.Summary = "Delete a user";
             s.Description = "Deletes a user with the specified id.";
-            s.ExampleRequest = new DeleteUserRequest { UserId = 1 };
+            s.ExampleRequest = new DeleteUserRequest { Id = 1 };
 
             s.Responses[400] = "Invalid request data";
             s.Responses[403] = $"Requires the {Permission.UsersDelete.Value} permission";
@@ -46,8 +46,8 @@ public class DeleteEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var command = new DeleteUserCommand(UserId.From(request.UserId));
-        var result = await _mediator.Send(command, cancellationToken);
+        var command = new DeleteUserCommand(UserId.From(request.Id));
+        var result = await mediator.Send(command, cancellationToken);
 
         return result.ToNoContentResult();
     }
@@ -57,6 +57,6 @@ public sealed class DeleteUserValidator : Validator<DeleteUserRequest>
 {
     public DeleteUserValidator()
     {
-        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Id must be greater than zero");
+        RuleFor(x => x.Id).GreaterThan(0).WithMessage("Id must be greater than zero");
     }
 }

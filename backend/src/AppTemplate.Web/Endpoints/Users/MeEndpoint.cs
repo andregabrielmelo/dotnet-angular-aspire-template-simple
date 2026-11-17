@@ -14,7 +14,7 @@ public sealed record CurrentUserResponse(
 );
 
 /// <summary>The caller's own profile, identified by the session cookie.</summary>
-public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
+public class MeEndpoint(IMediator mediator, ICurrentUser currentUser)
     : EndpointWithoutRequest<Results<Ok<CurrentUserResponse>, ProblemHttpResult>>
 {
     public override void Configure()
@@ -52,18 +52,18 @@ public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
         CancellationToken cancellationToken
     )
     {
-        if (_currentUser.Id is not { } userId)
+        if (currentUser.Id is not { } userId)
         {
             return Result.Unauthorized().ToProblem();
         }
 
-        var result = await _mediator.Send(new GetCurrentUserQuery(userId), cancellationToken);
+        var result = await mediator.Send(new GetCurrentUserQuery(userId), cancellationToken);
 
         return result.ToOkResult(user => new CurrentUserResponse(
             user.Id.Value,
             user.Name.Value,
             user.Email.Value,
-            _currentUser.Permissions.Order(StringComparer.Ordinal).ToList()
+            currentUser.Permissions.Order(StringComparer.Ordinal).ToList()
         ));
     }
 }

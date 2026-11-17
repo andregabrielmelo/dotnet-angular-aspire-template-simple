@@ -11,7 +11,7 @@ public record CurrentUserDto(UserId Id, UserName Name, EmailAddress Email);
 /// The caller's own profile, with their account's email. <c>NotFound</c> when the user was
 /// deleted while their session cookie is still valid (until its next security stamp check).
 /// </summary>
-public class GetCurrentUserHandler(IRepository<User> _repository, IIdentityService _identity)
+public class GetCurrentUserHandler(IRepository<User> repository, IIdentityService identity)
     : IQueryHandler<GetCurrentUserQuery, Result<CurrentUserDto>>
 {
     public async ValueTask<Result<CurrentUserDto>> Handle(
@@ -19,14 +19,14 @@ public class GetCurrentUserHandler(IRepository<User> _repository, IIdentityServi
         CancellationToken cancellationToken
     )
     {
-        var user = await _repository.FirstOrDefaultAsync(
+        var user = await repository.FirstOrDefaultAsync(
             new UserByIdSpecification(query.UserId),
             cancellationToken
         );
         if (user is null)
             return Result.NotFound();
 
-        var account = await _identity.GetUserAsync(user.Id, cancellationToken);
+        var account = await identity.GetUserAsync(user.Id, cancellationToken);
         if (account is null)
             return Result.NotFound();
 

@@ -3,7 +3,7 @@ using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 
 namespace AppTemplate.UseCases.Users.Get;
 
-public class GetUserHandler(IRepository<User> _repository)
+public class GetUserHandler(IRepository<User> repository)
     : IQueryHandler<GetUserQuery, Result<UserDto>>
 {
     public async ValueTask<Result<UserDto>> Handle(
@@ -11,7 +11,7 @@ public class GetUserHandler(IRepository<User> _repository)
         CancellationToken cancellationToken
     )
     {
-        var user = await _repository.FirstOrDefaultAsync(
+        var user = await repository.FirstOrDefaultAsync(
             new UserByIdSpecification(request.UserId),
             cancellationToken
         );

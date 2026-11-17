@@ -13,9 +13,11 @@ namespace AppTemplate.Infrastructure.Identity;
 public sealed class DevelopmentJwtSigningKey(IHostEnvironment environment)
     : IPostConfigureOptions<JwtSettings>
 {
+    private readonly IHostEnvironment _environment = environment;
+
     public void PostConfigure(string? name, JwtSettings options)
     {
-        if (environment.IsDevelopment() && string.IsNullOrEmpty(options.SigningKey))
+        if (_environment.IsDevelopment() && string.IsNullOrEmpty(options.SigningKey))
         {
             options.SigningKey = Convert.ToBase64String(
                 RandomNumberGenerator.GetBytes(JwtSettings.MinimumKeyBytes)

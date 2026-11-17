@@ -8,7 +8,7 @@ namespace AppTemplate.Web.Endpoints.Authentication;
 /// one cookie, and the half the SPA sends back as <c>X-XSRF-TOKEN</c> as the readable
 /// <c>XSRF-TOKEN</c> cookie. Tokens are bound to the user, so fetch one again after signing in.
 /// </summary>
-public class AntiforgeryTokenEndpoint(IAntiforgery _antiforgery) : EndpointWithoutRequest<NoContent>
+public class AntiforgeryTokenEndpoint(IAntiforgery antiforgery) : EndpointWithoutRequest<NoContent>
 {
     public override void Configure()
     {
@@ -31,7 +31,7 @@ public class AntiforgeryTokenEndpoint(IAntiforgery _antiforgery) : EndpointWitho
 
     public override Task<NoContent> ExecuteAsync(CancellationToken cancellationToken)
     {
-        var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+        var tokens = antiforgery.GetAndStoreTokens(HttpContext);
         HttpContext.Response.Cookies.Append(
             AntiforgeryConfigurations.RequestTokenCookieName,
             tokens.RequestToken!,

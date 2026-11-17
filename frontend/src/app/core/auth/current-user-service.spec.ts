@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { CurrentUserService } from './current-user.service';
+import { CurrentUserService } from './current-user-service';
 import { Permission } from './permissions';
 
 describe('CurrentUserService', () => {

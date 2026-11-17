@@ -4,8 +4,8 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { HomePage } from './home-page';
-import { AuthService } from '../auth/auth-service';
-import { CurrentUserService } from '../../core/auth/current-user.service';
+import { AuthService } from '../../core/auth/auth-service';
+import { CurrentUserService } from '../../core/auth/current-user-service';
 import { Permission } from '../../core/auth/permissions';
 
 describe('HomePage', () => {

@@ -13,6 +13,8 @@ namespace AppTemplate.Infrastructure.Data;
 internal sealed class EventDispatchInterceptor(IDomainEventDispatcher domainEventDispatcher)
     : SaveChangesInterceptor
 {
+    private readonly IDomainEventDispatcher _domainEventDispatcher = domainEventDispatcher;
+
     public override async ValueTask<int> SavedChangesAsync(
         SaveChangesCompletedEventData eventData,
         int result,
@@ -46,6 +48,6 @@ internal sealed class EventDispatchInterceptor(IDomainEventDispatcher domainEven
             .Where(entity => entity.DomainEvents.Count > 0)
             .ToArray();
 
-        return domainEventDispatcher.DispatchAndClearEvents(entitiesWithEvents);
+        return _domainEventDispatcher.DispatchAndClearEvents(entitiesWithEvents);
     }
 }

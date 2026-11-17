@@ -12,19 +12,19 @@ public sealed class ListUsersRequest
     public int Page { get; init; } = 1;
 
     [BindFrom("per_page")]
-    public int PerPage { get; init; } = PaginationConstants.DEFAULT_PAGE_SIZE;
+    public int PerPage { get; init; } = PaginationConstants.DefaultPageSize;
 }
 
 public record UserListResponse : UseCases.PagedResult<UserRecord>
 {
     public UserListResponse(
-        IReadOnlyList<UserRecord> Items,
-        int Page,
-        int PerPage,
-        int TotalCount,
-        int TotalPages
+        IReadOnlyList<UserRecord> items,
+        int page,
+        int perPage,
+        int totalCount,
+        int totalPages
     )
-        : base(Items, Page, PerPage, TotalCount, TotalPages) { }
+        : base(items, page, perPage, totalCount, totalPages) { }
 }
 
 public class ListEndpoint(IMediator mediator)
@@ -53,7 +53,7 @@ public class ListEndpoint(IMediator mediator)
 
             s.Params["page"] = "1-based page index (default 1)";
             s.Params["per_page"] =
-                $"Page size 1–{PaginationConstants.MAX_PAGE_SIZE} (default {PaginationConstants.DEFAULT_PAGE_SIZE})";
+                $"Page size 1–{PaginationConstants.MaxPageSize} (default {PaginationConstants.DefaultPageSize})";
 
             s.Responses[200] = "Paginated list of users returned successfully";
             s.Responses[403] = $"Requires the {Permission.UsersRead.Value} permission";
@@ -105,8 +105,8 @@ public sealed class ListUsersValidator : Validator<ListUsersRequest>
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1).WithMessage("page must be >= 1");
 
         RuleFor(x => x.PerPage)
-            .InclusiveBetween(1, PaginationConstants.MAX_PAGE_SIZE)
-            .WithMessage($"per_page must be between 1 and {PaginationConstants.MAX_PAGE_SIZE}");
+            .InclusiveBetween(1, PaginationConstants.MaxPageSize)
+            .WithMessage($"per_page must be between 1 and {PaginationConstants.MaxPageSize}");
     }
 }
 

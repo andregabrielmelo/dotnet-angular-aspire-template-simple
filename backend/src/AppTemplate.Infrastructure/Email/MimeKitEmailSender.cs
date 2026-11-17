@@ -11,6 +11,8 @@ public sealed class MimeKitEmailSender(
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender
 {
+    private readonly ILoggerAdapter<MimeKitEmailSender> _logger = logger;
+
     /// <summary>
     /// How long one SMTP operation (connect, send, quit) may take. MailKit's default is two
     /// minutes, which would hold a registration or password reset request that long on a stuck
@@ -45,6 +47,6 @@ public sealed class MimeKitEmailSender(
         await client.DisconnectAsync(quit: true, cancellationToken);
 
         // Addresses are personal data - log the subject, not who it went to or came from.
-        logger.LogInformation("Sent email '{Subject}' via {Host}", subject, _mailserver.Hostname);
+        _logger.LogInformation("Sent email '{Subject}' via {Host}", subject, _mailserver.Hostname);
     }
 }

@@ -4,7 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Router } from '@angular/router';
 import { vi } from 'vitest';
 import { authInterceptor } from './auth-interceptor';
-import { AuthService } from '../../features/auth/auth-service';
+import { AuthService } from './auth-service';
 
 describe('authInterceptor', () => {
   let http: HttpClient;

@@ -8,11 +8,11 @@ namespace AppTemplate.UseCases.Authentication.Login;
 /// same answer, so the response doesn't reveal who has an account; only someone who knows the
 /// password learns that it still needs confirming.
 /// </summary>
-public class LoginHandler(IIdentityService _identity) : ICommandHandler<LoginCommand, Result>
+public class LoginHandler(IIdentityService identity) : ICommandHandler<LoginCommand, Result>
 {
     public async ValueTask<Result> Handle(LoginCommand command, CancellationToken cancellationToken)
     {
-        var account = await _identity.CheckPasswordAsync(
+        var account = await identity.CheckPasswordAsync(
             command.Email,
             command.Password,
             cancellationToken
@@ -27,7 +27,7 @@ public class LoginHandler(IIdentityService _identity) : ICommandHandler<LoginCom
             return Result.Unauthorized();
         }
 
-        await _identity.SignInAsync(account.Value.Id, cancellationToken);
+        await identity.SignInAsync(account.Value.Id, cancellationToken);
         return Result.Success();
     }
 }

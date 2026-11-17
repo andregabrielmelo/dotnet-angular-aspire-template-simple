@@ -107,7 +107,7 @@ public class Project(UserId ownerId, ProjectName name)
 }
 ```
 
-`Project.cs` needs `using AppTemplate.Core.Aggregates.UserAggregate;` for `UserId`. The owner is stored as the user's id (what `ICurrentUser.Id` returns), without a foreign key to `users`. The handler can then authorize without loading the user. Add a real foreign key (`HasOne<User>().WithMany().HasForeignKey(...)`, as `RefreshTokenConfiguration` does) when the relationship matters to queries or a deleted user's projects must go too.
+`Project.cs` needs `using AppTemplate.Core.Aggregates.UserAggregate;` for `UserId`. The owner is stored as the user's id (what `ICurrentUser.Id` returns), without a foreign key to `users`. The handler can then authorize without loading the user. Add a real foreign key (`HasOne<User>().WithMany().HasForeignKey(...)`; `ApplicationUserConfiguration` does the same for the account's `ProfileId`) when the relationship matters to queries or a deleted user's projects must go too.
 
 **A specification** for the read-only lookup:
 
@@ -168,12 +168,11 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 **Register the Vogen converters** once, centrally, in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. `HasVogenConversion()` doesn't compile without them:
 
 ```csharp
-[EfCoreConverter<RefreshTokenId>]
 [EfCoreConverter<UserId>]
 [EfCoreConverter<UserName>]
 [EfCoreConverter<ProjectId>]
 [EfCoreConverter<ProjectName>]
-internal partial class VogenEfCoreConverters;
+internal sealed partial class VogenEfCoreConverters;
 ```
 
 **Add the set** to `Infrastructure/Data/ApplicationDatabaseContext.cs`. `ApplyConfigurationsFromAssembly` picks up `ProjectConfiguration` by itself:
@@ -203,8 +202,10 @@ using AppTemplate.UseCases.Projects.List;
 
 namespace AppTemplate.Infrastructure.Data.Queries;
 
-public class ListProjectsQueryService(ApplicationDatabaseContext _db) : IListProjectsQueryService
+public class ListProjectsQueryService(ApplicationDatabaseContext db) : IListProjectsQueryService
 {
+    private readonly ApplicationDatabaseContext _db = db;
+
     public async Task<PagedResult<ProjectDto>> ListAsync(
         UserId ownerId,
         int page,
@@ -297,7 +298,7 @@ using AppTemplate.UseCases.Authorization;
 namespace AppTemplate.UseCases.Projects.Create;
 
 /// <summary>The caller becomes the project's owner.</summary>
-public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
+public class CreateProjectHandler(IRepository<Project> repository, ICurrentUser currentUser)
     : ICommandHandler<CreateProjectCommand, Result<ProjectDto>>
 {
     public async ValueTask<Result<ProjectDto>> Handle(
@@ -305,10 +306,10 @@ public class CreateProjectHandler(IRepository<Project> _repository, ICurrentUser
         CancellationToken cancellationToken
     )
     {
-        if (_currentUser.Id is not { } owner)
+        if (currentUser.Id is not { } owner)
             return Result<ProjectDto>.Unauthorized();
 
-        var project = await _repository.AddAsync(
+        var project = await repository.AddAsync(
             Project.Create(owner, command.Name),
             cancellationToken
         );
@@ -344,7 +345,7 @@ namespace AppTemplate.UseCases.Projects.Get;
 /// <see cref="Permission.ProjectsRead"/> may read every project. It needs the loaded
 /// project, so it's decided here rather than by an endpoint policy.
 /// </summary>
-public class GetProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
+public class GetProjectHandler(IRepository<Project> repository, ICurrentUser currentUser)
     : IQueryHandler<GetProjectQuery, Result<ProjectDto>>
 {
     public async ValueTask<Result<ProjectDto>> Handle(
@@ -352,7 +353,7 @@ public class GetProjectHandler(IRepository<Project> _repository, ICurrentUser _c
         CancellationToken cancellationToken
     )
     {
-        var project = await _repository.FirstOrDefaultAsync(
+        var project = await repository.FirstOrDefaultAsync(
             new ProjectByIdSpecification(query.ProjectId),
             cancellationToken
         );
@@ -360,8 +361,8 @@ public class GetProjectHandler(IRepository<Project> _repository, ICurrentUser _c
             return Result<ProjectDto>.NotFound();
 
         if (
-            !project.IsOwnedBy(_currentUser.Id)
-            && !_currentUser.HasPermission(Permission.ProjectsRead)
+            !project.IsOwnedBy(currentUser.Id)
+            && !currentUser.HasPermission(Permission.ProjectsRead)
         )
             return Result<ProjectDto>.Forbidden();
 
@@ -400,7 +401,7 @@ public interface IListProjectsQueryService
 namespace AppTemplate.UseCases.Projects.List;
 
 /// <summary>The caller's own projects, a page at a time.</summary>
-public record ListProjectsQuery(int Page = 1, int PerPage = Constants.DEFAULT_PAGE_SIZE)
+public record ListProjectsQuery(int Page = 1, int PerPage = PaginationConstants.DefaultPageSize)
     : IQuery<Result<PagedResult<ProjectDto>>>;
 ```
 
@@ -410,18 +411,20 @@ using AppTemplate.UseCases.Authorization;
 
 namespace AppTemplate.UseCases.Projects.List;
 
-public class ListProjectsHandler(IListProjectsQueryService _query, ICurrentUser _currentUser)
+public class ListProjectsHandler(IListProjectsQueryService query, ICurrentUser currentUser)
     : IQueryHandler<ListProjectsQuery, Result<PagedResult<ProjectDto>>>
 {
+    private readonly IListProjectsQueryService _query = query;
+
     public async ValueTask<Result<PagedResult<ProjectDto>>> Handle(
-        ListProjectsQuery query,
+        ListProjectsQuery request,
         CancellationToken cancellationToken
     )
     {
-        if (_currentUser.Id is not { } owner)
+        if (currentUser.Id is not { } owner)
             return Result<PagedResult<ProjectDto>>.Unauthorized();
 
-        return await _query.ListAsync(owner, query.Page, query.PerPage, cancellationToken);
+        return await _query.ListAsync(owner, request.Page, request.PerPage, cancellationToken);
     }
 }
 ```
@@ -448,7 +451,7 @@ using AppTemplate.UseCases.Authorization;
 namespace AppTemplate.UseCases.Projects.Rename;
 
 /// <summary>Only the owner may rename a project.</summary>
-public class RenameProjectHandler(IRepository<Project> _repository, ICurrentUser _currentUser)
+public class RenameProjectHandler(IRepository<Project> repository, ICurrentUser currentUser)
     : ICommandHandler<RenameProjectCommand, Result<ProjectDto>>
 {
     public async ValueTask<Result<ProjectDto>> Handle(
@@ -456,15 +459,15 @@ public class RenameProjectHandler(IRepository<Project> _repository, ICurrentUser
         CancellationToken cancellationToken
     )
     {
-        var project = await _repository.GetByIdAsync(command.ProjectId, cancellationToken);
+        var project = await repository.GetByIdAsync(command.ProjectId, cancellationToken);
         if (project is null)
             return Result<ProjectDto>.NotFound();
 
-        if (!project.IsOwnedBy(_currentUser.Id))
+        if (!project.IsOwnedBy(currentUser.Id))
             return Result<ProjectDto>.Forbidden();
 
         project.Rename(command.Name);
-        await _repository.UpdateAsync(project, cancellationToken);
+        await repository.UpdateAsync(project, cancellationToken);
 
         return ProjectDto.FromEntity(project);
     }
@@ -521,7 +524,7 @@ public sealed class CreateProjectRequest
     public required string Name { get; set; }
 }
 
-public class CreateEndpoint(IMediator _mediator)
+public class CreateEndpoint(IMediator mediator)
     : Endpoint<CreateProjectRequest, Results<Created<ProjectRecord>, ProblemHttpResult>>
 {
     public override void Configure()
@@ -558,7 +561,7 @@ public class CreateEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new CreateProjectCommand(ProjectName.From(request.Name)),
             cancellationToken
         );
@@ -600,7 +603,7 @@ public sealed class GetProjectByIdRequest
 }
 // Configure(): Get("/projects/{id}");
 // ExecuteAsync():
-var result = await _mediator.Send(
+var result = await mediator.Send(
     new GetProjectQuery(ProjectId.From(request.Id)),
     cancellationToken
 );
@@ -621,7 +624,7 @@ public sealed class RenameProjectRequest
 
 ```csharp
 // DeleteEndpoint.cs: no response body
-public class DeleteEndpoint(IMediator _mediator)
+public class DeleteEndpoint(IMediator mediator)
     : Endpoint<DeleteProjectRequest, Results<NoContent, ProblemHttpResult>>
 // Configure(): Delete("/projects/{id}");
 // ExecuteAsync(): return result.ToNoContentResult();
@@ -642,7 +645,7 @@ public sealed class ListProjectsRequest
     public int Page { get; init; } = 1;
 
     [BindFrom("per_page")]
-    public int PerPage { get; init; } = Constants.DEFAULT_PAGE_SIZE;
+    public int PerPage { get; init; } = PaginationConstants.DefaultPageSize;
 }
 
 public record ProjectListResponse : UseCases.PagedResult<ProjectRecord>
@@ -666,7 +669,7 @@ public record ProjectListResponse : UseCases.PagedResult<ProjectRecord>
         );
 }
 
-public class ListEndpoint(IMediator _mediator)
+public class ListEndpoint(IMediator mediator)
     : Endpoint<ListProjectsRequest, Results<Ok<ProjectListResponse>, ProblemHttpResult>>
 {
     public override void Configure()
@@ -680,7 +683,7 @@ public class ListEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new ListProjectsQuery(request.Page, request.PerPage),
             cancellationToken
         );
@@ -696,8 +699,8 @@ public sealed class ListProjectsValidator : Validator<ListProjectsRequest>
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1).WithMessage("page must be >= 1");
 
         RuleFor(x => x.PerPage)
-            .InclusiveBetween(1, Constants.MAX_PAGE_SIZE)
-            .WithMessage($"per_page must be between 1 and {Constants.MAX_PAGE_SIZE}");
+            .InclusiveBetween(1, PaginationConstants.MaxPageSize)
+            .WithMessage($"per_page must be between 1 and {PaginationConstants.MaxPageSize}");
     }
 }
 ```
@@ -722,7 +725,7 @@ cd frontend && npm run api:generate
 
 Everything here lives in `frontend/src/app/features/projects/`. It mirrors `features/users/`.
 
-**Types**, `projects.model.ts`. Aliases of the generated schemas, so a renamed field fails the build:
+**Types**, `projects-model.ts`. Aliases of the generated schemas, so a renamed field fails the build:
 
 ```ts
 import { ApiSchema } from '../../core/api/api-schema';
@@ -734,13 +737,13 @@ export type CreateProjectRequest = ApiSchema<'CreateProjectRequest'>;
 export type RenameProjectRequest = ApiSchema<'RenameProjectRequest'>;
 ```
 
-**HTTP calls**, `projects.service.ts`. Components never inject `HttpClient`, and ESLint enforces it:
+**HTTP calls**, `projects-service.ts`. Components never inject `HttpClient`, and ESLint enforces it:
 
 ```ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateProjectRequest, Project, ProjectPage, RenameProjectRequest } from './projects.model';
+import { CreateProjectRequest, Project, ProjectPage, RenameProjectRequest } from './projects-model';
 import { API_BASE } from '../../core/api/api-paths';
 
 const BASE = `${API_BASE}/projects`;
@@ -770,15 +773,31 @@ export class ProjectsService {
 
 The browser sends the session cookie for you, and HttpClient adds the antiforgery token to requests other than GET.
 
-**The page**, `projects-page.ts`. It uses signals for state and a reactive form, and reads validation messages from the problem details `errors` object:
+**The page**, `projects-page.ts`. It keeps the page number in the URL (`?page=2`, bound as an input by `withComponentInputBinding`), loads the list with `rxResource`, uses a reactive form, and reads validation messages from the problem details `errors` object:
 
 ```ts
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  numberAttribute,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { Project } from './projects.model';
-import { ProjectsService } from './projects.service';
+import { Project } from './projects-model';
+import { ProjectsService } from './projects-service';
+
+const PAGE_SIZE = 10;
+
+/** `?page=` as a page number: a positive integer, or 1 when it's missing or anything else. */
+function toPage(value: unknown): number {
+  const page = numberAttribute(value, 1);
+  return Number.isInteger(page) && page >= 1 ? page : 1;
+}
 
 /** The signed-in user's own projects: list, create and delete. */
 @Component({
@@ -787,23 +806,23 @@ import { ProjectsService } from './projects.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './projects-page.html',
 })
-export class ProjectsPage implements OnInit {
+export class ProjectsPage {
   private readonly projectsService = inject(ProjectsService);
   private readonly formBuilder = inject(FormBuilder);
 
-  protected readonly projects = signal<Project[]>([]);
+  readonly page = input(1, { transform: toPage });
+
+  /** The current page, loaded again whenever the page changes or `reload()` is called. */
+  protected readonly projects = rxResource({
+    params: () => ({ page: this.page() }),
+    stream: ({ params }) => this.projectsService.list(params.page, PAGE_SIZE),
+  });
+
   protected readonly errorMessage = signal<string | null>(null);
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
   });
-
-  ngOnInit(): void {
-    this.projectsService.list(1, 50).subscribe({
-      next: (page) => this.projects.set(page.items),
-      error: () => this.errorMessage.set('Could not load your projects.'),
-    });
-  }
 
   create(): void {
     if (this.form.invalid) {
@@ -813,8 +832,8 @@ export class ProjectsPage implements OnInit {
 
     this.errorMessage.set(null);
     this.projectsService.create({ name: this.form.getRawValue().name.trim() }).subscribe({
-      next: (project) => {
-        this.projects.update((projects) => [...projects, project]);
+      next: () => {
+        this.projects.reload();
         this.form.reset();
       },
       error: (error: HttpErrorResponse) =>
@@ -830,7 +849,7 @@ export class ProjectsPage implements OnInit {
   delete(project: Project): void {
     this.errorMessage.set(null);
     this.projectsService.delete(project.id).subscribe({
-      next: () => this.projects.update((projects) => projects.filter((p) => p.id !== project.id)),
+      next: () => this.projects.reload(),
       error: () => this.errorMessage.set(`Could not delete ${project.name}.`),
     });
   }
@@ -841,7 +860,8 @@ export class ProjectsPage implements OnInit {
 - a form with a labelled input
 - an error tied to the input with `aria-describedby`
 - `role="alert"` on the error message
-- an `@for` list with an `@empty` row
+- an `@for` list over `projects.value().items` (inside `@if (projects.hasValue())`) with an `@empty` row, and "Could not load your projects." when `projects.error()` is set
+- Previous/Next links (`[routerLink]="[]"` with `[queryParams]="{ page: page() + 1 }"`) and "Page x of y" when there is more than one page, as in `features/users/users-page.html`
 
 Use no inline scripts or event-handler attributes: the content security policy blocks them.
 
@@ -979,7 +999,7 @@ public class ProjectGetById(CustomWebApplicationFactory<Program> factory)
   - a missing id (404)
   - for lists: paging, and that callers see only their own rows
 
-**Frontend specs** live next to their files: `projects.service.spec.ts` checks URLs, methods and bodies with `HttpTestingController`; `projects-page.spec.ts` checks the rendered list, creating a project, and showing a 400's field message. Mirror `users.service.spec.ts` and `users-page.spec.ts`.
+**Frontend specs** live next to their files: `projects-service.spec.ts` checks URLs, methods and bodies with `HttpTestingController`; `projects-page.spec.ts` checks the rendered list, the page from the URL (`fixture.componentRef.setInput('page', 2)`), creating a project, and showing a 400's field message. The list loads through `rxResource`, so run `TestBed.tick()` before expecting its request and `await fixture.whenStable()` after flushing it. Mirror `users-service.spec.ts` and `users-page.spec.ts`.
 
 Some tests need no changes:
 - The **architecture tests** check that the new endpoints live in a feature namespace under `AppTemplate.Web`, that the handlers live in UseCases, and that the names end in `Command` or `Query`.

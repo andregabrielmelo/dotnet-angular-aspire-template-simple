@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
-import { AccountService } from '../account.service';
+import { AccountService } from '../account-service';
 
 /** A "send the confirmation link again" button, for the sign-in and registration pages. */
 @Component({

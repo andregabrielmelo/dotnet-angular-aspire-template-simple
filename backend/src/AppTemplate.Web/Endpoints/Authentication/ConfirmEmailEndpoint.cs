@@ -12,7 +12,7 @@ public sealed class ConfirmEmailRequest
 }
 
 /// <summary>Confirms an email with the code from its confirmation link; the account can then sign in.</summary>
-public class ConfirmEmailEndpoint(IMediator _mediator)
+public class ConfirmEmailEndpoint(IMediator mediator)
     : Endpoint<ConfirmEmailRequest, Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
@@ -51,7 +51,7 @@ public class ConfirmEmailEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new ConfirmEmailCommand(UserId.From(request.UserId), request.Code),
             cancellationToken
         );

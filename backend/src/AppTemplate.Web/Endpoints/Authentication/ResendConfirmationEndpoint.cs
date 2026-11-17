@@ -14,7 +14,7 @@ public sealed class ResendConfirmationRequest
 /// Sends another confirmation link. Always 202, whether or not the email has an account, so the
 /// answer reveals nothing.
 /// </summary>
-public class ResendConfirmationEndpoint(IMediator _mediator)
+public class ResendConfirmationEndpoint(IMediator mediator)
     : Endpoint<ResendConfirmationRequest, Results<Accepted, ProblemHttpResult>>
 {
     public override void Configure()
@@ -53,7 +53,7 @@ public class ResendConfirmationEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new ResendConfirmationCommand(new EmailAddress(request.Email)),
             cancellationToken
         );

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ResendConfirmation } from './resend-confirmation';
-import { AccountService } from '../account.service';
+import { AccountService } from '../account-service';
 
 describe('ResendConfirmation', () => {
   function setup(resendConfirmation = vi.fn().mockReturnValue(of(undefined))) {

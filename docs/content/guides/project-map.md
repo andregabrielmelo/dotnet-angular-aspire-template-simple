@@ -47,14 +47,14 @@ Dependencies point inward: each project may use the ones listed above it, never 
 | Folder | Holds |
 |---|---|
 | `core/` | App-wide plumbing: `api/` (generated API types, base paths), `auth/` (current user, guards, the auth interceptor, the cross-tab refresh lock) |
-| `features/<feature>/` | Everything one feature owns: pages, its `<feature>.service.ts` (HTTP calls), its `<feature>.model.ts` (API types) |
+| `features/<feature>/` | Everything one feature owns: pages, its `<feature>-service.ts` (HTTP calls), its `<feature>-model.ts` (API types) |
 | `shared/` | Not there yet. Create it when two features need the same component or pipe |
 
 ## What happens to a request
 
 Saving your name on the profile page sends `PUT /api/users/7` with `{ "name": "Ada" }`. Here's its path, with the file that handles each step:
 
-1. **Angular.** `ProfilePage` calls `UsersService.update` (`features/users/users.service.ts`). The browser sends the session cookie by itself, and HttpClient adds the antiforgery token (`X-XSRF-TOKEN`, from the `XSRF-TOKEN` cookie). If the API answers 401 (the session ended), `auth-interceptor.ts` sends the user to sign in.
+1. **Angular.** `ProfilePage` calls `UsersService.update` (`features/users/users-service.ts`). The browser sends the session cookie by itself, and HttpClient adds the antiforgery token (`X-XSRF-TOKEN`, from the `XSRF-TOKEN` cookie). If the API answers 401 (the session ended), `auth-interceptor.ts` sends the user to sign in.
 2. **Dev server proxy.** `frontend/proxy.conf.mjs` strips `/api` and forwards `PUT /users/7` to the API.
 3. **API middleware** (`Web/Configurations/MiddlewareConfigurations.cs`, in this order): forwarded headers (from a known proxy only), the HTTPS redirect, error handling, authentication (Identity's cookie, with its security stamp check), the rate limiter (by `user_id`, or by address), the antiforgery check for a signed-in session's unsafe requests, then authorization, which enforces the endpoint's `Permissions(...)`.
 4. **Endpoint.** FastEndpoints routes to `UpdateEndpoint` (`Web/Endpoints/Users/UpdateEndpoint.cs`), binds `UpdateUserRequest`, and runs `UpdateUserValidator`. Invalid input stops here with a 400 (FastEndpoints' `ErrorResponse`). Otherwise the endpoint turns the request into an `UpdateUserCommand` and sends it.
@@ -95,7 +95,7 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 
 | To change... | Look in |
 |---|---|
-| The sign-in and registration pages, and the account pages (confirm email, forgot and reset password) | `frontend/src/app/features/auth/`: `login-page/`, `register-page/`, the account pages, `resend-confirmation/` (shared by both), `auth-messages.ts` (error messages, safe `returnUrl`) and `account.service.ts` for the account flows; the change-password form in `features/profile/` |
+| The sign-in and registration pages, and the account pages (confirm email, forgot and reset password) | `frontend/src/app/features/auth/`: `login-page/`, `register-page/`, the account pages, `resend-confirmation/` (shared by both), `auth-messages.ts` (error messages, safe `returnUrl`) and `account-service.ts` for the account flows; the change-password form in `features/profile/` |
 | Sign-in, registration and sign-out | `Web/Endpoints/Authentication/`, `UseCases/Authentication/`, `UseCases/Users/Register/` |
 | Email confirmation, password reset and change | the endpoints and use cases above, `Infrastructure/Identity/` (`IdentityService`, `AccountEmailSender`, `AccountLinkSettings`, `IdentityResultExtensions`), `UseCases/Users/Register/RegisterUserHandler.cs` |
 | Rate limits | `Web/Configurations/RateLimitingConfigurations.cs` (the `authentication` policy, forwarded headers), the `RateLimiting` and `ForwardedHeaders` settings (`Web/Settings/`), ADR 014 |
@@ -129,6 +129,6 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 | Endpoint | `Web/Endpoints/<Plural>/<Verb>Endpoint.cs` (namespace `AppTemplate.Web.Endpoints.<Plural>`), with its request, validator and mapper in the same file |
 | EF configuration | `Infrastructure/Data/Configurations/<Name>Configuration.cs` |
 | Tests | One class per member or behavior: `UnitTests/Core/<Name>Aggregate/<Name><Member>.cs`, `UnitTests/UseCases/<Plural>/<UseCase>HandlerHandle.cs`, `IntegrationTests/Data/` (or `Identity/`), `FunctionalTests/ApiEndpoints/<Name><Verb>.cs` (`UserGetById`) |
-| Frontend | `features/<plural>/<plural>.service.ts`, `<plural>.model.ts`, `<plural>-page.ts` |
+| Frontend | `features/<plural>/<plural>-service.ts`, `<plural>-model.ts`, `<plural>-page.ts` |
 
 The architecture tests check some of this: endpoints live in a feature namespace under `AppTemplate.Web`, handlers only in UseCases, and command and query names end in `Command` or `Query`.

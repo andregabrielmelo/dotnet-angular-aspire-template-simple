@@ -14,7 +14,7 @@ public sealed class ForgotPasswordRequest
 /// Emails a password reset link to a confirmed account. Always 202, whether or not the email has
 /// an account, so the answer reveals nothing.
 /// </summary>
-public class ForgotPasswordEndpoint(IMediator _mediator)
+public class ForgotPasswordEndpoint(IMediator mediator)
     : Endpoint<ForgotPasswordRequest, Results<Accepted, ProblemHttpResult>>
 {
     public override void Configure()
@@ -53,7 +53,7 @@ public class ForgotPasswordEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new ForgotPasswordCommand(new EmailAddress(request.Email)),
             cancellationToken
         );

@@ -25,12 +25,12 @@ public static class HttpContextExtensions
             .Where(pair =>
                 !string.Equals(
                     pair.Key,
-                    PaginationConstants.PAGE_PARAMETER,
+                    PaginationConstants.PageParameter,
                     StringComparison.OrdinalIgnoreCase
                 )
                 && !string.Equals(
                     pair.Key,
-                    PaginationConstants.PAGE_SIZE_PARAMETER,
+                    PaginationConstants.PageSizeParameter,
                     StringComparison.OrdinalIgnoreCase
                 )
             )
@@ -41,11 +41,11 @@ public static class HttpContextExtensions
             var parameters = new List<KeyValuePair<string, string?>>(query)
             {
                 new(
-                    PaginationConstants.PAGE_PARAMETER,
+                    PaginationConstants.PageParameter,
                     targetPage.ToString(CultureInfo.InvariantCulture)
                 ),
                 new(
-                    PaginationConstants.PAGE_SIZE_PARAMETER,
+                    PaginationConstants.PageSizeParameter,
                     perPage.ToString(CultureInfo.InvariantCulture)
                 ),
             };
