@@ -13,6 +13,7 @@ namespace AppTemplate.Infrastructure.Data.Configurations;
 /// </summary>
 public class IdentityRoleConfiguration : IEntityTypeConfiguration<IdentityRole<int>>
 {
+    // TODO: Maybe I should generate the timestamp from the role name, so it doesn't have to be hardcoded
     private static readonly Dictionary<Role, string> ConcurrencyStamps = new()
     {
         [Role.Admin] = "8d9a5c5e-3f71-4b0e-9c5a-0a6e2f0c1a01",
