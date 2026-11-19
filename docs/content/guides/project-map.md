@@ -123,6 +123,7 @@ To see this for yourself, run the app, open the Aspire dashboard's **Traces** ta
 |---|---|
 | Aggregate | `Core/Aggregates/<Name>Aggregate/<Name>.cs`, with `<Name>Id.cs` and its value objects next to it |
 | Specification | `Core/Aggregates/<Name>Aggregate/Specifications/<Name>By<What>Specification.cs` |
+| Errors | `Core/Aggregates/<Name>Aggregate/Errors/<Name>Errors.cs`: the aggregate's predefined `Result` failures (`UserErrors.EmailNotUnique`), namespace `...<Name>Aggregate.Errors` |
 | Command or query | `UseCases/<Plural>/<UseCase>/<UseCase>Command.cs` or `<UseCase>Query.cs`, plus `<UseCase>Handler.cs`; domain event handlers in Core, `Core/Aggregates/<Aggregate>/Handlers/` |
 | DTO | `UseCases/<Plural>/<Name>Dto.cs` |
 | List query service | `UseCases/<Plural>/List/IList<Plural>QueryService.cs`, implemented in `Infrastructure/Data/Queries/` |

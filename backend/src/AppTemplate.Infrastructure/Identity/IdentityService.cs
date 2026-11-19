@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate.Errors;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.UseCases.Authentication;
@@ -329,6 +330,7 @@ public sealed class IdentityService(
         var changed = await _userManager.ChangePasswordAsync(account, currentPassword, newPassword);
         return changed.ToApplicationResult(passwordField: "newPassword");
     }
+
     private async Task SendEmailConfirmationAsync(ApplicationUser? account)
     {
         if (account is null || account.EmailConfirmed)

@@ -54,6 +54,7 @@ UseCases/<Feature>/<UseCase>/   // one folder per use case, command or query ali
   <UseCase>Command.cs   // or <UseCase>Query.cs: record : ICommand<Result<T>> / IQuery<Result<T>>
   <UseCase>Handler.cs   // ICommandHandler / IQueryHandler, one Handle method
 Core/Aggregates/<Aggregate>/Handlers/   // domain event handlers, Core only (ConventionTests)
+Core/Aggregates/<Aggregate>/Errors/     // the aggregate's predefined Result failures (UserErrors)
 ```
 
 - **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, ports from `Core/Interfaces` (such as `IEmailSender`), and `ICurrentUser`. They never take infrastructure types, and use their primary-constructor parameters directly. Services and adapters (Infrastructure implementations, behaviors, middleware, domain event handlers) copy each dependency into a `private readonly` field (`private readonly ApplicationDatabaseContext _db = db;`) and use the field (`ConventionTests`).
