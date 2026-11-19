@@ -1,4 +1,4 @@
-using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate.Errors;
 using Ardalis.Result;
 using Microsoft.AspNetCore.Identity;
 

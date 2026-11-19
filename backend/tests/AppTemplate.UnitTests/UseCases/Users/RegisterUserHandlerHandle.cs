@@ -1,3 +1,4 @@
+using AppTemplate.Core.Aggregates.UserAggregate.Errors;
 using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Caching;

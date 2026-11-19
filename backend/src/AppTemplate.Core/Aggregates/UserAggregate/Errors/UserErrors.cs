@@ -1,4 +1,4 @@
-﻿namespace AppTemplate.Core.Aggregates.UserAggregate;
+﻿namespace AppTemplate.Core.Aggregates.UserAggregate.Errors;
 
 /// <summary>
 /// Provides predefined errors related to users.
